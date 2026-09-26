@@ -14,7 +14,6 @@ import {
   FlatList,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../hooks/useAuth';
 import { SplashScreen } from './SplashScreen';
 import { MpinScreen } from './MpinScreen';
@@ -132,11 +131,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       style={styles.root}
     >
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      <LinearGradient
-        colors={['#E2ECFA', '#F3F7FB', '#FFFFFF', '#E6EEF9']}
-        locations={[0, 0.25, 0.7, 1]}
-        style={styles.gradientBg}
-      >
+      <View style={styles.gradientBg}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -196,12 +191,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               </View>
 
               <TouchableOpacity activeOpacity={0.85} onPress={sendOtp} disabled={loading}>
-                <LinearGradient
-                  colors={['#5C93FA', '#6466F1']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.submitButtonPill}
-                >
+                <View style={styles.submitButtonPill}>
                   <View style={styles.buttonContentFlex}>
                     <View style={styles.buttonSpacer} />
                     {loading ? (
@@ -213,7 +203,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                       <Feather name="arrow-right" size={18} color="#FFFFFF" />
                     </View>
                   </View>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             </View>
           ) : (
@@ -232,12 +222,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               </View>
 
               <TouchableOpacity activeOpacity={0.85} onPress={verifyOtp} disabled={loading}>
-                <LinearGradient
-                  colors={['#5C93FA', '#6466F1']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.submitButtonPill}
-                >
+                <View style={styles.submitButtonPill}>
                   <View style={styles.buttonContentFlex}>
                     <View style={styles.buttonSpacer} />
                     {loading ? (
@@ -249,7 +234,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                       <Feather name="check" size={18} color="#FFFFFF" />
                     </View>
                   </View>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.backButton} onPress={switchToPhoneLogin}>
@@ -271,7 +256,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             </Text>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
 
       {/* Custom Bottom Sheet Country Picker */}
       <Modal
@@ -346,7 +331,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  gradientBg: { flex: 1 },
+  gradientBg: { flex: 1, backgroundColor: '#F3F7FB' },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 28,
@@ -523,6 +508,7 @@ const styles = StyleSheet.create({
   submitButtonPill: {
     height: 52,
     borderRadius: 24,
+    backgroundColor: '#4C80F1',
     justifyContent: 'center',
     shadowColor: '#5C93FA',
     shadowOffset: { width: 0, height: 6 },

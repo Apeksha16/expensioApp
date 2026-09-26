@@ -11,8 +11,6 @@ import {
   Platform
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import type { NavTab } from '../types';
 
 interface DashboardScreenProps {
@@ -20,6 +18,50 @@ interface DashboardScreenProps {
   onOpenAddExpense: () => void;
   onOpenSplitModal: () => void;
 }
+
+const SPARKLINE_DATA = [
+  { day: 'Mon', h: 32, active: false },
+  { day: 'Tue', h: 48, active: false },
+  { day: 'Wed', h: 38, active: false },
+  { day: 'Thu', h: 62, active: false },
+  { day: 'Fri', h: 54, active: false },
+  { day: 'Sat', h: 76, active: true },
+  { day: 'Sun', h: 42, active: false },
+];
+
+const renderWebChart = () => {
+  if (Platform.OS !== 'web') return null;
+  return React.createElement(
+    'svg',
+    {
+      height: '100%',
+      width: '100%',
+      viewBox: '0 0 320 80',
+      preserveAspectRatio: 'none',
+      style: { position: 'absolute', top: 0, left: 0 },
+    },
+    React.createElement(
+      'defs',
+      null,
+      React.createElement(
+        'linearGradient',
+        { id: 'expensioGrad', x1: '0', y1: '0', x2: '0', y2: '1' },
+        React.createElement('stop', { offset: '0%', stopColor: '#3B82F6', stopOpacity: '0.18' }),
+        React.createElement('stop', { offset: '100%', stopColor: '#3B82F6', stopOpacity: '0.0' })
+      )
+    ),
+    React.createElement('path', {
+      d: 'M0 60 C 40 60, 60 75, 100 70 C 140 65, 160 40, 200 45 C 240 50, 260 20, 320 15 L 320 80 L 0 80 Z',
+      fill: 'url(#expensioGrad)',
+    }),
+    React.createElement('path', {
+      d: 'M0 60 C 40 60, 60 75, 100 70 C 140 65, 160 40, 200 45 C 240 50, 260 20, 320 15',
+      fill: 'none',
+      stroke: '#8B5CF6',
+      strokeWidth: '3',
+    })
+  );
+};
 
 export function DashboardScreen({
   onNavigateTab,
@@ -31,11 +73,7 @@ export function DashboardScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      <LinearGradient
-        colors={['#F5F8FF', '#F0F4FF', '#EDF2FF']}
-        locations={[0, 0.5, 1]}
-        style={styles.gradientBg}
-      >
+      <View style={styles.gradientBg}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
@@ -86,27 +124,28 @@ export function DashboardScreen({
               <Text style={styles.trendSubtitle}> from last month</Text>
             </View>
 
-            {/* Custom SVG Line Chart */}
+            {/* Spending Trend Chart */}
             <View style={styles.chartContainer}>
-              <Svg height="100%" width="100%" viewBox="0 0 320 80" preserveAspectRatio="none">
-                <Defs>
-                  <SvgLinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#3B82F6" stopOpacity="0.15" />
-                    <Stop offset="1" stopColor="#3B82F6" stopOpacity="0.0" />
-                  </SvgLinearGradient>
-                </Defs>
-                {/* A smooth bezier curve */}
-                <Path
-                  d="M0 60 C 40 60, 60 75, 100 70 C 140 65, 160 40, 200 45 C 240 50, 260 20, 320 15 L 320 80 L 0 80 Z"
-                  fill="url(#grad)"
-                />
-                <Path
-                  d="M0 60 C 40 60, 60 75, 100 70 C 140 65, 160 40, 200 45 C 240 50, 260 20, 320 15"
-                  fill="none"
-                  stroke="#8B5CF6"
-                  strokeWidth="3"
-                />
-              </Svg>
+              {Platform.OS === 'web' ? (
+                renderWebChart()
+              ) : (
+                <View style={styles.sparklineGrid}>
+                  {SPARKLINE_DATA.map((item, idx) => (
+                    <View key={idx} style={styles.sparklineCol}>
+                      <View
+                        style={[
+                          styles.sparklineBar,
+                          { height: item.h },
+                          item.active ? styles.sparklineBarActive : styles.sparklineBarInactive,
+                        ]}
+                      />
+                      <Text style={[styles.sparklineLabel, item.active && styles.sparklineLabelActive]}>
+                        {item.day}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               {/* Tooltip dot */}
               <View style={styles.chartDotContainer}>
                 <View style={styles.chartTooltip}>
@@ -216,14 +255,53 @@ export function DashboardScreen({
           </View>
 
         </ScrollView>
-      </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
-  gradientBg: { flex: 1 },
+  gradientBg: { flex: 1, backgroundColor: '#F5F8FF' },
+  sparklineGrid: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    height: 80,
+    paddingBottom: 4,
+  },
+  sparklineCol: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: '100%',
+    width: 28,
+  },
+  sparklineBar: {
+    width: 14,
+    borderRadius: 7,
+    marginBottom: 4,
+  },
+  sparklineBarActive: {
+    backgroundColor: '#6366F1',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sparklineBarInactive: {
+    backgroundColor: '#E0E7FF',
+  },
+  sparklineLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  sparklineLabelActive: {
+    color: '#6366F1',
+    fontWeight: '700',
+  },
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'android' ? 50 : 20,

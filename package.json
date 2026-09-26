@@ -1,0 +1,12 @@
+{
+  "name": "expensio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Expensio mobile app and backend workspace",
+  "scripts": {
+    "start": "npm --prefix frontend start",
+    "web": "npm --prefix frontend run web",
+    "android": "npm --prefix frontend run android",
+    "ios": "npm --prefix frontend run ios"
+  }
+}

@@ -19,16 +19,20 @@ interface BottomSheetProps {
   onClose: () => void;
   children: React.ReactNode;
   maxHeight?: number | string;
+  theme?: 'light' | 'dark';
 }
 
 export function BottomSheet({
   visible,
   onClose,
   children,
+  theme = 'light',
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const isLight = theme === 'light';
 
   useEffect(() => {
     if (visible) {
@@ -71,21 +75,36 @@ export function BottomSheet({
         style={styles.overlay}
       >
         <TouchableWithoutFeedback onPress={onClose}>
-          <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
+          <Animated.View
+            style={[
+              styles.backdrop,
+              isLight && { backgroundColor: 'rgba(15, 23, 42, 0.45)' },
+              { opacity: fadeAnim },
+            ]}
+          />
         </TouchableWithoutFeedback>
 
         <Animated.View
           style={[
             styles.sheetContainer,
+            isLight && {
+              backgroundColor: '#FFFFFF',
+              borderColor: '#E2E8F0',
+            },
             {
               transform: [{ translateY: slideAnim }],
-              paddingBottom: Math.max(insets.bottom, spacing.xl),
+              paddingBottom: insets.bottom,
             },
           ]}
         >
           {/* Top Grab Handle */}
           <View style={styles.handleContainer}>
-            <View style={styles.handleBar} />
+            <View
+              style={[
+                styles.handleBar,
+                isLight && { backgroundColor: '#CBD5E1' },
+              ]}
+            />
           </View>
 
           <ScrollView

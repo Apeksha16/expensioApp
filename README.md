@@ -72,18 +72,34 @@ expensio/
 
 ## Running Locally
 
-### Backend Server (Port 5000):
+### Option 1: Run Both Simultaneously (Single Terminal)
+From the root `expensio` directory:
 ```bash
-cd backend
+# Runs Backend (port 5000) & Frontend Expo Metro bundler concurrently:
 npm run dev
+
+# Or to launch directly with web preview opened:
+npm run dev:web
 ```
 
-### Frontend Mobile App (Port 8081):
+---
+
+### Option 2: Run in Two Separate Terminal Windows (Recommended for Mobile/Expo CLI)
+
+**Terminal 1 — Backend API Server (Port 5000):**
 ```bash
-cd frontend
+cd c:\CODING\expensio\backend
+npm run dev
+```
+> Server runs at `http://localhost:5000` with live reload.
+
+**Terminal 2 — Frontend Expo App (Port 8081):**
+```bash
+cd c:\CODING\expensio\frontend
 npm start
 ```
-- Press **`w`** for Web preview at `http://localhost:8081`.
-- Press **`a`** for Android Emulator.
-- Press **`i`** for iOS Simulator.
-- Scan QR code with the **Expo Go** app on your physical phone.
+- Press **`w`** in terminal to open Web browser preview (`http://localhost:8081`).
+- Press **`a`** to launch on connected Android emulator / device.
+- Press **`i`** to launch on iOS simulator (macOS).
+- Scan the displayed QR code with the **Expo Go** mobile app on your physical iPhone or Android.
+- Press **`r`** to reload the app.

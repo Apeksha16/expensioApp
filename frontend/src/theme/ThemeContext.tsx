@@ -30,8 +30,8 @@ export interface ThemeColors {
 
 export const lightColors: ThemeColors = {
   isDark: false,
-  background: '#FFFFFF',
-  backgroundSecondary: '#F8FAFC',
+  background: '#F8FAFD',
+  backgroundSecondary: '#F1F5F9',
   surface: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
   border: '#E2E8F0',
@@ -40,20 +40,20 @@ export const lightColors: ThemeColors = {
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textInverse: '#FFFFFF',
-  primary: '#00E5A8',
-  primaryDark: '#00B383',
-  primaryMuted: 'rgba(0, 229, 168, 0.12)',
-  secondary: '#9D4EDD',
-  accent: '#F43F5E',
+  primary: '#2563EB',
+  primaryDark: '#1D4ED8',
+  primaryMuted: 'rgba(37, 99, 235, 0.12)',
+  secondary: '#7C3AED',
+  accent: '#E11D48',
   purple: '#8B5CF6',
   cardShadow: {
-    shadowColor: '#00E5A8',
+    shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.05,
     shadowRadius: 12,
-    elevation: 3,
+    elevation: 2,
   },
-  inputBg: '#F8FAFC',
+  inputBg: '#F8FAFD',
   buttonOAuth: '#FFFFFF',
   buttonOAuthBorder: '#E2E8F0',
   buttonOAuthText: '#0F172A',
@@ -71,16 +71,16 @@ export const darkColors: ThemeColors = {
   textSecondary: '#94A3B8',
   textMuted: '#64748B',
   textInverse: '#070D18',
-  primary: '#00E5A8',
-  primaryDark: '#00B383',
-  primaryMuted: 'rgba(0, 229, 168, 0.12)',
-  secondary: '#9D4EDD',
-  accent: '#F43F5E',
+  primary: '#2563EB',
+  primaryDark: '#1D4ED8',
+  primaryMuted: 'rgba(37, 99, 235, 0.12)',
+  secondary: '#7C3AED',
+  accent: '#E11D48',
   purple: '#8B5CF6',
   cardShadow: {
-    shadowColor: '#00E5A8',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 3,
   },
@@ -109,17 +109,17 @@ const ThemeContext = createContext<ThemeContextValue>({
 export const THEME_STORAGE_KEY = '@expensio_theme_mode';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>('dark');
+  const [mode, setMode] = useState<ThemeMode>('light');
 
   useEffect(() => {
     async function loadSavedTheme() {
       try {
-        const saved = await storage.get<ThemeMode>(THEME_STORAGE_KEY, 'dark');
+        const saved = await storage.get<ThemeMode>(THEME_STORAGE_KEY, 'light');
         if (saved === 'dark' || saved === 'light') {
           setMode(saved);
         }
       } catch (e) {
-        setMode('dark');
+        setMode('light');
       }
     }
     loadSavedTheme();

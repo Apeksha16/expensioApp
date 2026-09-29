@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   StatusBar,
-  Platform
+  Platform,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { storage, STORAGE_KEYS } from '../services/storage';
+import { haptics } from '../services/haptics';
+import { useDrawer } from '../navigation/RootNavigator';
 import type { NavTab } from '../types';
 
 interface DashboardScreenProps {
@@ -19,539 +22,715 @@ interface DashboardScreenProps {
   onOpenSplitModal: () => void;
 }
 
-const SPARKLINE_DATA = [
-  { day: 'Mon', h: 32, active: false },
-  { day: 'Tue', h: 48, active: false },
-  { day: 'Wed', h: 38, active: false },
-  { day: 'Thu', h: 62, active: false },
-  { day: 'Fri', h: 54, active: false },
-  { day: 'Sat', h: 76, active: true },
-  { day: 'Sun', h: 42, active: false },
-];
-
-const renderWebChart = () => {
-  if (Platform.OS !== 'web') return null;
-  return React.createElement(
-    'svg',
-    {
-      height: '100%',
-      width: '100%',
-      viewBox: '0 0 320 80',
-      preserveAspectRatio: 'none',
-      style: { position: 'absolute', top: 0, left: 0 },
-    },
-    React.createElement(
-      'defs',
-      null,
-      React.createElement(
-        'linearGradient',
-        { id: 'expensioGrad', x1: '0', y1: '0', x2: '0', y2: '1' },
-        React.createElement('stop', { offset: '0%', stopColor: '#3B82F6', stopOpacity: '0.18' }),
-        React.createElement('stop', { offset: '100%', stopColor: '#3B82F6', stopOpacity: '0.0' })
-      )
-    ),
-    React.createElement('path', {
-      d: 'M0 60 C 40 60, 60 75, 100 70 C 140 65, 160 40, 200 45 C 240 50, 260 20, 320 15 L 320 80 L 0 80 Z',
-      fill: 'url(#expensioGrad)',
-    }),
-    React.createElement('path', {
-      d: 'M0 60 C 40 60, 60 75, 100 70 C 140 65, 160 40, 200 45 C 240 50, 260 20, 320 15',
-      fill: 'none',
-      stroke: '#8B5CF6',
-      strokeWidth: '3',
-    })
-  );
+const AVATAR_MAP: Record<
+  string,
+  { icon: keyof typeof Feather.glyphMap; color: string; bg: string }
+> = {
+  avatar_1: { icon: 'zap', color: '#2563EB', bg: '#EFF6FF' },
+  avatar_2: { icon: 'cpu', color: '#7C3AED', bg: '#F5F3FF' },
+  avatar_3: { icon: 'award', color: '#0284C7', bg: '#F0F9FF' },
+  avatar_4: { icon: 'shield', color: '#D97706', bg: '#FEF3C7' },
+  avatar_5: { icon: 'send', color: '#E11D48', bg: '#FFF1F2' },
+  avatar_6: { icon: 'star', color: '#059669', bg: '#ECFDF5' },
 };
+
+const WEEK_DAYS = [
+  { day: 'Mon', amount: 45 },
+  { day: 'Tue', amount: 80 },
+  { day: 'Wed', amount: 120 },
+  { day: 'Thu', amount: 55 },
+  { day: 'Fri', amount: 35 },
+  { day: 'Sat', amount: 92 },
+  { day: 'Sun', amount: 31 },
+];
 
 export function DashboardScreen({
   onNavigateTab,
   onOpenAddExpense,
   onOpenSplitModal,
 }: DashboardScreenProps) {
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Accounts' | 'Insights'>('Overview');
+  const { openDrawer } = useDrawer();
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [selectedDayIdx, setSelectedDayIdx] = useState<number>(5); // Sat
+  const [selectedAccount, setSelectedAccount] = useState<'salary' | 'cash' | 'savings'>('salary');
+
+  useEffect(() => {
+    async function loadUser() {
+      const saved = await storage.get<any>(STORAGE_KEYS.AUTH_USER, null);
+      if (saved) {
+        setUserProfile(saved);
+      }
+    }
+    loadUser();
+  }, []);
+
+  const user = userProfile?.user || userProfile;
+  const activeAvatar = user?.avatarId && AVATAR_MAP[user.avatarId]
+    ? AVATAR_MAP[user.avatarId]
+    : AVATAR_MAP['avatar_1'];
+
+  const displayHandle = typeof user?.username === 'string' && user.username
+    ? (user.username.startsWith('@') ? user.username : `@${user.username}`)
+    : (typeof user?.name === 'string' && user.name ? `@${user.name.toLowerCase().replace(/\s+/g, '')}` : '@apeksha');
+
+  const rawSalary = Number(user?.salary) || 31627;
+  const spentThisMonth = 458;
+  const remainingBudget = Math.max(0, rawSalary - spentThisMonth);
+  const dailyAllowance = Math.round(remainingBudget / 30);
+
+  const maxSpend = Math.max(...WEEK_DAYS.map((w) => w.amount));
+  const activeDay = WEEK_DAYS[selectedDayIdx];
+
+  const cashBalance = -80;
+  const cashSpent = 0;
+  const totalSavings = 0;
+  const accumulated = 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      <View style={styles.gradientBg}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.brandTitle}>Expensio</Text>
-              <Text style={styles.brandSubtitle}>Track. Split. Save.</Text>
+
+      {/* Atmospheric Soft Light Ambient Glow */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <LinearGradient
+          colors={['#EDF4FE', '#F8FAFD', '#F4F7FB']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.ambientGlow} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header: Minimal & Crisp */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
+            <Feather name="menu" size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.brandTitle}>Expensio</Text>
+            <Text style={styles.greetingText}>
+              Welcome back, <Text style={styles.handleText}>{displayHandle}</Text>
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.avatarCircle, { backgroundColor: activeAvatar.bg }]}
+            activeOpacity={0.8}
+            onPress={() => haptics.selection()}
+          >
+            <Feather name={activeAvatar.icon} size={18} color={activeAvatar.color} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Account Switcher */}
+        <View style={styles.accountSwitcherRow}>
+           <TouchableOpacity onPress={() => { haptics.selection(); setSelectedAccount('salary'); }} style={[styles.accountTabBtn, selectedAccount === 'salary' && styles.accountTabBtnActive]}>
+             <Text style={[styles.accountTabBtnText, selectedAccount === 'salary' && styles.accountTabBtnTextActive]}>Salary</Text>
+           </TouchableOpacity>
+           <TouchableOpacity onPress={() => { haptics.selection(); setSelectedAccount('cash'); }} style={[styles.accountTabBtn, selectedAccount === 'cash' && styles.accountTabBtnActive]}>
+             <Text style={[styles.accountTabBtnText, selectedAccount === 'cash' && styles.accountTabBtnTextActive]}>Cash</Text>
+           </TouchableOpacity>
+           <TouchableOpacity onPress={() => { haptics.selection(); setSelectedAccount('savings'); }} style={[styles.accountTabBtn, selectedAccount === 'savings' && styles.accountTabBtnActive]}>
+             <Text style={[styles.accountTabBtnText, selectedAccount === 'savings' && styles.accountTabBtnTextActive]}>Savings</Text>
+           </TouchableOpacity>
+        </View>
+
+        {/* 1. THE HERO APPLE LIQUID GLASS CARD */}
+        <View style={styles.heroGlassCard}>
+          {/* Specular Edge Line */}
+          <View style={styles.glassSpecularLine} />
+
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.95)', 'rgba(244, 248, 255, 0.88)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCardContent}
+          >
+            {/* Card Status Badges */}
+            <View style={styles.cardBadgeRow}>
+              <View style={styles.accountPill}>
+                <View style={styles.activeDot} />
+                <Text style={styles.accountPillText}>
+                  {selectedAccount === 'salary' ? 'Salary Account' : selectedAccount === 'cash' ? 'Cash Account' : 'Savings Account'}
+                </Text>
+              </View>
+
+              <View style={styles.healthPill}>
+                <Feather name={selectedAccount === 'salary' ? "shield" : selectedAccount === 'cash' ? "credit-card" : "trending-up"} size={11} color="#059669" />
+                <Text style={styles.healthPillText}>
+                  {selectedAccount === 'salary' ? '98% Retained' : selectedAccount === 'cash' ? 'Wallet' : 'Active'}
+                </Text>
+              </View>
             </View>
-            <View style={styles.avatarContainer}>
-              <Image 
-                source={{ uri: 'https://i.pravatar.cc/100?img=11' }} 
-                style={styles.avatar}
-              />
+
+            {/* Core Balance */}
+            <Text style={styles.balanceLabel}>
+              {selectedAccount === 'salary' ? 'AVAILABLE BUDGET' : selectedAccount === 'cash' ? 'CASH BALANCE' : 'TOTAL SAVINGS'}
+            </Text>
+            <View style={styles.balanceRow}>
+              <Text style={styles.balanceCurrency}>₹</Text>
+              <Text style={styles.balanceAmount}>
+                {selectedAccount === 'salary'
+                  ? remainingBudget.toLocaleString('en-IN')
+                  : selectedAccount === 'cash'
+                  ? cashBalance.toLocaleString('en-IN')
+                  : totalSavings.toLocaleString('en-IN')}
+              </Text>
+            </View>
+
+            {/* Apple Intelligence Aura Strip */}
+            <View style={styles.aiPill}>
+              <Ionicons name="sparkles" size={13} color="#2563EB" />
+              <Text style={styles.aiPillText}>
+                {selectedAccount === 'salary' ? (
+                  <>Safe daily pace is <Text style={styles.aiPillBold}>₹{dailyAllowance}/day</Text></>
+                ) : selectedAccount === 'cash' ? (
+                  <>Cash spent this month <Text style={styles.aiPillBold}>₹{cashSpent}</Text></>
+                ) : (
+                  <>Accumulated growth <Text style={styles.aiPillBold}>₹{accumulated}</Text></>
+                )}
+              </Text>
+            </View>
+
+            {/* Two Ergonomic Quick Action Buttons */}
+            <View style={styles.cardActionsRow}>
+              <TouchableOpacity
+                style={styles.primaryActionBtn}
+                activeOpacity={0.85}
+                onPress={() => {
+                  haptics.medium();
+                  onOpenAddExpense();
+                }}
+              >
+                <Feather name="plus" size={17} color="#FFFFFF" />
+                <Text style={styles.primaryActionText}>Add Expense</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryActionBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  haptics.light();
+                  onOpenSplitModal();
+                }}
+              >
+                <Feather name="users" size={16} color="#0F172A" />
+                <Text style={styles.secondaryActionText}>Split Bill</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Pagination Dots */}
+        <View style={styles.paginationDotsContainer}>
+          <View style={[styles.paginationDot, selectedAccount === 'salary' ? styles.paginationDotActive : styles.paginationDotInactive]} />
+          <View style={[styles.paginationDot, selectedAccount === 'cash' ? styles.paginationDotActive : styles.paginationDotInactive]} />
+          <View style={[styles.paginationDot, selectedAccount === 'savings' ? styles.paginationDotActive : styles.paginationDotInactive]} />
+        </View>
+
+        {/* 2. WEEKLY SPENDING PACE (Clean Minimalist Bars) */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionLabel}>WEEKLY PACE</Text>
+              <Text style={styles.sectionTitle}>₹{spentThisMonth} this week</Text>
+            </View>
+            <View style={styles.dayBadge}>
+              <Text style={styles.dayBadgeText}>
+                {activeDay.day}: <Text style={{ color: '#2563EB', fontWeight: '800' }}>₹{activeDay.amount}</Text>
+              </Text>
             </View>
           </View>
 
-          {/* Tabs Pill */}
-          <View style={styles.tabsContainer}>
-            {['Overview', 'Accounts', 'Insights'].map((tab) => {
-              const isActive = activeTab === tab;
+          {/* Clean Proportional Bars */}
+          <View style={styles.barChartRow}>
+            {WEEK_DAYS.map((item, idx) => {
+              const isSelected = idx === selectedDayIdx;
+              const fillPercent = Math.max(18, Math.round((item.amount / maxSpend) * 100));
+
               return (
                 <TouchableOpacity
-                  key={tab}
-                  activeOpacity={0.8}
-                  onPress={() => setActiveTab(tab as any)}
-                  style={[styles.tabButton, isActive && styles.tabButtonActive]}
+                  key={idx}
+                  activeOpacity={0.7}
+                  style={styles.barItem}
+                  onPress={() => {
+                    haptics.selection();
+                    setSelectedDayIdx(idx);
+                  }}
                 >
-                  <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab}</Text>
+                  <View style={styles.barTrack}>
+                    <View
+                      style={[
+                        styles.barFill,
+                        { height: `${fillPercent}%` },
+                        isSelected ? styles.barFillActive : styles.barFillInactive,
+                      ]}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.barDayText,
+                      isSelected && styles.barDayTextActive,
+                    ]}
+                  >
+                    {item.day}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+        </View>
 
-          {/* Total Balance Card */}
-          <View style={styles.balanceCard}>
-            <View style={styles.balanceCardHeader}>
-              <Text style={styles.balanceTitle}>Total Balance</Text>
-              <TouchableOpacity style={styles.accountSelector}>
-                <Text style={styles.accountSelectorText}>All Accounts</Text>
-                <Feather name="chevron-down" size={14} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.balanceAmount}>₹31,169</Text>
-            
-            <View style={styles.trendRow}>
-              <Feather name="arrow-up-right" size={16} color="#10B981" style={{ marginRight: 4 }} />
-              <Text style={styles.trendPositive}>+12%</Text>
-              <Text style={styles.trendSubtitle}> from last month</Text>
-            </View>
-
-            {/* Spending Trend Chart */}
-            <View style={styles.chartContainer}>
-              {Platform.OS === 'web' ? (
-                renderWebChart()
-              ) : (
-                <View style={styles.sparklineGrid}>
-                  {SPARKLINE_DATA.map((item, idx) => (
-                    <View key={idx} style={styles.sparklineCol}>
-                      <View
-                        style={[
-                          styles.sparklineBar,
-                          { height: item.h },
-                          item.active ? styles.sparklineBarActive : styles.sparklineBarInactive,
-                        ]}
-                      />
-                      <Text style={[styles.sparklineLabel, item.active && styles.sparklineLabelActive]}>
-                        {item.day}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-              {/* Tooltip dot */}
-              <View style={styles.chartDotContainer}>
-                <View style={styles.chartTooltip}>
-                  <Text style={styles.chartTooltipText}>₹31,169</Text>
-                </View>
-                <View style={styles.chartDotOuter}>
-                  <View style={styles.chartDotInner} />
-                </View>
-              </View>
-            </View>
+        {/* 3. RECENT ACTIVITY (Clean Stream) */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <TouchableOpacity onPress={() => onNavigateTab('expenses')}>
+              <Text style={styles.seeAllText}>See All ›</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Action Buttons Grid */}
-          <View style={styles.actionsGrid}>
-            <View style={styles.actionItem}>
-              <TouchableOpacity activeOpacity={0.7} style={[styles.actionIconBox, { backgroundColor: '#E0F2FE' }]} onPress={onOpenAddExpense}>
-                <Feather name="arrow-up-right" size={20} color="#2563EB" />
-              </TouchableOpacity>
-              <Text style={styles.actionText}>Add Expense</Text>
+          <View style={styles.activityList}>
+            {/* Zepto */}
+            <View style={styles.activityRow}>
+              <View style={[styles.activityIconBox, { backgroundColor: '#F5F3FF' }]}>
+                <Feather name="shopping-bag" size={16} color="#7C3AED" />
+              </View>
+              <View style={styles.activityInfo}>
+                <Text style={styles.activityTitle}>Zepto Quick Grocery</Text>
+                <Text style={styles.activitySub}>Today, 11:40 PM • UPI</Text>
+              </View>
+              <Text style={styles.debitAmount}>-₹120.00</Text>
             </View>
-            <View style={styles.actionItem}>
-              <TouchableOpacity activeOpacity={0.7} style={[styles.actionIconBox, { backgroundColor: '#DCFCE7' }]} onPress={onOpenSplitModal}>
-                <Feather name="users" size={20} color="#059669" />
-              </TouchableOpacity>
-              <Text style={styles.actionText}>Split Bill</Text>
+
+            {/* Swiggy */}
+            <View style={styles.activityRow}>
+              <View style={[styles.activityIconBox, { backgroundColor: '#FFF1F2' }]}>
+                <Feather name="coffee" size={16} color="#E11D48" />
+              </View>
+              <View style={styles.activityInfo}>
+                <Text style={styles.activityTitle}>Swiggy Gourmet</Text>
+                <Text style={styles.activitySub}>Yesterday, 8:15 PM • Split</Text>
+              </View>
+              <Text style={styles.debitAmount}>-₹680.00</Text>
             </View>
-            <View style={styles.actionItem}>
-              <TouchableOpacity activeOpacity={0.7} style={[styles.actionIconBox, { backgroundColor: '#F3E8FF' }]}>
-                <Feather name="maximize" size={20} color="#9333EA" />
-              </TouchableOpacity>
-              <Text style={styles.actionText}>Scan Receipt</Text>
-            </View>
-            <View style={styles.actionItem}>
-              <TouchableOpacity activeOpacity={0.7} style={[styles.actionIconBox, { backgroundColor: '#FFEDD5' }]} onPress={() => onNavigateTab('expenses')}>
-                <Feather name="bar-chart-2" size={20} color="#EA580C" />
-              </TouchableOpacity>
-              <Text style={styles.actionText}>Reports</Text>
+
+            {/* Salary */}
+            <View style={[styles.activityRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
+              <View style={[styles.activityIconBox, { backgroundColor: '#EFF6FF' }]}>
+                <Feather name="shield" size={16} color="#2563EB" />
+              </View>
+              <View style={styles.activityInfo}>
+                <Text style={styles.activityTitle}>Salary Credit</Text>
+                <Text style={styles.activitySub}>Sep 01 • Direct Deposit</Text>
+              </View>
+              <Text style={styles.creditAmount}>
+                +₹{rawSalary.toLocaleString('en-IN')}
+              </Text>
             </View>
           </View>
-
-          {/* Recent Transactions List */}
-          <View style={styles.transactionsCard}>
-            <View style={styles.transactionsHeader}>
-              <Text style={styles.transactionsTitle}>Recent Transactions</Text>
-              <TouchableOpacity onPress={() => onNavigateTab('expenses')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.transactionList}>
-              {/* Item 1 */}
-              <View style={styles.transactionItem}>
-                <View style={styles.transactionLeft}>
-                  <View style={[styles.txIconBox, { backgroundColor: '#00704A' }]}>
-                    <Feather name="coffee" size={16} color="#FFF" />
-                  </View>
-                  <View style={styles.txTexts}>
-                    <Text style={styles.txTitle}>Starbucks</Text>
-                    <Text style={styles.txSubtitle}>Today, 9:12 AM</Text>
-                  </View>
-                </View>
-                <Text style={styles.txAmountNegative}>-₹320</Text>
-              </View>
-
-              {/* Item 2 */}
-              <View style={styles.transactionItem}>
-                <View style={styles.transactionLeft}>
-                  <View style={[styles.txIconBox, { backgroundColor: '#FF5A5F' }]}>
-                    <Feather name="home" size={16} color="#FFF" />
-                  </View>
-                  <View style={styles.txTexts}>
-                    <Text style={styles.txTitle}>Airbnb</Text>
-                    <Text style={styles.txSubtitle}>Yesterday, 6:40 PM</Text>
-                  </View>
-                </View>
-                <Text style={styles.txAmountNegative}>-₹2,450</Text>
-              </View>
-
-              {/* Item 3 */}
-              <View style={styles.transactionItem}>
-                <View style={styles.transactionLeft}>
-                  <View style={[styles.txIconBox, { backgroundColor: '#FC8019' }]}>
-                    <Feather name="shopping-bag" size={16} color="#FFF" />
-                  </View>
-                  <View style={styles.txTexts}>
-                    <Text style={styles.txTitle}>Swiggy</Text>
-                    <Text style={styles.txSubtitle}>Apr 12, 2025</Text>
-                  </View>
-                </View>
-                <Text style={styles.txAmountNegative}>-₹680</Text>
-              </View>
-
-              {/* Item 4 */}
-              <View style={[styles.transactionItem, { borderBottomWidth: 0 }]}>
-                <View style={styles.transactionLeft}>
-                  <View style={[styles.txIconBox, { backgroundColor: '#3B82F6' }]}>
-                    <Feather name="briefcase" size={16} color="#FFF" />
-                  </View>
-                  <View style={styles.txTexts}>
-                    <Text style={styles.txTitle}>Salary Credit</Text>
-                    <Text style={styles.txSubtitle}>Apr 1, 2025</Text>
-                  </View>
-                </View>
-                <Text style={styles.txAmountPositive}>+₹32,000</Text>
-              </View>
-            </View>
-          </View>
-
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
-  gradientBg: { flex: 1, backgroundColor: '#F5F8FF' },
-  sparklineGrid: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    height: 80,
-    paddingBottom: 4,
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8FAFD',
   },
-  sparklineCol: {
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    height: '100%',
-    width: 28,
-  },
-  sparklineBar: {
-    width: 14,
-    borderRadius: 7,
-    marginBottom: 4,
-  },
-  sparklineBarActive: {
-    backgroundColor: '#6366F1',
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  sparklineBarInactive: {
-    backgroundColor: '#E0E7FF',
-  },
-  sparklineLabel: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  sparklineLabelActive: {
-    color: '#6366F1',
-    fontWeight: '700',
+  ambientGlow: {
+    position: 'absolute',
+    top: -40,
+    right: -20,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? 50 : 20,
-    paddingBottom: 100, // leave space for bottom tab bar
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 44 : 20,
+    paddingBottom: 110,
   },
-  header: {
+
+  // Header
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 12,
   },
   brandTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 2,
     letterSpacing: -0.5,
   },
-  brandSubtitle: {
-    fontSize: 14,
+  greetingText: {
+    fontSize: 13,
     color: '#64748B',
     fontWeight: '500',
+    marginTop: 2,
   },
-  avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E2E8F0',
-    overflow: 'hidden',
+  handleText: {
+    color: '#0F172A',
+    fontWeight: '700',
   },
-  avatar: { width: '100%', height: '100%' },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 24,
-    padding: 4,
-    marginBottom: 24,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 10,
+  avatarCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
-    borderRadius: 20,
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  tabButtonActive: {
-    backgroundColor: '#D1E0FF', 
+
+  // Account Switcher
+  accountSwitcherRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
+  accountTabBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  accountTabBtnActive: {
+    backgroundColor: '#059669',
+  },
+  accountTabBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
     color: '#64748B',
   },
-  tabTextActive: {
-    color: '#2563EB',
+  accountTabBtnTextActive: {
+    color: '#FFFFFF',
   },
-  balanceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    paddingTop: 24,
-    paddingBottom: 0, 
-    marginBottom: 32,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
+
+  // Hero Liquid Glass Card
+  heroGlassCard: {
+    borderRadius: 24,
+    marginBottom: 16,
     overflow: 'hidden',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 22,
+    elevation: 4,
   },
-  balanceCardHeader: {
+  glassSpecularLine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    zIndex: 2,
+  },
+  heroCardContent: {
+    padding: 20,
+  },
+  cardBadgeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 8,
+    marginBottom: 14,
   },
-  balanceTitle: {
-    fontSize: 15,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  accountSelector: {
+  accountPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  accountSelectorText: {
-    fontSize: 13,
-    color: '#475569',
-    fontWeight: '600',
-  },
-  balanceAmount: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#0F172A',
-    paddingHorizontal: 24,
-    marginBottom: 8,
-    letterSpacing: -1,
-  },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 24,
-  },
-  trendPositive: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#10B981',
-  },
-  trendSubtitle: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  chartContainer: {
-    height: 90,
-    width: '100%',
-    position: 'relative',
-  },
-  chartDotContainer: {
-    position: 'absolute',
-    right: 50,
-    top: 5, 
-    alignItems: 'center',
-  },
-  chartTooltip: {
-    backgroundColor: '#6366F1',
-    paddingHorizontal: 10,
+    gap: 6,
+    backgroundColor: '#EFF6FF',
     paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 6,
+    paddingHorizontal: 9,
+    borderRadius: 10,
   },
-  chartTooltipText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  chartDotOuter: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#C7D2FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chartDotInner: {
+  activeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#6366F1',
+    backgroundColor: '#2563EB',
   },
-  actionsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    marginBottom: 32,
-  },
-  actionItem: {
-    alignItems: 'center',
-    width: 70,
-  },
-  actionIconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  actionText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  transactionsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: 24,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 4,
-  },
-  transactionsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  transactionsTitle: {
-    fontSize: 18,
+  accountPillText: {
+    fontSize: 10.5,
     fontWeight: '700',
-    color: '#0F172A',
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '600',
     color: '#2563EB',
   },
-  transactionList: {
-    flexDirection: 'column',
+  healthPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 10,
   },
-  transactionItem: {
+  healthPillText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  balanceLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+    marginBottom: 12,
+  },
+  balanceCurrency: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  balanceAmount: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -1,
+  },
+  aiPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(37, 99, 235, 0.06)',
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 12,
+    marginBottom: 18,
+    alignSelf: 'flex-start',
+  },
+  aiPillText: {
+    fontSize: 11.5,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  aiPillBold: {
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  primaryActionBtn: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    borderRadius: 14,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  primaryActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  secondaryActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(241, 245, 249, 0.85)',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+  },
+  secondaryActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+
+  // Pagination Dots
+  paginationDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+    marginTop: -4,
+  },
+  paginationDot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  paginationDotActive: {
+    width: 16,
+    backgroundColor: '#059669',
+  },
+  paginationDotInactive: {
+    width: 6,
+    backgroundColor: '#CBD5E1',
+  },
+
+  // Section Cards
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F1F5F9',
+    marginBottom: 14,
   },
-  transactionLeft: {
+  sectionLabel: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.7,
+    marginBottom: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  dayBadge: {
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  dayBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  seeAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+
+  // Bar Chart
+  barChartRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 90,
+    paddingTop: 6,
+  },
+  barItem: {
+    flex: 1,
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  barTrack: {
+    width: 22,
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 6,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: {
+    width: '100%',
+    borderRadius: 6,
+  },
+  barFillInactive: {
+    backgroundColor: '#BFDBFE',
+  },
+  barFillActive: {
+    backgroundColor: '#2563EB',
+  },
+  barDayText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  barDayTextActive: {
+    color: '#2563EB',
+    fontWeight: '800',
+  },
+
+  // Activity List
+  activityList: {
+    gap: 12,
+  },
+  activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
   },
-  txIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  activityIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
-  txTexts: {
-    justifyContent: 'center',
+  activityInfo: {
+    flex: 1,
   },
-  txTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  activityTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 4,
   },
-  txSubtitle: {
-    fontSize: 13,
+  activitySub: {
+    fontSize: 11,
     color: '#94A3B8',
-    fontWeight: '400',
+    fontWeight: '500',
+    marginTop: 1,
   },
-  txAmountNegative: {
-    fontSize: 16,
-    fontWeight: '700',
+  debitAmount: {
+    fontSize: 14,
+    fontWeight: '800',
     color: '#0F172A',
   },
-  txAmountPositive: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#10B981',
+  creditAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#059669',
   },
 });

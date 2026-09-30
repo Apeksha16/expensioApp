@@ -38,6 +38,7 @@ export function ExpensesScreen({ route, navigation }: any) {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [selectedFilter, setSelectedFilter] = useState<'all' | ExpenseCategory>('all');
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [newType, setNewType] = useState<'expense' | 'income'>('expense');
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState<ExpenseCategory>('food');
@@ -53,11 +54,18 @@ export function ExpensesScreen({ route, navigation }: any) {
   }, []);
 
   useEffect(() => {
-    if (route?.params?.openNewExpense) {
+    if (route?.params?.openNewExpense || route?.params?.openNewIncome) {
+      if (route.params.openNewIncome) {
+        setNewType('income');
+      } else {
+        setNewType('expense');
+      }
+      if (route.params.prefillAmount) setNewAmount(route.params.prefillAmount);
+      if (route.params.prefillTitle) setNewTitle(route.params.prefillTitle);
       setIsSheetOpen(true);
-      navigation.setParams({ openNewExpense: undefined });
+      navigation.setParams({ openNewExpense: undefined, openNewIncome: undefined, prefillAmount: undefined, prefillTitle: undefined });
     }
-  }, [route?.params?.openNewExpense, navigation]);
+  }, [route?.params?.openNewExpense, route?.params?.openNewIncome, navigation]);
 
   const user = userProfile?.user || userProfile;
   const rawSalary = Number(user?.salary) || 31627;
@@ -76,6 +84,7 @@ export function ExpensesScreen({ route, navigation }: any) {
       amount: newAmount.trim(),
       category: newCategory,
       account: newAccount,
+      type: newType,
     });
     setSubmitting(false);
 
@@ -139,8 +148,8 @@ export function ExpensesScreen({ route, navigation }: any) {
             </View>
 
             <View style={styles.txRightCol}>
-              <Text style={styles.txAmountText}>
-                -{formatters.currency(item.amount)}
+              <Text style={[styles.txAmountText, item.type === 'income' && { color: '#059669' }]}>
+                {item.type === 'income' ? '+' : '-'}{formatters.currency(item.amount)}
               </Text>
               <View style={styles.accountTag}>
                 <Text style={styles.accountTagText}>
@@ -330,7 +339,22 @@ export function ExpensesScreen({ route, navigation }: any) {
         onClose={() => setIsSheetOpen(false)}
         theme="light"
       >
-        <Text style={styles.sheetTitle}>New Expense</Text>
+        <Text style={styles.sheetTitle}>New Transaction</Text>
+
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          <TouchableOpacity
+            style={[styles.categoryChoiceChip, newType === 'expense' && styles.categoryChoiceChipActive]}
+            onPress={() => { haptics.selection(); setNewType('expense'); }}
+          >
+            <Text style={[styles.categoryChoiceText, newType === 'expense' && styles.categoryChoiceTextActive]}>EXPENSE</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.categoryChoiceChip, newType === 'income' && { backgroundColor: '#10B981', borderColor: '#10B981' }]}
+            onPress={() => { haptics.selection(); setNewType('income'); }}
+          >
+            <Text style={[styles.categoryChoiceText, newType === 'income' && styles.categoryChoiceTextActive]}>INCOME</Text>
+          </TouchableOpacity>
+        </View>
 
         <TextInput
           style={styles.sheetInput}
@@ -392,7 +416,7 @@ export function ExpensesScreen({ route, navigation }: any) {
             {submitting ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.sheetSaveText}>Save Expense</Text>
+              <Text style={styles.sheetSaveText}>Save {newType === 'income' ? 'Income' : 'Expense'}</Text>
             )}
           </TouchableOpacity>
         </View>

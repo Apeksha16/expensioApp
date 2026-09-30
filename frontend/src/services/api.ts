@@ -268,6 +268,7 @@ export const api = {
     category?: string;
     method?: string;
     account?: AccountType;
+    type?: 'expense' | 'income';
   }) => {
     const localItem: ExpenseItem = {
       id: `tx_${Date.now()}`,
@@ -277,6 +278,7 @@ export const api = {
       date: 'Just now',
       method: (data.method as any) || 'UPI',
       account: data.account || 'salary',
+      type: data.type || 'expense',
     };
 
     // Optimistically update local cache

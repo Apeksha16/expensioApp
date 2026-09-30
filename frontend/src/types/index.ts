@@ -34,6 +34,7 @@ export interface ExpenseItem {
   date: string;
   method: 'UPI' | 'Card' | 'Cash' | 'NetBanking';
   account?: AccountType;
+  type?: 'expense' | 'income';
 }
 
 export interface SplitItem {

@@ -11,6 +11,7 @@ export interface NewExpensePayload {
   category: ExpenseCategory;
   account?: AccountType;
   method?: string;
+  type?: 'expense' | 'income';
 }
 
 export function useExpenses() {
@@ -65,6 +66,7 @@ export function useExpenses() {
           category: payload.category,
           account: payload.account || 'salary',
           method: payload.method || 'UPI',
+          type: payload.type || 'expense',
         });
 
         if (res && res.transaction) {
@@ -92,7 +94,7 @@ export function useExpenses() {
   }, []);
 
   const totalSpend = useMemo(() => {
-    return expenses.reduce((acc, curr) => acc + curr.amount, 0);
+    return expenses.reduce((acc, curr) => acc + (curr.type === 'income' ? 0 : curr.amount), 0);
   }, [expenses]);
 
   return {

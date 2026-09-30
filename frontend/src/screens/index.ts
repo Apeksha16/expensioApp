@@ -1,8 +1,16 @@
 export { SplashScreen } from './SplashScreen';
+export { ProfileScreen } from './ProfileScreen';
 export { AuthScreen } from './AuthScreen';
 export { DashboardScreen } from './DashboardScreen';
 export { ExpensesScreen } from './ExpensesScreen';
 export { SplitsScreen } from './SplitsScreen';
 export { SubscriptionsScreen } from './SubscriptionsScreen';
+export { CameraScannerScreen } from './CameraScannerScreen';
 export { OnboardingProfileScreen } from './OnboardingProfileScreen';
 export { MpinScreen } from './MpinScreen';
+export { BudgetsScreen } from './BudgetsScreen';
+export { FriendsScreen } from './FriendsScreen';
+export { EmisScreen } from './EmisScreen';
+export { GoalsScreen } from './GoalsScreen';
+export { LedgerScreen } from './LedgerScreen';
+export { ReportsScreen } from './ReportsScreen';

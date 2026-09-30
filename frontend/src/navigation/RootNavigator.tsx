@@ -16,6 +16,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { haptics } from '../services/haptics';
 import {
   AuthScreen,
@@ -23,6 +24,14 @@ import {
   ExpensesScreen,
   SplitsScreen,
   SubscriptionsScreen,
+  ProfileScreen,
+  CameraScannerScreen,
+  BudgetsScreen,
+  FriendsScreen,
+  EmisScreen,
+  GoalsScreen,
+  LedgerScreen,
+  ReportsScreen,
 } from '../screens';
 import { useTheme } from '../theme/ThemeContext';
 import type { NavTab } from '../types';
@@ -30,6 +39,14 @@ import type { NavTab } from '../types';
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+  Profile: undefined;
+  Scanner: undefined;
+  Budgets: undefined;
+  Friends: undefined;
+  Emis: undefined;
+  Goals: undefined;
+  Ledger: undefined;
+  Reports: undefined;
 };
 
 type DrawerContextType = {
@@ -43,9 +60,6 @@ export const DrawerContext = createContext<DrawerContextType>({
 });
 
 export const useDrawer = () => useContext(DrawerContext);
-  Auth: undefined;
-  Main: undefined;
-};
 
 export type MainTabParamList = {
   Dashboard: undefined;
@@ -234,85 +248,80 @@ function LiquidGlassTabBar({ state, navigation, insets }: any) {
       >
         <TouchableWithoutFeedback onPress={() => closeExpandingFab()}>
           <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-            {/* Centered Radial Action Cluster */}
+            <BlurView intensity={75} tint="light" style={StyleSheet.absoluteFill} />
             <TouchableWithoutFeedback>
-              <View style={styles.expandingContainer}>
-                {/* Header Title & Subtitle */}
-                <Animated.View style={[styles.expandingHeader, { opacity: fadeAnim }]}>
-                  <Text style={styles.expandingTitle}>Add something</Text>
-                  <Text style={styles.expandingSubtitle}>What would you like to do?</Text>
-                </Animated.View>
+              <Animated.View
+                style={[
+                  styles.bottomSheet,
+                  {
+                    transform: [
+                      {
+                        translateY: fadeAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [600, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.sheetHandle} />
+                
+                <View style={styles.sheetHeader}>
+                  <Text style={styles.sheetTitle}>Quick Actions</Text>
+                  <Text style={styles.sheetSubtitle}>What would you like to do?</Text>
+                </View>
 
-                {/* Radial Action Circles & Center Cancel Button */}
-                <Animated.View
-                  style={[
-                    styles.radialCluster,
-                    {
-                      opacity: fadeAnim,
-                      transform: [{ scale: scaleAnim }],
-                    },
-                  ]}
-                >
-                  {/* 1. Top (North): Split Bill */}
-                  <View style={[styles.actionItemPosition, styles.actionTop]}>
-                    <Text style={styles.actionLabelTop}>Split Bill</Text>
-                    <TouchableOpacity
-                      activeOpacity={0.82}
-                      style={styles.actionCircleButton}
-                      onPress={() => closeExpandingFab(() => navigation.navigate('Splits', { openNewSplit: true }))}
-                    >
-                      <Ionicons name="people" size={25} color="#2563EB" />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* 2. Right (East): Add Expense */}
-                  <View style={[styles.actionItemPosition, styles.actionRight]}>
-                    <TouchableOpacity
-                      activeOpacity={0.82}
-                      style={styles.actionCircleButton}
-                      onPress={() => closeExpandingFab(() => navigation.navigate('Expenses', { openNewExpense: true }))}
-                    >
-                      <Ionicons name="receipt" size={23} color="#F43F5E" />
-                    </TouchableOpacity>
-                    <Text style={styles.actionLabelSub}>Add Expense</Text>
-                  </View>
-
-                  {/* 3. Left (West): Add Income */}
-                  <View style={[styles.actionItemPosition, styles.actionLeft]}>
-                    <TouchableOpacity
-                      activeOpacity={0.82}
-                      style={styles.actionCircleButton}
-                      onPress={() => closeExpandingFab(() => Alert.alert('Add Income', 'Income recorded successfully! (Simulated)'))}
-                    >
-                      <Ionicons name="wallet" size={23} color="#10B981" />
-                    </TouchableOpacity>
-                    <Text style={styles.actionLabelSub}>Add Income</Text>
-                  </View>
-
-                  {/* 4. Bottom (South): Scan Receipt / Subscriptions */}
-                  <View style={[styles.actionItemPosition, styles.actionBottom]}>
-                    <TouchableOpacity
-                      activeOpacity={0.82}
-                      style={styles.actionCircleButton}
-                      onPress={() => closeExpandingFab(() => Alert.alert('Scan Receipt', 'Camera opened for scanning... (Simulated)'))}
-                    >
-                      <Ionicons name="scan" size={23} color="#6366F1" />
-                    </TouchableOpacity>
-                    <Text style={styles.actionLabelSub}>Scan Receipt</Text>
-                  </View>
-
-                  {/* Center Action Button (Turns to '✕') */}
-                  <TouchableOpacity
-                    activeOpacity={0.88}
-                    style={styles.centerCloseButton}
-                    onPress={() => closeExpandingFab()}
-                  >
-                    <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                      <Feather name="plus" size={28} color="#FFFFFF" />
-                    </Animated.View>
+                <View style={styles.sheetActionList}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Expenses', { openNewExpense: true }))}>
+                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(244, 63, 94, 0.12)' }]}>
+                      <Ionicons name="receipt" size={24} color="#F43F5E" />
+                    </View>
+                    <View style={styles.sheetActionTextCol}>
+                      <Text style={styles.sheetActionTitle}>Add Expense</Text>
+                      <Text style={styles.sheetActionSub}>Record a new spend</Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
                   </TouchableOpacity>
-                </Animated.View>
-              </View>
+
+                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Expenses', { openNewIncome: true }))}>
+                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+                      <Ionicons name="wallet" size={24} color="#10B981" />
+                    </View>
+                    <View style={styles.sheetActionTextCol}>
+                      <Text style={styles.sheetActionTitle}>Add Income</Text>
+                      <Text style={styles.sheetActionSub}>Record cash in</Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Splits', { openNewSplit: true }))}>
+                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(37, 99, 235, 0.12)' }]}>
+                      <Ionicons name="people" size={24} color="#3B82F6" />
+                    </View>
+                    <View style={styles.sheetActionTextCol}>
+                      <Text style={styles.sheetActionTitle}>Split Bill</Text>
+                      <Text style={styles.sheetActionSub}>Share expenses</Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Scanner'))}>
+                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
+                      <Ionicons name="scan" size={24} color="#6366F1" />
+                    </View>
+                    <View style={styles.sheetActionTextCol}>
+                      <Text style={styles.sheetActionTitle}>Scan Receipt</Text>
+                      <Text style={styles.sheetActionSub}>Smart AI scanner</Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity activeOpacity={0.7} style={styles.sheetCancelBtn} onPress={() => closeExpandingFab()}>
+                  <Text style={styles.sheetCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </Animated.View>
             </TouchableWithoutFeedback>
           </Animated.View>
         </TouchableWithoutFeedback>
@@ -332,16 +341,16 @@ function MainTabs({ navigation }: any) {
       }}
     >
       <Tab.Screen name="Dashboard">
-        {() => (
+        {({ navigation: tabNavigation }: any) => (
           <View style={styles.screenWrapper}>
             <DashboardScreen
               onNavigateTab={(tab: NavTab) => {
-                if (tab === 'expenses') navigation.navigate('Expenses');
-                else if (tab === 'splits') navigation.navigate('Splits');
-                else if (tab === 'subscriptions') navigation.navigate('Subscriptions');
+                if (tab === 'expenses') tabNavigation.navigate('Expenses');
+                else if (tab === 'splits') tabNavigation.navigate('Splits');
+                else if (tab === 'subscriptions') tabNavigation.navigate('Subscriptions');
               }}
-              onOpenAddExpense={() => navigation.navigate('Expenses')}
-              onOpenSplitModal={() => navigation.navigate('Splits')}
+              onOpenAddExpense={() => tabNavigation.navigate('Expenses')}
+              onOpenSplitModal={() => tabNavigation.navigate('Splits')}
             />
           </View>
         )}
@@ -377,6 +386,9 @@ export function RootNavigator({
       primary: colors.primary,
     },
   };
+
+  // Global navigation ref to allow the drawer (which is outside the stack navigator) to navigate
+  const navigationRef = React.useRef<any>(null);
 
   // Side drawer component
   const renderDrawer = () => {
@@ -417,7 +429,18 @@ export function RootNavigator({
                   onPress={() => {
                     haptics.selection();
                     setDrawerVisible(false);
-                    // Navigation logic would go here if all screens existed
+                    
+                    if (item.name === 'Dashboard' || item.name === 'Expenses' || item.name === 'Splits' || item.name === 'Subscriptions') {
+                       if (navigationRef.current) {
+                           navigationRef.current.navigate('Main', { screen: item.name });
+                       }
+                    } else {
+                       if (navigationRef.current) {
+                           // Special mapping for EMIs
+                           const routeName = item.name === 'EMIs' ? 'Emis' : item.name;
+                           navigationRef.current.navigate(routeName);
+                       }
+                    }
                   }}
                 >
                   <Feather name={item.icon} size={18} color="#64748B" style={{ marginRight: 14 }} />
@@ -449,14 +472,24 @@ export function RootNavigator({
 
   return (
     <DrawerContext.Provider value={{ openDrawer: () => setDrawerVisible(true), closeDrawer: () => setDrawerVisible(false) }}>
-      <NavigationContainer theme={dynamicNavTheme}>
+      <NavigationContainer theme={dynamicNavTheme} ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           {!isAuthenticated ? (
             <Stack.Screen name="Auth">
               {() => <AuthScreen onAuthenticated={onAuthenticated} />}
             </Stack.Screen>
           ) : (
-            <Stack.Screen name="Main" component={MainTabs} />
+            <>
+              <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen name="Profile" component={ProfileScreen} />
+              <Stack.Screen name="Scanner" component={CameraScannerScreen} />
+              <Stack.Screen name="Budgets" component={BudgetsScreen} />
+              <Stack.Screen name="Friends" component={FriendsScreen} />
+              <Stack.Screen name="Emis" component={EmisScreen} />
+              <Stack.Screen name="Goals" component={GoalsScreen} />
+              <Stack.Screen name="Ledger" component={LedgerScreen} />
+              <Stack.Screen name="Reports" component={ReportsScreen} />
+            </>
           )}
         </Stack.Navigator>
       </NavigationContainer>
@@ -579,122 +612,107 @@ const styles = StyleSheet.create({
   // 3. Option 3: Expanding FAB (Quick Actions) Overlay Styles
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(241, 245, 249, 0.85)', // Light elegant backdrop
+    justifyContent: 'flex-end',
     alignItems: 'center',
   },
-  expandingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: SCREEN_WIDTH,
-  },
-  expandingHeader: {
-    alignItems: 'center',
-    marginBottom: 50,
-  },
-  expandingTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.4,
-  },
-  expandingSubtitle: {
-    fontSize: 13.5,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 6,
-  },
-
-  // Radial Cluster
-  radialCluster: {
-    width: 270,
-    height: 270,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-
-  // Center Close Button
-  centerCloseButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 8px 24px rgba(37, 99, 235, 0.5)',
-      },
-      ios: {
-        shadowColor: '#2563EB',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
-  },
-
-  // Common styles for radial action circles
-  actionItemPosition: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionCircleButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+  bottomSheet: {
+    width: '100%',
     backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 44,
+    marginBottom: Platform.OS === 'android' ? -20 : 0,
     ...Platform.select({
-      web: {
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-      },
       ios: {
         shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.16,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.05,
+        shadowRadius: 20,
       },
       android: {
-        elevation: 6,
+        elevation: 16,
       },
     }),
   },
-  actionLabelTop: {
-    fontSize: 12,
+  sheetHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+  sheetHeader: {
+    marginBottom: 24,
+  },
+  sheetTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  sheetSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  sheetActionList: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  sheetActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  sheetActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  sheetActionTextCol: {
+    flex: 1,
+  },
+  sheetActionTitle: {
+    fontSize: 15.5,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 6,
-    textAlign: 'center',
+    color: '#0F172A',
+    marginBottom: 2,
   },
-  actionLabelSub: {
+  sheetActionSub: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  sheetCancelBtn: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  sheetCancelText: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFFFFF',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-
-  // Positions on the diamond / radial clock
-  actionTop: {
-    top: -12,
-  },
-  actionRight: {
-    right: 0,
-  },
-  actionLeft: {
-    left: 0,
-  },
-  actionBottom: {
-    bottom: -12,
+    letterSpacing: 0.2,
   },
 
   // Custom Drawer Styles

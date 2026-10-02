@@ -6,9 +6,9 @@ import { secureStore } from './secureStore';
 // Android emulator uses 10.0.2.2, iOS simulator/Web uses localhost
 const getBaseUrl = () => {
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api';
+    return 'http://10.0.2.2:5001/api';
   }
-  return 'http://localhost:5000/api';
+  return 'http://localhost:5001/api';
 };
 
 export const API_BASE_URL = getBaseUrl();

@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { storage, STORAGE_KEYS } from '../services/storage';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NavTab } from '../types';
 
 interface DashboardScreenProps {
@@ -26,12 +27,12 @@ const AVATAR_MAP: Record<
   string,
   { icon: keyof typeof Feather.glyphMap; color: string; bg: string }
 > = {
-  avatar_1: { icon: 'zap', color: '#2563EB', bg: '#EFF6FF' },
+  avatar_1: { icon: 'zap', color: '#14B8A6', bg: '#EFF6FF' },
   avatar_2: { icon: 'cpu', color: '#7C3AED', bg: '#F5F3FF' },
   avatar_3: { icon: 'award', color: '#0284C7', bg: '#F0F9FF' },
   avatar_4: { icon: 'shield', color: '#D97706', bg: '#FEF3C7' },
   avatar_5: { icon: 'send', color: '#E11D48', bg: '#FFF1F2' },
-  avatar_6: { icon: 'star', color: '#059669', bg: '#ECFDF5' },
+  avatar_6: { icon: 'star', color: '#34D399', bg: '#ECFDF5' },
 };
 
 const WEEK_DAYS = [
@@ -50,6 +51,7 @@ export function DashboardScreen({
   onOpenSplitModal,
 }: DashboardScreenProps) {
   const { openDrawer } = useDrawer();
+  const insets = useSafeAreaInsets();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(5); // Sat
   const [selectedAccount, setSelectedAccount] = useState<'salary' | 'cash' | 'savings'>('salary');
@@ -87,13 +89,13 @@ export function DashboardScreen({
   const accumulated = 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Atmospheric Soft Light Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#EDF4FE', '#F8FAFD', '#F4F7FB']}
+          colors={['#022C22', '#064E3B', '#0F766E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -108,7 +110,7 @@ export function DashboardScreen({
         {/* Header: Minimal & Crisp */}
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-            <Feather name="menu" size={24} color="#0F172A" />
+            <Feather name="menu" size={24} color="#F8FAFC" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.brandTitle}>Expensio</Text>
@@ -145,7 +147,7 @@ export function DashboardScreen({
           <View style={styles.glassSpecularLine} />
 
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.95)', 'rgba(244, 248, 255, 0.88)']}
+            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCardContent}
@@ -160,7 +162,7 @@ export function DashboardScreen({
               </View>
 
               <View style={styles.healthPill}>
-                <Feather name={selectedAccount === 'salary' ? "shield" : selectedAccount === 'cash' ? "credit-card" : "trending-up"} size={11} color="#059669" />
+                <Feather name={selectedAccount === 'salary' ? "shield" : selectedAccount === 'cash' ? "credit-card" : "trending-up"} size={11} color="#34D399" />
                 <Text style={styles.healthPillText}>
                   {selectedAccount === 'salary' ? '98% Retained' : selectedAccount === 'cash' ? 'Wallet' : 'Active'}
                 </Text>
@@ -184,7 +186,7 @@ export function DashboardScreen({
 
             {/* Apple Intelligence Aura Strip */}
             <View style={styles.aiPill}>
-              <Ionicons name="sparkles" size={13} color="#2563EB" />
+              <Ionicons name="sparkles" size={13} color="#14B8A6" />
               <Text style={styles.aiPillText}>
                 {selectedAccount === 'salary' ? (
                   <>Safe daily pace is <Text style={styles.aiPillBold}>₹{dailyAllowance}/day</Text></>
@@ -218,7 +220,7 @@ export function DashboardScreen({
                   onOpenSplitModal();
                 }}
               >
-                <Feather name="users" size={16} color="#0F172A" />
+                <Feather name="users" size={16} color="#F8FAFC" />
                 <Text style={styles.secondaryActionText}>Split Bill</Text>
               </TouchableOpacity>
             </View>
@@ -241,7 +243,7 @@ export function DashboardScreen({
             </View>
             <View style={styles.dayBadge}>
               <Text style={styles.dayBadgeText}>
-                {activeDay.day}: <Text style={{ color: '#2563EB', fontWeight: '800' }}>₹{activeDay.amount}</Text>
+                {activeDay.day}: <Text style={{ color: '#14B8A6', fontWeight: '800' }}>₹{activeDay.amount}</Text>
               </Text>
             </View>
           </View>
@@ -297,7 +299,7 @@ export function DashboardScreen({
           <View style={styles.activityList}>
             {/* Zepto */}
             <View style={styles.activityRow}>
-              <View style={[styles.activityIconBox, { backgroundColor: '#F5F3FF' }]}>
+              <View style={[styles.activityIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
                 <Feather name="shopping-bag" size={16} color="#7C3AED" />
               </View>
               <View style={styles.activityInfo}>
@@ -309,7 +311,7 @@ export function DashboardScreen({
 
             {/* Swiggy */}
             <View style={styles.activityRow}>
-              <View style={[styles.activityIconBox, { backgroundColor: '#FFF1F2' }]}>
+              <View style={[styles.activityIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
                 <Feather name="coffee" size={16} color="#E11D48" />
               </View>
               <View style={styles.activityInfo}>
@@ -321,8 +323,8 @@ export function DashboardScreen({
 
             {/* Salary */}
             <View style={[styles.activityRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
-              <View style={[styles.activityIconBox, { backgroundColor: '#EFF6FF' }]}>
-                <Feather name="shield" size={16} color="#2563EB" />
+              <View style={[styles.activityIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
+                <Feather name="shield" size={16} color="#14B8A6" />
               </View>
               <View style={styles.activityInfo}>
                 <Text style={styles.activityTitle}>Salary Credit</Text>
@@ -335,14 +337,14 @@ export function DashboardScreen({
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: 'transparent',
   },
   ambientGlow: {
     position: 'absolute',
@@ -351,11 +353,11 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: 'rgba(20, 184, 166, 0.15)',
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 44 : 20,
+    paddingTop: 12,
     paddingBottom: 110,
   },
 
@@ -369,17 +371,17 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: -0.5,
   },
   greetingText: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '500',
     marginTop: 2,
   },
   handleText: {
-    color: '#0F172A',
+    color: '#F8FAFC',
     fontWeight: '700',
   },
   avatarCircle: {
@@ -390,11 +392,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
-    shadowColor: '#2563EB',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 0,
   },
 
   // Account Switcher
@@ -409,15 +411,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   accountTabBtnActive: {
-    backgroundColor: '#059669',
+    backgroundColor: '#34D399',
   },
   accountTabBtnText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   accountTabBtnTextActive: {
     color: '#FFFFFF',
@@ -429,12 +431,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.15,
     shadowRadius: 22,
-    elevation: 4,
+    elevation: 0,
   },
   glassSpecularLine: {
     position: 'absolute',
@@ -458,7 +460,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 4,
     paddingHorizontal: 9,
     borderRadius: 10,
@@ -467,18 +469,18 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
   },
   accountPillText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#14B8A6',
   },
   healthPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 10,
@@ -486,7 +488,7 @@ const styles = StyleSheet.create({
   healthPillText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: '#059669',
+    color: '#34D399',
   },
   balanceLabel: {
     fontSize: 10,
@@ -504,19 +506,19 @@ const styles = StyleSheet.create({
   balanceCurrency: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   balanceAmount: {
     fontSize: 36,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: -1,
   },
   aiPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(37, 99, 235, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingVertical: 7,
     paddingHorizontal: 11,
     borderRadius: 12,
@@ -525,12 +527,12 @@ const styles = StyleSheet.create({
   },
   aiPillText: {
     fontSize: 11.5,
-    color: '#334155',
+    color: '#CBD5E1',
     fontWeight: '500',
   },
   aiPillBold: {
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   cardActionsRow: {
     flexDirection: 'row',
@@ -542,14 +544,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     paddingVertical: 12,
     borderRadius: 14,
-    shadowColor: '#2563EB',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 0,
   },
   primaryActionText: {
     fontSize: 13,
@@ -562,7 +564,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(241, 245, 249, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
@@ -571,7 +573,7 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
 
   // Pagination Dots
@@ -589,7 +591,7 @@ const styles = StyleSheet.create({
   },
   paginationDotActive: {
     width: 16,
-    backgroundColor: '#059669',
+    backgroundColor: '#34D399',
   },
   paginationDotInactive: {
     width: 6,
@@ -598,17 +600,17 @@ const styles = StyleSheet.create({
 
   // Section Cards
   sectionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 20,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.15,
     shadowRadius: 12,
-    elevation: 2,
+    elevation: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -626,25 +628,25 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   dayBadge: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingVertical: 4,
     paddingHorizontal: 9,
     borderRadius: 9,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   dayBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   seeAllText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#14B8A6',
   },
 
   // Bar Chart
@@ -665,7 +667,7 @@ const styles = StyleSheet.create({
   barTrack: {
     width: 22,
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 6,
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -678,7 +680,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#BFDBFE',
   },
   barFillActive: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
   },
   barDayText: {
     fontSize: 11,
@@ -686,7 +688,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   barDayTextActive: {
-    color: '#2563EB',
+    color: '#14B8A6',
     fontWeight: '800',
   },
 
@@ -715,7 +717,7 @@ const styles = StyleSheet.create({
   activityTitle: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   activitySub: {
     fontSize: 11,
@@ -726,11 +728,11 @@ const styles = StyleSheet.create({
   debitAmount: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   creditAmount: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#059669',
+    color: '#34D399',
   },
 });

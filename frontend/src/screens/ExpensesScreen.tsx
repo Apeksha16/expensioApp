@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   StatusBar,
   ListRenderItemInfo,
+  Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,10 +22,12 @@ import { formatters } from '../utils/formatters';
 import { storage, STORAGE_KEYS } from '../services/storage';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ExpenseItem, ExpenseCategory, AccountType } from '../types';
 
 export function ExpensesScreen({ route, navigation }: any) {
   const { openDrawer } = useDrawer();
+  const insets = useSafeAreaInsets();
   const {
     expenses,
     loading,
@@ -99,21 +102,21 @@ export function ExpensesScreen({ route, navigation }: any) {
   const getCategoryDetails = (title: string, category: ExpenseCategory) => {
     const lower = (title || '').toLowerCase();
     if (lower.includes('zepto') || lower.includes('quick') || lower.includes('grocery') || category === 'shopping') {
-      return { icon: 'shopping-bag' as const, color: '#7C3AED', bg: '#F5F3FF', label: 'Shopping' };
+      return { icon: 'shopping-bag' as const, color: '#A78BFA', bg: 'rgba(167, 139, 250, 0.15)', label: 'Shopping' };
     }
     if (lower.includes('milk') || lower.includes('dahi') || lower.includes('coffee') || lower.includes('chai') || category === 'food') {
-      return { icon: 'coffee' as const, color: '#059669', bg: '#ECFDF5', label: 'Food & Dairy' };
+      return { icon: 'coffee' as const, color: '#34D399', bg: 'rgba(52, 211, 153, 0.15)', label: 'Food & Dairy' };
     }
     if (lower.includes('soap') || lower.includes('clean') || lower.includes('wash') || lower.includes('home')) {
-      return { icon: 'droplet' as const, color: '#0284C7', bg: '#F0F9FF', label: 'Household' };
+      return { icon: 'droplet' as const, color: '#38BDF8', bg: 'rgba(56, 189, 248, 0.15)', label: 'Household' };
     }
     if (lower.includes('ice cream') || lower.includes('sweet') || lower.includes('swiggy') || lower.includes('zomato')) {
-      return { icon: 'heart' as const, color: '#E11D48', bg: '#FFF1F2', label: 'Dining & Treats' };
+      return { icon: 'heart' as const, color: '#FB7185', bg: 'rgba(251, 113, 133, 0.15)', label: 'Dining & Treats' };
     }
     if (lower.includes('bill') || lower.includes('wi-fi') || lower.includes('recharge') || category === 'bills') {
-      return { icon: 'zap' as const, color: '#D97706', bg: '#FFFBEB', label: 'Bills' };
+      return { icon: 'zap' as const, color: '#FBBF24', bg: 'rgba(251, 191, 36, 0.15)', label: 'Bills' };
     }
-    return { icon: 'credit-card' as const, color: '#2563EB', bg: '#EFF6FF', label: 'General' };
+    return { icon: 'credit-card' as const, color: '#14B8A6', bg: 'rgba(20, 184, 166, 0.15)', label: 'General' };
   };
 
   const filteredExpenses = selectedFilter === 'all'
@@ -148,7 +151,7 @@ export function ExpensesScreen({ route, navigation }: any) {
             </View>
 
             <View style={styles.txRightCol}>
-              <Text style={[styles.txAmountText, item.type === 'income' && { color: '#059669' }]}>
+              <Text style={[styles.txAmountText, item.type === 'income' && { color: '#34D399' }]}>
                 {item.type === 'income' ? '+' : '-'}{formatters.currency(item.amount)}
               </Text>
               <View style={styles.accountTag}>
@@ -170,7 +173,7 @@ export function ExpensesScreen({ route, navigation }: any) {
       <View style={styles.screenTitleRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-            <Feather name="menu" size={24} color="#0F172A" />
+            <Feather name="menu" size={24} color="#F8FAFC" />
           </TouchableOpacity>
           <View>
             <Text style={styles.screenHeading}>Expenses</Text>
@@ -178,9 +181,16 @@ export function ExpensesScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        <View style={styles.monthBadge}>
+        <TouchableOpacity 
+          style={styles.monthBadge} 
+          activeOpacity={0.7}
+          onPress={() => {
+            haptics.selection();
+            Alert.alert('Coming Soon', 'Month selection will be available in the next update.');
+          }}
+        >
           <Text style={styles.monthBadgeText}>This Month ▾</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* 1. HERO APPLE LIQUID GLASS CARD */}
@@ -188,7 +198,7 @@ export function ExpensesScreen({ route, navigation }: any) {
         <View style={styles.glassTopSpecular} />
 
         <LinearGradient
-          colors={['rgba(255, 255, 255, 0.95)', 'rgba(244, 248, 255, 0.88)']}
+          colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroCardInner}
@@ -297,13 +307,13 @@ export function ExpensesScreen({ route, navigation }: any) {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Ambient Atmospheric Light */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#EDF4FE', '#F8FAFD', '#F4F7FB']}
+          colors={['#022C22', '#064E3B', '#0F766E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -313,7 +323,7 @@ export function ExpensesScreen({ route, navigation }: any) {
 
       <View style={styles.container}>
         {loading ? (
-          <ActivityIndicator color="#2563EB" style={{ marginTop: 40 }} />
+          <ActivityIndicator color="#14B8A6" style={{ marginTop: 40 }} />
         ) : (
           <FlatList
             data={filteredExpenses}
@@ -421,14 +431,14 @@ export function ExpensesScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
       </BottomSheet>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: 'transparent',
   },
   ambientGlow: {
     position: 'absolute',
@@ -437,14 +447,14 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: 'rgba(20, 184, 166, 0.15)',
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
   },
   listContent: {
-    paddingTop: Platform.OS === 'android' ? 44 : 20,
+    paddingTop: 12,
     paddingBottom: 110, // clear floating tab bar
   },
   headerBlock: {
@@ -461,32 +471,32 @@ const styles = StyleSheet.create({
   screenHeading: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: -0.5,
   },
   screenSubheading: {
     fontSize: 12.5,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '500',
     marginTop: 2,
   },
   monthBadge: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 0,
   },
   monthBadgeText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
 
   // Hero Glass Card
@@ -495,12 +505,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.15,
     shadowRadius: 22,
-    elevation: 4,
+    elevation: 0,
   },
   glassTopSpecular: {
     position: 'absolute',
@@ -524,7 +534,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 4,
     paddingHorizontal: 9,
     borderRadius: 10,
@@ -533,18 +543,18 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
   },
   accountPillText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#14B8A6',
     letterSpacing: 0.6,
   },
   salaryBudgetTotal: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   totalSpendLabel: {
     fontSize: 10,
@@ -556,7 +566,7 @@ const styles = StyleSheet.create({
   totalSpendAmount: {
     fontSize: 34,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: -1,
     marginBottom: 14,
   },
@@ -585,13 +595,13 @@ const styles = StyleSheet.create({
   progressRemainingText: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: '#64748B',
+    color: '#94A3B8',
     letterSpacing: 0.8,
   },
   leftLabelText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: 0,
   },
   progressPercentText: {
@@ -607,14 +617,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     paddingVertical: 12,
     borderRadius: 14,
-    shadowColor: '#2563EB',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 0,
   },
   addExpenseBtnText: {
     fontSize: 13,
@@ -632,18 +642,18 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   filterChipSelected: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: '#0D9488',
+    bordercolor: '#14B8A6',
   },
   filterChipText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   filterChipTextSelected: {
     color: '#FFFFFF',
@@ -673,16 +683,16 @@ const styles = StyleSheet.create({
   txCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 0,
   },
   txIconBox: {
     width: 42,
@@ -699,7 +709,7 @@ const styles = StyleSheet.create({
   txTitleText: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 2,
   },
   txMetaText: {
@@ -713,11 +723,11 @@ const styles = StyleSheet.create({
   txAmountText: {
     fontSize: 14.5,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 3,
   },
   accountTag: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 6,
@@ -725,24 +735,24 @@ const styles = StyleSheet.create({
   accountTagText: {
     fontSize: 9.5,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#94A3B8',
   },
 
   // Bottom Sheet
   sheetTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 16,
   },
   sheetInput: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 12,
     paddingHorizontal: 14,
     height: 48,
-    color: '#0F172A',
+    color: '#F8FAFC',
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 12,
@@ -763,19 +773,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
   },
   categoryChoiceChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: '#0D9488',
+    bordercolor: '#14B8A6',
   },
   categoryChoiceText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   categoryChoiceTextActive: {
     color: '#FFFFFF',
@@ -791,20 +801,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   sheetCancelText: {
-    color: '#64748B',
+    color: '#94A3B8',
     fontSize: 13,
     fontWeight: '600',
   },
   sheetSaveBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     paddingVertical: 11,
     paddingHorizontal: 22,
     borderRadius: 12,
-    shadowColor: '#2563EB',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 0,
   },
   sheetSaveText: {
     color: '#FFFFFF',

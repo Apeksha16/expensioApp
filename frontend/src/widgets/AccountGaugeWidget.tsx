@@ -143,10 +143,10 @@ export function AccountGaugeWidget({
             backgroundColor: colors.secondary,
             borderWidth: 2,
             borderColor: '#FFFFFF',
-            elevation: 4,
+            elevation: 0,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
+            shadowOpacity: 0.15,
             shadowRadius: 4,
           }}
         />
@@ -317,11 +317,11 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.35,
+        shadowOpacity: 0.15,
         shadowRadius: 14,
       },
       android: {
-        elevation: 6,
+        elevation: 0,
       },
     }),
   },

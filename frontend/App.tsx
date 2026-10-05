@@ -58,6 +58,7 @@ function AppContent() {
       <RootNavigator
         isAuthenticated={isAuthenticated}
         onAuthenticated={() => setIsAuthenticated(true)}
+        onLogout={() => setIsAuthenticated(false)}
       />
     </SafeAreaProvider>
   );

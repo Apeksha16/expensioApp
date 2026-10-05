@@ -16,6 +16,8 @@ interface SplashScreenProps {
   onFinish: () => void;
 }
 
+import { LinearGradient } from 'expo-linear-gradient';
+
 export function SplashScreen({ onFinish }: SplashScreenProps) {
   const { colors, isDark } = useTheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -24,14 +26,13 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
   const isNative = Platform.OS !== 'web';
 
   useEffect(() => {
-    // 1. Gentle fade in
+    // ... animation code ...
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 400,
       useNativeDriver: isNative,
     }).start();
 
-    // 2. Subtle, elegant pulse
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -48,14 +49,12 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
     );
     pulseLoop.start();
 
-    // 3. Progress bar animation
     Animated.timing(progressAnim, {
       toValue: 1,
       duration: 1800,
       useNativeDriver: false,
     }).start();
 
-    // 4. Auto-advance after 1.9s
     const timer = setTimeout(() => {
       haptics.light();
       onFinish();
@@ -78,7 +77,12 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: '#022C22' }]}>
+      <LinearGradient
+        colors={['#022C22', '#064E3B', '#0F766E']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Animated.View
         style={[
           styles.content,
@@ -102,10 +106,10 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         </Animated.View>
 
         {/* Minimal Typography */}
-        <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>
+        <Text style={[styles.brandTitle, { color: '#F8FAFC' }]}>
           expensio
         </Text>
-        <Text style={[styles.brandSubtitle, { color: colors.textSecondary }]}>
+        <Text style={[styles.brandSubtitle, { color: '#94A3B8' }]}>
           Smart wealth & shared expenses
         </Text>
 
@@ -120,7 +124,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
             <Animated.View
               style={[
                 styles.progressBarFill,
-                { width: progressWidth, backgroundColor: colors.primary },
+                { width: progressWidth, backgroundColor: '#14B8A6' },
               ]}
             />
           </View>
@@ -132,7 +136,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           activeOpacity={0.6}
           onPress={handleSkip}
         >
-          <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
+          <Text style={[styles.skipButtonText, { color: '#94A3B8' }]}>
             Continue →
           </Text>
         </TouchableOpacity>

@@ -10,6 +10,8 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   Alert,
+  Share,
+  NativeModules,
 } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -18,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { haptics } from '../services/haptics';
+import { secureStore, SECURE_KEYS } from '../services/secureStore';
+import { storage, STORAGE_KEYS } from '../services/storage';
 import {
   AuthScreen,
   DashboardScreen,
@@ -366,11 +370,13 @@ function MainTabs({ navigation }: any) {
 interface RootNavigatorProps {
   isAuthenticated: boolean;
   onAuthenticated: (user: { name: string; phone: string }) => void;
+  onLogout?: () => void;
 }
 
 export function RootNavigator({
   isAuthenticated,
   onAuthenticated,
+  onLogout,
 }: RootNavigatorProps) {
   const { colors } = useTheme();
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -401,7 +407,7 @@ export function RootNavigator({
           <View style={styles.drawerContainer}>
             <View style={styles.drawerProfileSection}>
               <View style={styles.drawerAvatar}>
-                <Feather name="user" size={32} color="#2563EB" />
+                <Feather name="user" size={32} color="#14B8A6" />
               </View>
               <View>
                 <Text style={styles.drawerName}>Apeksha</Text>
@@ -443,7 +449,7 @@ export function RootNavigator({
                     }
                   }}
                 >
-                  <Feather name={item.icon} size={18} color="#64748B" style={{ marginRight: 14 }} />
+                  <Feather name={item.icon} size={18} color="#94A3B8" style={{ marginRight: 14 }} />
                   <Text style={styles.drawerItemText}>{item.name}</Text>
                   <Feather name="chevron-right" size={16} color="#CBD5E1" style={{ marginLeft: 'auto' }} />
                 </TouchableOpacity>
@@ -453,13 +459,58 @@ export function RootNavigator({
             <View style={styles.drawerFooter}>
               <Text style={styles.drawerVersion}>v1.0.27</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity style={styles.drawerFooterIcon}>
+                <TouchableOpacity 
+                  style={styles.drawerFooterIcon}
+                  onPress={async () => {
+                    haptics.selection();
+                    if (__DEV__) {
+                      NativeModules.DevSettings?.reload();
+                    } else {
+                      try {
+                        const Updates = require('expo-updates');
+                        await Updates.reloadAsync();
+                      } catch (e) {
+                        Alert.alert("Reload", "Please restart the app.");
+                      }
+                    }
+                  }}
+                >
                   <Feather name="refresh-cw" size={16} color="#0284C7" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.drawerFooterIcon}>
-                  <Feather name="share" size={16} color="#2563EB" />
+                <TouchableOpacity 
+                  style={styles.drawerFooterIcon}
+                  onPress={async () => {
+                    haptics.selection();
+                    try {
+                      await Share.share({
+                        message: "Check out Expensio! The smartest way to manage your expenses and budgets.",
+                      });
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }}
+                >
+                  <Feather name="share" size={16} color="#14B8A6" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.drawerFooterIcon}>
+                <TouchableOpacity 
+                  style={styles.drawerFooterIcon}
+                  onPress={() => {
+                    haptics.medium();
+                    Alert.alert("Log Out", "Are you sure you want to log out of Expensio?", [
+                      { text: "Cancel", style: "cancel" },
+                      { 
+                        text: "Log Out", 
+                        style: "destructive", 
+                        onPress: async () => {
+                          setDrawerVisible(false);
+                          await secureStore.deleteItem(SECURE_KEYS.USER_PROFILE);
+                          await storage.remove(STORAGE_KEYS.AUTH_USER);
+                          if (onLogout) onLogout();
+                        }
+                      }
+                    ]);
+                  }}
+                >
                   <Feather name="power" size={16} color="#E11D48" />
                 </TouchableOpacity>
               </View>
@@ -501,7 +552,7 @@ export function RootNavigator({
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: 'transparent',
   },
 
   // 1. Floating Bottom Bar Outer
@@ -519,9 +570,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 66,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -532,13 +583,13 @@ const styles = StyleSheet.create({
           '0 12px 32px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95)',
       },
       ios: {
-        shadowColor: '#0F172A',
+        shadowColor: '#F8FAFC',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.15,
         shadowRadius: 24,
       },
       android: {
-        elevation: 8,
+        elevation: 0,
       },
     }),
   },
@@ -569,7 +620,7 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#14B8A6',
   },
 
   // Center Spacer to give breathing room for the elevated FAB
@@ -588,7 +639,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -597,13 +648,13 @@ const styles = StyleSheet.create({
           '0 8px 24px rgba(37, 99, 235, 0.45), 0 2px 6px rgba(79, 70, 229, 0.3)',
       },
       ios: {
-        shadowColor: '#2563EB',
+        shadowColor: '#14B8A6',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.45,
+        shadowOpacity: 0.15,
         shadowRadius: 16,
       },
       android: {
-        elevation: 12,
+        elevation: 0,
       },
     }),
   },
@@ -612,13 +663,13 @@ const styles = StyleSheet.create({
   // 3. Option 3: Expanding FAB (Quick Actions) Overlay Styles
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(241, 245, 249, 0.85)', // Light elegant backdrop
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // Light elegant backdrop
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
   bottomSheet: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderBottomLeftRadius: 0,
@@ -631,11 +682,11 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: -10 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.15,
         shadowRadius: 20,
       },
       android: {
-        elevation: 16,
+        elevation: 0,
       },
     }),
   },
@@ -653,14 +704,14 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   sheetSubtitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   sheetActionList: {
     gap: 12,
@@ -669,11 +720,11 @@ const styles = StyleSheet.create({
   sheetActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   sheetActionIcon: {
     width: 48,
@@ -689,24 +740,24 @@ const styles = StyleSheet.create({
   sheetActionTitle: {
     fontSize: 15.5,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 2,
   },
   sheetActionSub: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   sheetCancelBtn: {
-    backgroundColor: '#0F172A',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#0F172A',
+    shadowColor: '#F8FAFC',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 0,
   },
   sheetCancelText: {
     fontSize: 16,
@@ -719,16 +770,16 @@ const styles = StyleSheet.create({
   drawerContainer: {
     width: '78%',
     maxWidth: 320,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: '#064E3B', // Solid dark emerald background
     height: '100%',
     paddingTop: Platform.OS === 'ios' ? 50 : 30,
     borderTopRightRadius: 24,
     borderBottomRightRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 5, height: 0 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 20,
-    elevation: 20,
+    elevation: 0,
   },
   drawerProfileSection: {
     flexDirection: 'row',
@@ -736,14 +787,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     marginBottom: 16,
   },
   drawerAvatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -753,7 +804,7 @@ const styles = StyleSheet.create({
   drawerName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 2,
   },
   drawerHandle: {
@@ -772,7 +823,7 @@ const styles = StyleSheet.create({
   drawerItemText: {
     fontSize: 14.5,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   drawerFooter: {
     flexDirection: 'row',
@@ -782,7 +833,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   drawerVersion: {
     fontSize: 12,
@@ -793,11 +844,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
 });
 

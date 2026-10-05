@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -14,7 +15,8 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { haptics } from '../services/haptics';
 
-export function ProfileScreen({ navigation }: any) {
+export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+  const insets = useSafeAreaInsets();
   const [biometricsEnabled, setBiometricsEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
@@ -40,13 +42,13 @@ export function ProfileScreen({ navigation }: any) {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       
       {/* Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#EDF4FE', '#F8FAFD', '#F4F7FB']}
+          colors={['#022C22', '#064E3B', '#0F766E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -56,7 +58,7 @@ export function ProfileScreen({ navigation }: any) {
 
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color="#0F172A" />
+          <Feather name="arrow-left" size={24} color="#F8FAFC" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile & Settings</Text>
         <View style={{ width: 24 }} />
@@ -101,7 +103,7 @@ export function ProfileScreen({ navigation }: any) {
           <OptionItem 
             icon="fingerprint" 
             label="Biometric Login" 
-            color="#0F172A"
+            color="#F8FAFC"
             rightElement={
               <Switch 
                 value={biometricsEnabled} 
@@ -127,7 +129,7 @@ export function ProfileScreen({ navigation }: any) {
           <OptionItem 
             icon="moon" 
             label="Dark Mode" 
-            color="#64748B"
+            color="#94A3B8"
             rightElement={
               <Switch 
                 value={darkModeEnabled} 
@@ -143,7 +145,7 @@ export function ProfileScreen({ navigation }: any) {
         <View style={styles.sectionCard}>
           <OptionItem icon="help-circle" label="Help Center" color="#06B6D4" onPress={() => haptics.light()} />
           <View style={styles.divider} />
-          <OptionItem icon="info" label="About Expensio" color="#64748B" onPress={() => haptics.light()} />
+          <OptionItem icon="info" label="About Expensio" color="#94A3B8" onPress={() => haptics.light()} />
         </View>
 
         <TouchableOpacity 
@@ -158,14 +160,14 @@ export function ProfileScreen({ navigation }: any) {
         <Text style={styles.versionText}>Expensio v1.0.27</Text>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: 'transparent',
   },
   ambientGlow: {
     position: 'absolute',
@@ -174,14 +176,14 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: 'rgba(20, 184, 166, 0.15)',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 44 : 20,
+    paddingTop: 12,
     paddingBottom: 16,
   },
   backBtn: {
@@ -190,7 +192,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -198,16 +200,16 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 24,
     padding: 24,
     marginTop: 10,
     marginBottom: 24,
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
-    elevation: 3,
+    elevation: 0,
   },
   avatarContainer: {
     position: 'relative',
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#0F172A',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -241,12 +243,12 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 4,
   },
   profileHandle: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '500',
     marginBottom: 12,
   },
@@ -271,15 +273,15 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   sectionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 20,
     paddingHorizontal: 16,
     marginBottom: 24,
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 0,
   },
   optionItem: {
     flexDirection: 'row',
@@ -302,7 +304,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     marginLeft: 50,
   },
   logoutBtn: {

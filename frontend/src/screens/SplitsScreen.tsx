@@ -21,9 +21,11 @@ import { formatters } from '../utils/formatters';
 import { splitEngine } from '../utils/splitEngine';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SplitItem, SplitGroup } from '../types';
 
-export function SplitsScreen({ route, navigation }: any) {
+export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+  const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
   const {
     splits,
@@ -77,11 +79,11 @@ export function SplitsScreen({ route, navigation }: any) {
 
       const content = (
         <View style={styles.splitCard}>
-          <View style={[styles.splitIconBox, { backgroundColor: isSettled ? '#F1F5F9' : '#EFF6FF' }]}>
+          <View style={[styles.splitIconBox, { backgroundColor: isSettled ? 'rgba(255, 255, 255, 0.15)' : 'rgba(56, 189, 248, 0.15)' }]}>
             <Feather
               name={isSettled ? 'check-circle' : 'users'}
               size={18}
-              color={isSettled ? '#64748B' : '#2563EB'}
+              color={isSettled ? '#94A3B8' : '#38BDF8'}
             />
           </View>
 
@@ -128,7 +130,7 @@ export function SplitsScreen({ route, navigation }: any) {
         return (
           <SwipeableRow
             actionText="Settle"
-            actionColor="#059669"
+            actionColor="#34D399"
             onAction={() => {
               haptics.success();
               settleSplit(item.id);
@@ -154,7 +156,7 @@ export function SplitsScreen({ route, navigation }: any) {
 
       return (
         <View style={styles.splitCard}>
-          <View style={[styles.splitIconBox, { backgroundColor: '#F5F3FF' }]}>
+          <View style={[styles.splitIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
             <Feather name="folder" size={18} color="#7C3AED" />
           </View>
 
@@ -169,7 +171,7 @@ export function SplitsScreen({ route, navigation }: any) {
             <Text
               style={[
                 styles.groupBalanceText,
-                hasOwe ? { color: '#E11D48' } : hasGet ? { color: '#059669' } : { color: '#64748B' },
+                hasOwe ? { color: '#E11D48' } : hasGet ? { color: '#34D399' } : { color: '#94A3B8' },
               ]}
             >
               {hasOwe
@@ -191,7 +193,7 @@ export function SplitsScreen({ route, navigation }: any) {
       <View style={styles.titleRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-            <Feather name="menu" size={24} color="#0F172A" />
+            <Feather name="menu" size={24} color="#F8FAFC" />
           </TouchableOpacity>
           <View>
             <Text style={styles.pageTitle}>Group Splits</Text>
@@ -217,7 +219,7 @@ export function SplitsScreen({ route, navigation }: any) {
         <View style={styles.glassTopSpecular} />
 
         <LinearGradient
-          colors={['rgba(255, 255, 255, 0.95)', 'rgba(244, 248, 255, 0.88)']}
+          colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroCardInner}
@@ -236,7 +238,7 @@ export function SplitsScreen({ route, navigation }: any) {
           <View style={styles.dualTilesRow}>
             <View style={styles.settlementTileGreen}>
               <View style={styles.tileIconCircleGreen}>
-                <Feather name="arrow-down-left" size={16} color="#059669" />
+                <Feather name="arrow-down-left" size={16} color="#34D399" />
               </View>
               <View>
                 <Text style={styles.tileMicroLabel}>YOU WILL GET</Text>
@@ -300,13 +302,13 @@ export function SplitsScreen({ route, navigation }: any) {
       : 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Atmospheric Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#EDF4FE', '#F8FAFD', '#F4F7FB']}
+          colors={['#022C22', '#064E3B', '#0F766E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -316,7 +318,7 @@ export function SplitsScreen({ route, navigation }: any) {
 
       <View style={styles.container}>
         {loading ? (
-          <ActivityIndicator color="#2563EB" style={{ marginTop: 40 }} />
+          <ActivityIndicator color="#14B8A6" style={{ marginTop: 40 }} />
         ) : (
           <FlatList
             data={isExpensesTab ? (splits as any) : (groups as any)}
@@ -369,7 +371,7 @@ export function SplitsScreen({ route, navigation }: any) {
         {previewPerPerson > 0 && (
           <View style={styles.previewBox}>
             <Text style={styles.previewText}>
-              Each person owes: <Text style={{ fontWeight: '800', color: '#2563EB' }}>₹{previewPerPerson.toFixed(2)}</Text>
+              Each person owes: <Text style={{ fontWeight: '800', color: '#14B8A6' }}>₹{previewPerPerson.toFixed(2)}</Text>
             </Text>
           </View>
         )}
@@ -396,14 +398,14 @@ export function SplitsScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
       </BottomSheet>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: 'transparent',
   },
   ambientGlow: {
     position: 'absolute',
@@ -412,14 +414,14 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: 'rgba(20, 184, 166, 0.15)',
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
   },
   listContent: {
-    paddingTop: Platform.OS === 'android' ? 44 : 20,
+    paddingTop: 12,
     paddingBottom: 110, // clear floating tab bar
   },
   headerBlock: {
@@ -434,12 +436,12 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: -0.5,
   },
   pageSubtitle: {
     fontSize: 12.5,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '500',
     marginTop: 2,
   },
@@ -447,15 +449,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 14,
-    shadowColor: '#2563EB',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 0,
   },
   newSplitPillText: {
     fontSize: 12.5,
@@ -469,12 +471,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.15,
     shadowRadius: 22,
-    elevation: 4,
+    elevation: 0,
   },
   glassTopSpecular: {
     position: 'absolute',
@@ -498,7 +500,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 4,
     paddingHorizontal: 9,
     borderRadius: 10,
@@ -507,17 +509,17 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#059669',
+    backgroundColor: '#34D399',
   },
   activeDotText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#14B8A6',
     letterSpacing: 0.6,
   },
   activeFriendsCount: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '600',
   },
   dualTilesRow: {
@@ -529,7 +531,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
@@ -539,7 +541,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -548,7 +550,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#FFF1F2',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
@@ -558,20 +560,20 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   tileMicroLabel: {
     fontSize: 9.5,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8',
     marginBottom: 1,
   },
   tileAmountGreen: {
     fontSize: 15.5,
     fontWeight: '800',
-    color: '#059669',
+    color: '#34D399',
   },
   tileAmountRed: {
     fontSize: 15.5,
@@ -587,11 +589,11 @@ const styles = StyleSheet.create({
   // Segmented Tabs
   segmentedTabRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     padding: 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     marginBottom: 14,
   },
   segmentBtn: {
@@ -601,17 +603,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   segmentBtnActive: {
-    backgroundColor: '#2563EB',
-    shadowColor: '#2563EB',
+    backgroundColor: '#0D9488',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 0,
   },
   segmentText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   segmentTextActive: {
     color: '#FFFFFF',
@@ -621,16 +623,16 @@ const styles = StyleSheet.create({
   splitCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 0,
   },
   splitIconBox: {
     width: 42,
@@ -647,7 +649,7 @@ const styles = StyleSheet.create({
   splitTitleText: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 2,
   },
   splitMetaText: {
@@ -661,11 +663,11 @@ const styles = StyleSheet.create({
   splitTotalAmount: {
     fontSize: 14.5,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 4,
   },
   settledBadge: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 3,
     paddingHorizontal: 7,
     borderRadius: 6,
@@ -673,10 +675,10 @@ const styles = StyleSheet.create({
   settledBadgeText: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: '#059669',
+    color: '#34D399',
   },
   settleActionBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 8,
@@ -695,23 +697,23 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#F8FAFC',
     marginBottom: 16,
   },
   sheetInput: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 12,
     paddingHorizontal: 14,
     height: 48,
-    color: '#0F172A',
+    color: '#F8FAFC',
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 12,
   },
   previewBox: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -720,7 +722,7 @@ const styles = StyleSheet.create({
   },
   previewText: {
     fontSize: 12.5,
-    color: '#334155',
+    color: '#CBD5E1',
     fontWeight: '600',
   },
   sheetActionsRow: {
@@ -734,20 +736,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   sheetCancelText: {
-    color: '#64748B',
+    color: '#94A3B8',
     fontSize: 13,
     fontWeight: '600',
   },
   sheetSaveBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     paddingVertical: 11,
     paddingHorizontal: 22,
     borderRadius: 12,
-    shadowColor: '#2563EB',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 0,
   },
   sheetSaveText: {
     color: '#FFFFFF',

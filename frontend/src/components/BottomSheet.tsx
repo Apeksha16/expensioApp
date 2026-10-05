@@ -88,8 +88,8 @@ export function BottomSheet({
           style={[
             styles.sheetContainer,
             isLight && {
-              backgroundColor: '#FFFFFF',
-              borderColor: '#E2E8F0',
+              backgroundColor: '#022C22',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
             },
             {
               transform: [{ translateY: slideAnim }],
@@ -143,10 +143,10 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.4,
+        shadowOpacity: 0.15,
         shadowRadius: 16,
       },
-      android: { elevation: 16 },
+      android: { elevation: 0 },
     }),
   },
   handleContainer: {
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: '#022C22',
   },
   content: {
     paddingHorizontal: spacing.xl,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -25,7 +26,8 @@ interface MpinScreenProps {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DIAL_SIZE = Math.min(Math.floor((SCREEN_WIDTH - 120) / 3), 74);
 
-export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
+export function MpinScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+  const insets = useSafeAreaInsets();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -114,8 +116,8 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Atmospheric Ambient Liquid Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -144,14 +146,14 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
           <View style={styles.glassTopSpecular} />
 
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.95)', 'rgba(244, 248, 255, 0.88)']}
+            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardInner}
           >
             {/* Shield Icon Badge */}
             <View style={styles.shieldLens}>
-              <Feather name="shield" size={24} color="#2563EB" />
+              <Feather name="shield" size={24} color="#14B8A6" />
             </View>
 
             <Text style={styles.passcodeTitle}>Security PIN</Text>
@@ -184,7 +186,7 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
             ) : null}
 
             {loading && (
-              <ActivityIndicator color="#2563EB" style={{ marginVertical: 8 }} />
+              <ActivityIndicator color="#14B8A6" style={{ marginVertical: 8 }} />
             )}
 
             {/* Apple Circular Passcode Keypad */}
@@ -217,7 +219,7 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
                     activeOpacity={0.7}
                     onPress={handleBiometricPress}
                   >
-                    <Ionicons name="scan-outline" size={24} color="#2563EB" />
+                    <Ionicons name="scan-outline" size={24} color="#14B8A6" />
                     <Text style={styles.biometricLabel}>Face ID</Text>
                   </TouchableOpacity>
                 ) : (
@@ -264,14 +266,14 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
           </LinearGradient>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: 'transparent',
   },
   ambientGlowTop: {
     position: 'absolute',
@@ -314,7 +316,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
   },
   brandTitle: {
     fontSize: 24,
@@ -324,7 +326,7 @@ const styles = StyleSheet.create({
   },
   brandSubtitle: {
     fontSize: 12.5,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '600',
   },
 
@@ -335,12 +337,13 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.15,
     shadowRadius: 28,
-    elevation: 6,
+    elevation: 0,
   },
   glassTopSpecular: {
     position: 'absolute',
@@ -362,17 +365,17 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-    shadowColor: '#2563EB',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 0,
   },
   passcodeTitle: {
     fontSize: 21,
@@ -382,7 +385,7 @@ const styles = StyleSheet.create({
   },
   passcodeSubtitle: {
     fontSize: 12.5,
-    color: '#64748B',
+    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 17,
     marginBottom: 18,
@@ -404,16 +407,16 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     borderWidth: 1.8,
     borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
   dotFilled: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-    shadowColor: '#2563EB',
+    backgroundColor: '#0D9488',
+    bordercolor: '#14B8A6',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 0,
     transform: [{ scale: 1.1 }],
   },
   dotLoading: {
@@ -425,7 +428,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#FFF1F2',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 8,
@@ -452,16 +455,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   circularDial: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     borderWidth: 1.2,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 1)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 0,
   },
   dialNumberText: {
     fontSize: 25,
@@ -479,7 +482,7 @@ const styles = StyleSheet.create({
   biometricLabel: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#14B8A6',
     marginTop: 2,
   },
   dialEmpty: {
@@ -495,6 +498,6 @@ const styles = StyleSheet.create({
   switchAccountText: {
     fontSize: 12.5,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#94A3B8',
   },
 });

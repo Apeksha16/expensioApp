@@ -12,7 +12,14 @@ export function useSubscriptions() {
     try {
       const res = await api.getSubscriptions();
       if (res && res.subscriptions) {
-        setSubscriptions(res.subscriptions);
+        const mapped = res.subscriptions.map((s: any) => ({
+          id: s.id,
+          name: s.title || s.name, // handle both backend and offline fallback formats
+          amount: s.amount,
+          dueDate: s.dueStatus || s.dueDate,
+          status: s.isPaid ? 'PAID' : (s.isOverdue ? 'OVERDUE' : (s.status || 'UPCOMING')),
+        }));
+        setSubscriptions(mapped);
       }
     } finally {
       setLoading(false);

@@ -14,6 +14,8 @@ import {
   FlatList,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useAuth } from '../hooks/useAuth';
 import { SplashScreen } from './SplashScreen';
 import { MpinScreen } from './MpinScreen';
@@ -45,7 +47,7 @@ const FloatingCards = () => (
     <View style={[styles.cardBase, styles.cardMain, { transform: [{ rotate: '-6deg' }] }]}>
       {/* Item 1 */}
       <View style={styles.cardItem}>
-        <View style={[styles.cardIconBox, { backgroundColor: '#4C80F1' }]}>
+        <View style={[styles.cardIconBox, { backgroundColor: '#14B8A6' }]}>
           <Feather name="coffee" size={12} color="#FFF" />
         </View>
         <View style={styles.cardItemTexts}>
@@ -55,7 +57,7 @@ const FloatingCards = () => (
       </View>
       {/* Item 2 */}
       <View style={styles.cardItem}>
-        <View style={[styles.cardIconBox, { backgroundColor: '#8CA0F4' }]}>
+        <View style={[styles.cardIconBox, { backgroundColor: '#34D399' }]}>
           <Feather name="send" size={12} color="#FFF" style={{ transform: [{ rotate: '45deg' }] }} />
         </View>
         <View style={styles.cardItemTexts}>
@@ -65,7 +67,7 @@ const FloatingCards = () => (
       </View>
       {/* Item 3 */}
       <View style={styles.cardItem}>
-        <View style={[styles.cardIconBox, { backgroundColor: '#A9B7ED' }]}>
+        <View style={[styles.cardIconBox, { backgroundColor: '#0EA5E9' }]}>
           <Feather name="home" size={12} color="#FFF" />
         </View>
         <View style={styles.cardItemTexts}>
@@ -130,133 +132,149 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.root}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      <View style={styles.gradientBg}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header Area */}
-          <View style={styles.headerArea}>
-            <Text style={styles.brandTitle}>Expensio</Text>
-            <Text style={styles.brandSubtitle}>
-              A smarter way{'\n'}to handle money{'\n'}together.
-            </Text>
-          </View>
-
-          {/* Floating Cards Graphic */}
-          <FloatingCards />
-
-          {/* Main Title Area */}
-          <View style={styles.titleArea}>
-            <Text style={styles.mainHeading}>
-              {flowState === 'otp_verify' ? 'Verify your identity' : 'Track today\nfor a brighter\ntomorrow'}
-            </Text>
-            <Text style={styles.subHeading}>
-              {flowState === 'otp_verify' 
-                ? `Enter the 6-digit code sent to ${selectedCountry.callingCode} ${phone}`
-                : 'Simple. Secure. Built for you.'}
-            </Text>
-          </View>
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {/* Form Area */}
-          {flowState === 'login_screen' ? (
-            <View style={styles.formContainer}>
-              <View style={styles.inputPill}>
-                <TouchableOpacity 
-                  style={styles.countryBadge} 
-                  activeOpacity={0.7} 
-                  onPress={() => setCountryModalVisible(true)}
-                >
-                  <Text style={styles.flagEmoji}>{selectedCountry.flag}</Text>
-                  <View style={{ justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600' }}>{selectedCountry.name}</Text>
-                    <Text style={styles.countryCode}>{selectedCountry.callingCode}</Text>
-                  </View>
-                  <Feather name="chevron-down" size={16} color="#9CA3AF" style={{ marginLeft: 6 }} />
-                </TouchableOpacity>
-                <View style={styles.divider} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter your mobile number"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  value={phone}
-                  onChangeText={setPhone}
-                />
-              </View>
-
-              <TouchableOpacity activeOpacity={0.85} onPress={sendOtp} disabled={loading}>
-                <View style={styles.submitButtonPill}>
-                  <View style={styles.buttonContentFlex}>
-                    <View style={styles.buttonSpacer} />
-                    {loading ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <Text style={styles.submitButtonText}>Continue with OTP</Text>
-                    )}
-                    <View style={styles.buttonIconBox}>
-                      <Feather name="arrow-right" size={18} color="#FFFFFF" />
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.formContainer}>
-              <View style={styles.inputPill}>
-                <TextInput
-                  style={styles.otpInput}
-                  placeholder="• • • • • •"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  value={otp}
-                  onChangeText={setOtp}
-                  autoFocus
-                />
-              </View>
-
-              <TouchableOpacity activeOpacity={0.85} onPress={verifyOtp} disabled={loading}>
-                <View style={styles.submitButtonPill}>
-                  <View style={styles.buttonContentFlex}>
-                    <View style={styles.buttonSpacer} />
-                    {loading ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <Text style={styles.submitButtonText}>Verify & Proceed</Text>
-                    )}
-                    <View style={styles.buttonIconBox}>
-                      <Feather name="check" size={18} color="#FFFFFF" />
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.backButton} onPress={switchToPhoneLogin}>
-                <Text style={styles.backButtonText}>← Back to Login</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Footer Area */}
-          <View style={styles.footerArea}>
-            <View style={styles.secureContainer}>
-              <Feather name="lock" size={12} color="#9CA3AF" style={{ marginTop: 1 }} />
-              <Text style={styles.secureText}>Your data is safe with us</Text>
-            </View>
-            <Text style={styles.termsText}>
-              By continuing, you agree to our{'\n'}
-              <Text style={styles.linkText}>Terms of Service</Text> and{' '}
-              <Text style={styles.linkText}>Privacy Policy.</Text>
-            </Text>
-          </View>
-        </ScrollView>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={['#022C22', '#064E3B', '#0F766E']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.blob1} />
+        <View style={styles.blob2} />
       </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Area */}
+        <View style={styles.headerArea}>
+          <Text style={styles.brandTitle}>Expensio</Text>
+          <Text style={styles.brandSubtitle}>
+            A smarter way{'\n'}to handle money{'\n'}together.
+          </Text>
+        </View>
+
+        {/* Floating Cards Graphic */}
+        <FloatingCards />
+
+        {/* Main Title Area */}
+        <View style={styles.titleArea}>
+          <Text style={styles.mainHeading}>
+            {flowState === 'otp_verify' ? 'Verify your identity' : 'Track today\nfor a brighter\ntomorrow'}
+          </Text>
+          <Text style={styles.subHeading}>
+            {flowState === 'otp_verify' 
+              ? `Enter the 6-digit code sent to ${selectedCountry.callingCode} ${phone}`
+              : 'Simple. Secure. Built for you.'}
+          </Text>
+        </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {/* Form Area */}
+        {flowState === 'login_screen' ? (
+          <View style={styles.formContainer}>
+            <View style={styles.inputPill}>
+              <TouchableOpacity 
+                style={styles.countryBadge} 
+                activeOpacity={0.7} 
+                onPress={() => setCountryModalVisible(true)}
+              >
+                <Text style={styles.flagEmoji}>{selectedCountry.flag}</Text>
+                <View style={{ justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 10, color: '#94A3B8', fontWeight: '600' }}>{selectedCountry.name}</Text>
+                  <Text style={styles.countryCode}>{selectedCountry.callingCode}</Text>
+                </View>
+                <Feather name="chevron-down" size={16} color="#94A3B8" style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
+              <View style={styles.divider} />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter your mobile number"
+                placeholderTextColor="#64748B"
+                keyboardType="phone-pad"
+                maxLength={10}
+                value={phone}
+                onChangeText={setPhone}
+              />
+            </View>
+
+            <TouchableOpacity activeOpacity={0.85} onPress={sendOtp} disabled={loading}>
+              <LinearGradient
+                colors={['#0D9488', '#0F766E']}
+                style={styles.submitButtonPill}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.buttonContentFlex}>
+                  <View style={styles.buttonSpacer} />
+                  {loading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Continue with OTP</Text>
+                  )}
+                  <View style={styles.buttonIconBox}>
+                    <Feather name="arrow-right" size={18} color="#FFFFFF" />
+                  </View>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.formContainer}>
+            <View style={styles.inputPill}>
+              <TextInput
+                style={styles.otpInput}
+                placeholder="• • • • • •"
+                placeholderTextColor="#64748B"
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otp}
+                onChangeText={setOtp}
+                autoFocus
+              />
+            </View>
+
+            <TouchableOpacity activeOpacity={0.85} onPress={verifyOtp} disabled={loading}>
+              <LinearGradient
+                colors={['#0D9488', '#0F766E']}
+                style={styles.submitButtonPill}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.buttonContentFlex}>
+                  <View style={styles.buttonSpacer} />
+                  {loading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Verify & Proceed</Text>
+                  )}
+                  <View style={styles.buttonIconBox}>
+                    <Feather name="check" size={18} color="#FFFFFF" />
+                  </View>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.backButton} onPress={switchToPhoneLogin}>
+              <Text style={styles.backButtonText}>← Back to Login</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Footer Area */}
+        <View style={styles.footerArea}>
+          <View style={styles.secureContainer}>
+            <Feather name="lock" size={12} color="#94A3B8" style={{ marginTop: 1 }} />
+            <Text style={styles.secureText}>Your data is safe with us</Text>
+          </View>
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{'\n'}
+            <Text style={styles.linkText}>Terms of Service</Text> and{' '}
+            <Text style={styles.linkText}>Privacy Policy.</Text>
+          </Text>
+        </View>
+      </ScrollView>
 
       {/* Custom Bottom Sheet Country Picker */}
       <Modal
@@ -277,7 +295,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Country</Text>
               <TouchableOpacity onPress={() => setCountryModalVisible(false)}>
-                <Feather name="x" size={24} color="#0F172A" />
+                <Feather name="x" size={24} color="#F8FAFC" />
               </TouchableOpacity>
             </View>
 
@@ -315,7 +333,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                     <View style={styles.countryRowRight}>
                       <Text style={styles.countryRowCode}>{item.callingCode}</Text>
                       {isSelected && (
-                        <Feather name="check" size={20} color="#3B82F6" style={{ marginLeft: 12 }} />
+                        <Feather name="check" size={20} color="#14B8A6" style={{ marginLeft: 12 }} />
                       )}
                     </View>
                   </TouchableOpacity>
@@ -330,8 +348,15 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  gradientBg: { flex: 1, backgroundColor: '#F3F7FB' },
+  root: { flex: 1, backgroundColor: '#022C22' },
+  blob1: {
+    position: 'absolute', top: -100, right: -50, width: 300, height: 300,
+    borderRadius: 150, backgroundColor: '#14B8A6', opacity: 0.1,
+  },
+  blob2: {
+    position: 'absolute', bottom: -50, left: -100, width: 350, height: 350,
+    borderRadius: 175, backgroundColor: '#34D399', opacity: 0.08,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 28,
@@ -346,14 +371,14 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '900',
+    color: '#F8FAFC',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   brandSubtitle: {
     fontSize: 15,
-    color: '#64748B',
+    color: '#94A3B8',
     lineHeight: 22,
     fontWeight: '500',
   },
@@ -373,39 +398,36 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   cardBg2: {
-    backgroundColor: 'rgba(219, 234, 254, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   cardBg1: {
-    backgroundColor: 'rgba(239, 246, 255, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   cardMain: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: '#FFFFFF',
-    shadowColor: '#4C80F1',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.4,
     shadowRadius: 24,
-    elevation: 12,
+    elevation: 0,
     justifyContent: 'center',
     gap: 8,
   },
   cardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   cardIconBox: {
     width: 28,
@@ -419,7 +441,7 @@ const styles = StyleSheet.create({
   cardItemTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#F8FAFC',
     marginBottom: 1,
   },
   cardItemSubtitle: {
@@ -433,15 +455,15 @@ const styles = StyleSheet.create({
   },
   mainHeading: {
     fontSize: 38,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '900',
+    color: '#F8FAFC',
     lineHeight: 44,
     marginBottom: 12,
     letterSpacing: -1,
   },
   subHeading: {
     fontSize: 16,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '500',
   },
   errorText: {
@@ -455,17 +477,13 @@ const styles = StyleSheet.create({
   inputPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 24,
     height: 64,
     paddingHorizontal: 16,
     marginBottom: 24,
-    shadowColor: '#4C80F1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
   },
   countryBadge: {
     flexDirection: 'row',
@@ -480,59 +498,59 @@ const styles = StyleSheet.create({
   countryCode: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   divider: {
     width: 1,
     height: 24,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginRight: 12,
     marginLeft: 12,
   },
   textInput: {
     flex: 1,
     height: '100%',
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F8FAFC',
   },
   otpInput: {
     flex: 1,
     height: '100%',
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     letterSpacing: 8,
     textAlign: 'center',
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   submitButtonPill: {
-    height: 52,
-    borderRadius: 24,
-    backgroundColor: '#4C80F1',
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
-    shadowColor: '#5C93FA',
+    shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 0,
   },
   buttonContentFlex: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
   },
-  buttonSpacer: { width: 36 },
+  buttonSpacer: { width: 44 },
   submitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   buttonIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -542,9 +560,9 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   backButtonText: {
-    color: '#64748B',
+    color: '#94A3B8',
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   footerArea: {
     marginTop: 40,
@@ -559,7 +577,7 @@ const styles = StyleSheet.create({
   },
   secureText: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '600',
   },
   termsText: {
@@ -569,29 +587,31 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   linkText: {
-    color: '#5C93FA',
-    fontWeight: '500',
+    color: '#14B8A6',
+    fontWeight: '600',
   },
 
-  // Modal Styles
+  // Modal Styles (Dark Theme)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalDismissArea: { flex: 1 },
   modalContent: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0F172A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: '75%',
     paddingHorizontal: 20,
     paddingTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   modalHandle: {
     width: 40,
     height: 4,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 20,
@@ -604,23 +624,25 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: '#F8FAFC',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 44,
+    height: 48,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 10,
     fontSize: 15,
-    color: '#0F172A',
+    color: '#F8FAFC',
   },
   countryList: { paddingBottom: 40 },
   countryRow: {
@@ -629,26 +651,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   countryRowSelected: {
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(20, 184, 166, 0.15)',
+    borderRadius: 12,
     borderBottomWidth: 0,
-    paddingHorizontal: 8,
-    marginHorizontal: -8,
+    paddingHorizontal: 12,
+    marginHorizontal: -12,
   },
   countryRowLeft: { flexDirection: 'row', alignItems: 'center' },
   countryRowFlag: { fontSize: 24, marginRight: 12 },
   countryRowName: {
     fontSize: 15,
-    color: '#0F172A',
-    fontWeight: '400',
+    color: '#F8FAFC',
+    fontWeight: '500',
   },
   countryRowRight: { flexDirection: 'row', alignItems: 'center' },
   countryRowCode: {
     fontSize: 15,
-    color: '#0F172A',
-    fontWeight: '400',
+    color: '#94A3B8',
+    fontWeight: '600',
   },
 });

@@ -131,6 +131,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   content: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#022C22',
   },
 });

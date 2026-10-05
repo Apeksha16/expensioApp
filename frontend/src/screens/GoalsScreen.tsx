@@ -4,18 +4,20 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export function GoalsScreen() {
+export function GoalsScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+  const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       
       {/* Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#EDF4FE', '#F8FAFD', '#F4F7FB']}
+          colors={['#022C22', '#064E3B', '#0F766E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -28,7 +30,7 @@ export function GoalsScreen() {
         <View style={styles.screenTitleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-              <Feather name="menu" size={24} color="#0F172A" />
+              <Feather name="menu" size={24} color="#F8FAFC" />
             </TouchableOpacity>
             <View>
               <Text style={styles.screenHeading}>Goals</Text>
@@ -41,13 +43,13 @@ export function GoalsScreen() {
         <View style={styles.glassCard}>
           <View style={styles.glassTopSpecular} />
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.95)', 'rgba(244, 248, 255, 0.88)']}
+            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardInner}
           >
             <View style={styles.iconCircle}>
-              <Feather name="target" size={32} color="#2563EB" />
+              <Feather name="target" size={32} color="#14B8A6" />
             </View>
             <Text style={styles.titleText}>Goals Coming Soon</Text>
             <Text style={styles.subtitleText}>
@@ -65,12 +67,12 @@ export function GoalsScreen() {
           </LinearGradient>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFD' },
+  safeArea: { flex: 1, backgroundColor: 'transparent' },
   ambientGlow: {
     position: 'absolute',
     top: -40,
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: 'rgba(20, 184, 166, 0.15)',
   },
   container: { flex: 1, paddingHorizontal: 20 },
   screenTitleRow: {
@@ -88,19 +90,19 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === 'android' ? 44 : 20,
     marginBottom: 24,
   },
-  screenHeading: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  screenSubheading: { fontSize: 12.5, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  screenHeading: { fontSize: 24, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.5 },
+  screenSubheading: { fontSize: 12.5, color: '#94A3B8', fontWeight: '500', marginTop: 2 },
   
   glassCard: {
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.15,
     shadowRadius: 22,
-    elevation: 4,
+    elevation: 0,
     marginTop: 20,
   },
   glassTopSpecular: {
@@ -110,16 +112,16 @@ const styles = StyleSheet.create({
   cardInner: { padding: 32, alignItems: 'center' },
   iconCircle: {
     width: 72, height: 72, borderRadius: 36,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
     borderWidth: 1, borderColor: 'rgba(37, 99, 235, 0.15)',
   },
-  titleText: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
-  subtitleText: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  titleText: { fontSize: 20, fontWeight: '800', color: '#F8FAFC', marginBottom: 12 },
+  subtitleText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   actionBtn: {
-    backgroundColor: '#2563EB', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
-    shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 3,
+    backgroundColor: '#0D9488', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
+    shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 0,
   },
   actionBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 });

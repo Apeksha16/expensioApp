@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -15,7 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { haptics } from '../services/haptics';
 
-export function CameraScannerScreen({ navigation }: any) {
+export function CameraScannerScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const [flash, setFlash] = useState<boolean>(false);
@@ -88,14 +90,14 @@ export function CameraScannerScreen({ navigation }: any) {
   };
 
   if (!permission) {
-    return <View style={styles.container}><ActivityIndicator color="#2563EB" /></View>;
+    return <View style={styles.container}><ActivityIndicator color="#14B8A6" /></View>;
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.permissionBox}>
-          <Feather name="camera-off" size={48} color="#64748B" />
+          <Feather name="camera-off" size={48} color="#94A3B8" />
           <Text style={styles.permissionTitle}>Camera Access Needed</Text>
           <Text style={styles.permissionSub}>We need camera access to scan receipts for auto-filling expenses.</Text>
           <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
@@ -105,12 +107,12 @@ export function CameraScannerScreen({ navigation }: any) {
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       <View style={styles.cameraContainer}>
@@ -140,7 +142,7 @@ export function CameraScannerScreen({ navigation }: any) {
                 
                 {isScanning && (
                   <View style={styles.scanningOverlay}>
-                    <ActivityIndicator size="large" color="#2563EB" />
+                    <ActivityIndicator size="large" color="#14B8A6" />
                     <Text style={styles.scanningText}>Analyzing Receipt...</Text>
                   </View>
                 )}
@@ -167,7 +169,7 @@ export function CameraScannerScreen({ navigation }: any) {
           </View>
         </CameraView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -198,7 +200,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   permissionBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D9488',
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 12,

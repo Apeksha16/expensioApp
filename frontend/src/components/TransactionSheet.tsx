@@ -231,7 +231,7 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
       
       haptics.success();
       onClose();
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Failed to save transaction');
     } finally {
       setSubmitting(false);

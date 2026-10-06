@@ -24,7 +24,7 @@ interface MpinScreenProps {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DIAL_SIZE = Math.min(Math.floor((SCREEN_WIDTH - 120) / 3), 74);
 
-export function MpinScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
   const insets = useSafeAreaInsets();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');

@@ -40,6 +40,9 @@ export const splitEngine = {
             }
             balances[p] = (balances[p] || 0) + pShare;
           });
+        } else {
+          const p = (split as any).debtor || split.title || 'Others';
+          balances[p] = (balances[p] || 0) + split.youGet;
         }
       } else if (split.paidBy !== 'YOU' && split.youOwe) {
         const p = split.paidBy;

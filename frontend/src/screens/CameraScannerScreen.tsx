@@ -34,7 +34,7 @@ export function CameraScannerScreen({ navigation, route, onSuccess, onResetAuth,
     navigation.goBack();
   };
 
-  const processReceipt = async (imageUri: string) => {
+  const processReceipt = async (_imageUri: string) => {
     setIsScanning(true);
     await haptics.medium();
     
@@ -68,7 +68,7 @@ export function CameraScannerScreen({ navigation, route, onSuccess, onResetAuth,
         if (photo) {
           processReceipt(photo.uri);
         }
-      } catch (e) {
+      } catch {
         Alert.alert('Error', 'Failed to take picture.');
       }
     }

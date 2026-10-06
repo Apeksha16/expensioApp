@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform, ScrollView, TextInput, KeyboardAvoidingView, Alert } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { haptics } from '../services/haptics';
-import { useDrawer } from '../navigation/RootNavigator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { useFinance } from '../hooks/FinanceContext';
@@ -13,7 +12,6 @@ import type { ExpenseItem, AccountType } from '../types';
 
 export function SavingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { openDrawer } = useDrawer();
   const { state, addTransaction } = useFinance();
 
   const [isDepositSheetOpen, setIsDepositSheetOpen] = useState(false);

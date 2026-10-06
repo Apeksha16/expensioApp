@@ -16,7 +16,7 @@ interface SplitSummaryWidgetProps {
 
 export function SplitSummaryWidget({
   onViewSplits,
-  onAddFriends,
+  onAddFriends: _onAddFriends,
   onSettleGroup,
   scale = 1,
 }: SplitSummaryWidgetProps) {

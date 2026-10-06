@@ -19,7 +19,7 @@ interface SplashScreenProps {
 import { LinearGradient } from 'expo-linear-gradient';
 
 export function SplashScreen({ onFinish }: SplashScreenProps) {
-  const { colors, isDark } = useTheme();
+  const { isDark } = useTheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;

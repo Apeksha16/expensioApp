@@ -36,7 +36,7 @@ export function useSplits() {
         // Find existing, mutate and delete/add it or use editSplit. We don't have editSplit.
         // Let's just delete and re-add.
         if (targetItem) {
-           const settled = splitEngine.settleItem(targetItem);
+           const _settled = splitEngine.settleItem(targetItem);
            // To cleanly update state without editSplit, we could add editSplit to FinanceContext...
            // Let's just do a hacky refresh for now, or since it's local storage we can manually update storage.
            // Actually, api.settleSplit updates the storage directly! So calling financeRefresh() will sync it!

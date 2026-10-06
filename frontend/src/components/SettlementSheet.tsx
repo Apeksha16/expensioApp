@@ -112,7 +112,7 @@ export function SettlementSheet({ visible, onClose, personName, balanceAmount }:
       
       haptics.success();
       onClose();
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Failed to save settlement');
     } finally {
       setSubmitting(false);

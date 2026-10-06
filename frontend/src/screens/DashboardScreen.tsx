@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
@@ -19,7 +20,9 @@ import { toRupees } from '../utils/financeCalculations';
 import { formatters } from '../utils/formatters';
 import { SettlementSheet } from '../components/SettlementSheet';
 
-export function DashboardScreen() {
+export function DashboardScreen({ navigation: propNavigation }: any) {
+  const rootNavigation = useNavigation<any>();
+  const navigation = propNavigation || rootNavigation;
   const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
   const { state, summary } = useFinance();

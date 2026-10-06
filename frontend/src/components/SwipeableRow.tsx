@@ -26,7 +26,7 @@ export function SwipeableRow({
   deleteColor = '#FF4D4D',
 }: SwipeableRowProps) {
   const pan = useRef(new Animated.Value(0)).current;
-  const [isOpen, setIsOpen] = useState(false);
+  const [_isOpen, setIsOpen] = useState(false);
 
   const panResponder = useRef(
     PanResponder.create({

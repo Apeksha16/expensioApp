@@ -117,7 +117,7 @@ export function OnboardingProfileScreen({
 
       await secureStore.setItem(SECURE_KEYS.USER_PROFILE, JSON.stringify(updatedUser));
       onCompleted(updatedUser);
-    } catch (e: any) {
+    } catch {
       setError('Failed to update profile. Please try again.');
       await haptics.error();
     } finally {

@@ -30,7 +30,7 @@ export function ExpensesScreen({ route, navigation }: any) {
   const { state, summary, deleteTransaction, loading, refresh } = useFinance();
   const refreshing = loading;
   const { transactions } = state;
-  const { salary, totalBalance } = summary;
+  const { salary } = summary;
 
   const [userProfile, setUserProfile] = useState<any>(null);
   const [selectedFilter, setSelectedFilter] = useState<'all' | ExpenseCategory>('all');

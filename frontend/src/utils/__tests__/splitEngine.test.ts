@@ -48,7 +48,7 @@ export function runSplitEngineTests(): boolean {
   // 4. Currency
   assert('formatINR(31169) === ₹31,169', splitEngine.formatINR(31169) === '₹31,169');
 
-  return failed === 0;
+  return failed === 0 && passed > 0;
 }
 
 if (typeof describe !== 'undefined') {

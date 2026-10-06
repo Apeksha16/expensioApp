@@ -177,7 +177,7 @@ function MainTabs({ navigation }: any) {
       <Tab.Screen name="Dashboard">
         {({ navigation: tabNavigation }: any) => (
           <View style={styles.screenWrapper}>
-            <DashboardScreen />
+            <DashboardScreen navigation={tabNavigation} />
           </View>
         )}
       </Tab.Screen>
@@ -294,7 +294,7 @@ export function RootNavigator({
                       try {
                         const Updates = require('expo-updates');
                         await Updates.reloadAsync();
-                      } catch (e) {
+                      } catch {
                         Alert.alert("Reload", "Please restart the app.");
                       }
                     }

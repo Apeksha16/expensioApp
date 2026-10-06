@@ -207,6 +207,7 @@ export function RootNavigator({
   onLogout,
 }: RootNavigatorProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   const dynamicNavTheme = {
@@ -233,7 +234,7 @@ export function RootNavigator({
             <View style={{ ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.6)' }} />
           </TouchableWithoutFeedback>
           <View style={styles.drawerWrapper}>
-            <View style={[styles.drawerContainer, { backgroundColor: colors.surface }]}>
+            <View style={[styles.drawerContainer, { backgroundColor: colors.surface, paddingTop: insets.top + 20 }]}>
               <View style={styles.drawerProfileSection}>
                 <Image 
                   source={{ uri: 'https://i.pravatar.cc/100?img=11' }} 
@@ -614,7 +615,6 @@ const styles = StyleSheet.create({
   },
   drawerContainer: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
     borderTopRightRadius: 32,
     borderBottomRightRadius: 32,
     overflow: 'hidden',

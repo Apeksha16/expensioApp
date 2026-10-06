@@ -8,6 +8,7 @@ import { haptics } from '../services/haptics';
 
 export type AuthFlowState =
   | 'splash'          // Explicit animated splash screen shown on app launch
+  | 'intro_carousel'  // First time user carousel
   | 'mpin_guard'      // JWT exists, waiting for MPIN or FaceID
   | 'login_screen'    // Show full-bleed Apple/Google/Phone login
   | 'otp_verify'      // Phone OTP entered
@@ -69,6 +70,11 @@ export function useAuth(
       console.warn('[useAuth] Session check error:', e);
       setFlowState('login_screen');
     }
+  }, []);
+
+  const finishIntro = useCallback(async () => {
+    await storage.set('HAS_SEEN_INTRO', 'true');
+    setFlowState('login_screen');
   }, []);
 
   // Check profile completeness (Phase 2) and route to Onboarding or Dashboard
@@ -260,6 +266,7 @@ export function useAuth(
     signInWithGoogle,
     signInWithApple,
     finishSplash,
+    finishIntro,
     onMpinSuccess,
     onResetAuth,
     onOnboardingCompleted,

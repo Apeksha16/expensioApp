@@ -135,7 +135,7 @@ export function PaymentsScreen({ navigation }: any) {
     return (
       <TouchableOpacity key={p.id} style={styles.transactionCard} onPress={() => openEditPayment(p)}>
         <View style={styles.txLeft}>
-          <View style={[styles.txIconBox, { backgroundColor: isOverdue ? 'rgba(255, 77, 77, 0.15)' : p.status === 'paid' ? 'rgba(0, 209, 178, 0.15)' : 'rgba(255, 184, 77, 0.15)' }]}>
+          <View style={[styles.txIconBox, { backgroundColor: isOverdue ? 'rgba(255, 77, 77, 0.15)' : p.status === 'paid' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 184, 77, 0.15)' }]}>
             <Feather name={p.status === 'paid' ? 'check' : iconName} size={16} color={isOverdue ? colors.coral : p.status === 'paid' ? colors.primary : '#FFB84D'} />
           </View>
           <View>
@@ -166,7 +166,7 @@ export function PaymentsScreen({ navigation }: any) {
         <View style={styles.screenTitleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-              <Feather name="menu" size={24} color="#F8FAFC" />
+              <Feather name="menu" size={24} color="#0F172A" />
             </TouchableOpacity>
             <View>
               <Text style={styles.screenHeading}>Upcoming Payments</Text>
@@ -305,8 +305,8 @@ const styles = StyleSheet.create({
   
   transactionCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#19202A', padding: 14, borderRadius: 16,
-    borderWidth: 1, borderColor: '#242D3D', marginBottom: 10,
+    backgroundColor: '#FFFFFF', padding: 14, borderRadius: 16,
+    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 10,
   },
   txLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   txIconBox: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
@@ -314,17 +314,17 @@ const styles = StyleSheet.create({
   txDate: { fontSize: 12, color: colors.textSecondary },
   txRight: { alignItems: 'flex-end' },
   txAmountNegative: { fontSize: 14, fontWeight: '600', color: colors.coral, marginBottom: 8 },
-  payBtn: { backgroundColor: 'rgba(0, 209, 178, 0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  payBtn: { backgroundColor: 'rgba(59, 130, 246, 0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   payBtnText: { fontSize: 10, fontWeight: '800', color: colors.primary },
 
   formRow: { marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 },
   input: {
-    backgroundColor: 'rgba(25, 32, 42, 0.5)', borderWidth: 1, borderColor: '#242D3D',
+    backgroundColor: 'rgba(25, 32, 42, 0.5)', borderWidth: 1, borderColor: '#E2E8F0',
     borderRadius: 12, paddingHorizontal: 16, height: 50, color: colors.textPrimary, fontSize: 15,
   },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#19202A', borderWidth: 1, borderColor: '#242D3D' },
+  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   chipTextActive: { color: colors.background },

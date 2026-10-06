@@ -91,7 +91,7 @@ export function BottomSheet({
             styles.sheetContainer,
             isLight && {
               backgroundColor: '#022C22',
-              borderColor: 'rgba(255, 255, 255, 0.2)',
+              borderColor: 'rgba(0, 0, 0, 0.1)',
             },
             {
               transform: [{ translateY: slideAnim }],
@@ -104,13 +104,13 @@ export function BottomSheet({
             <View
               style={[
                 styles.handleBar,
-                isLight && { backgroundColor: '#CBD5E1' },
+                isLight && { backgroundColor: '#64748B' },
               ]}
             />
           </View>
           
           {title && (
-            <Text style={[styles.title, isLight && { color: '#0F172A' }]}>
+            <Text style={[styles.title, isLight && { color: '#FFFFFF' }]}>
               {title}
             </Text>
           )}
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#0F172A',
     marginBottom: 20,
     marginTop: -10,
     textAlign: 'center',

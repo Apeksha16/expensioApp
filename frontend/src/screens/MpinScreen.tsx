@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,21 +32,48 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
   const [loading, setLoading] = useState(false);
   const [biometricStatus, setBiometricStatus] = useState<BiometricStatus | null>(null);
 
+  const faceIdScale = useRef(new Animated.Value(1)).current;
+
   const checkBiometrics = useCallback(async () => {
     const status = await biometrics.checkAvailability();
     setBiometricStatus(status);
     if (status.isAvailable) {
-      const success = await biometrics.authenticate('Unlock Expensio with FaceID');
-      if (success) {
-        await haptics.success();
-        onSuccess();
-      }
+      animateAndTriggerFaceId();
     }
   }, [onSuccess]);
 
   useEffect(() => {
     checkBiometrics();
   }, [checkBiometrics]);
+
+  const animateAndTriggerFaceId = async () => {
+    Animated.sequence([
+      Animated.timing(faceIdScale, {
+        toValue: 0.8,
+        duration: 100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.spring(faceIdScale, {
+        toValue: 1.1,
+        friction: 4,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(faceIdScale, {
+        toValue: 1,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+    ]).start(async () => {
+      // After animation, trigger native scan
+      const success = await biometrics.authenticate('Unlock Expensio with FaceID');
+      if (success) {
+        await haptics.success();
+        onSuccess();
+      }
+    });
+  };
 
   const handleKeyPress = async (digit: string) => {
     if (pin.length >= 4 || loading) return;
@@ -96,14 +125,7 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
   const handleBiometricPress = async () => {
     await haptics.light();
     setError('');
-    const success = await biometrics.authenticate('Unlock Expensio');
-    if (success) {
-      await haptics.success();
-      onSuccess();
-    } else {
-      await haptics.error();
-      setError('Biometric verification failed. Enter 4-digit PIN.');
-    }
+    animateAndTriggerFaceId();
   };
 
   const handleForgotPin = async () => {
@@ -114,153 +136,121 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-
-      {/* Atmospheric Ambient Liquid Glow */}
+      {/* Pristine Light Theme Background */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#EEF5FF', '#F8FAFD', '#F4F7FB']}
+          colors={['#F8FAFC', '#F1F5F9']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.ambientGlowTop} />
-        <View style={styles.ambientGlowBottom} />
       </View>
 
       <View style={styles.container}>
-        {/* Top Header */}
-        <View style={styles.header}>
-          <View style={styles.brandCapsule}>
-            <View style={styles.brandDot} />
-            <Text style={styles.brandTitle}>Expensio</Text>
+        {/* Header Icon */}
+        <View style={styles.headerIconContainer}>
+          <View style={styles.lockIconBg}>
+            <Feather name="lock" size={24} color="#3B82F6" />
           </View>
-          <Text style={styles.brandSubtitle}>Secure Access</Text>
         </View>
 
-        {/* Apple Liquid Glass Passcode Card */}
-        <View style={styles.glassPasscodeCard}>
-          <View style={styles.glassTopSpecular} />
+        <Text style={styles.title}>Secure Access</Text>
+        <Text style={styles.subtitle}>
+          Enter your 4-digit PIN to unlock Expensio
+        </Text>
 
-          <LinearGradient
-            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardInner}
-          >
-            {/* Shield Icon Badge */}
-            <View style={styles.shieldLens}>
-              <Feather name="shield" size={24} color="#14B8A6" />
+        {/* PIN Dots (Fixed Height Container prevents UI Shifts) */}
+        <View style={styles.dotsContainer}>
+          {[0, 1, 2, 3].map((index) => {
+            const isFilled = pin.length > index;
+            return (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  isFilled && styles.dotFilled,
+                ]}
+              />
+            );
+          })}
+        </View>
+
+        {/* Status Area (Fixed Height Container prevents UI Shifts) */}
+        <View style={styles.statusContainer}>
+          {loading ? (
+            <ActivityIndicator color="#3B82F6" />
+          ) : error ? (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
             </View>
+          ) : null}
+        </View>
 
-            <Text style={styles.passcodeTitle}>Security PIN</Text>
-            <Text style={styles.passcodeSubtitle}>
-              Enter your 4-digit passcode to unlock your financial vault
-            </Text>
-
-            {/* 4 Apple Passcode Dots */}
-            <View style={styles.dotsContainer}>
-              {[0, 1, 2, 3].map((index) => {
-                const isFilled = pin.length > index;
-                return (
-                  <View
-                    key={index}
-                    style={[
-                      styles.dot,
-                      isFilled && styles.dotFilled,
-                      loading && styles.dotLoading,
-                    ]}
-                  />
-                );
-              })}
-            </View>
-
-            {error ? (
-              <View style={styles.errorBox}>
-                <Ionicons name="alert-circle" size={14} color="#E11D48" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            {loading && (
-              <ActivityIndicator color="#14B8A6" style={{ marginVertical: 8 }} />
-            )}
-
-            {/* Apple Circular Passcode Keypad */}
-            <View style={styles.keypad}>
-              {[
-                ['1', '2', '3'],
-                ['4', '5', '6'],
-                ['7', '8', '9'],
-              ].map((row, rIdx) => (
-                <View key={rIdx} style={styles.keypadRow}>
-                  {row.map((digit) => (
-                    <TouchableOpacity
-                      key={digit}
-                      style={[styles.circularDial, { width: DIAL_SIZE, height: DIAL_SIZE, borderRadius: DIAL_SIZE / 2 }]}
-                      activeOpacity={0.65}
-                      onPress={() => handleKeyPress(digit)}
-                    >
-                      <Text style={styles.dialNumberText}>{digit}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+        {/* Keypad */}
+        <View style={styles.keypad}>
+          {[
+            ['1', '2', '3'],
+            ['4', '5', '6'],
+            ['7', '8', '9'],
+          ].map((row, rIdx) => (
+            <View key={rIdx} style={styles.keypadRow}>
+              {row.map((digit) => (
+                <TouchableOpacity
+                  key={digit}
+                  style={[styles.dialBtn, { width: DIAL_SIZE, height: DIAL_SIZE, borderRadius: DIAL_SIZE / 2 }]}
+                  activeOpacity={0.2}
+                  onPress={() => handleKeyPress(digit)}
+                >
+                  <Text style={styles.dialText}>{digit}</Text>
+                </TouchableOpacity>
               ))}
+            </View>
+          ))}
 
-              {/* Bottom Row: Biometrics | 0 | Sleek Backspace */}
-              <View style={styles.keypadRow}>
-                {/* Left: Biometrics or Empty */}
-                {biometricStatus?.isAvailable ? (
-                  <TouchableOpacity
-                    style={[styles.actionDial, { width: DIAL_SIZE, height: DIAL_SIZE, borderRadius: DIAL_SIZE / 2 }]}
-                    activeOpacity={0.7}
-                    onPress={handleBiometricPress}
-                  >
-                    <Ionicons name="scan-outline" size={24} color="#14B8A6" />
-                    <Text style={styles.biometricLabel}>Face ID</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={[styles.dialEmpty, { width: DIAL_SIZE, height: DIAL_SIZE }]} />
-                )}
-
-                {/* Center: 0 */}
-                <TouchableOpacity
-                  style={[styles.circularDial, { width: DIAL_SIZE, height: DIAL_SIZE, borderRadius: DIAL_SIZE / 2 }]}
-                  activeOpacity={0.65}
-                  onPress={() => handleKeyPress('0')}
-                >
-                  <Text style={styles.dialNumberText}>0</Text>
-                </TouchableOpacity>
-
-                {/* Right: Sleek Apple Backspace Icon */}
-                <TouchableOpacity
-                  style={[
-                    styles.actionDial,
-                    { width: DIAL_SIZE, height: DIAL_SIZE, borderRadius: DIAL_SIZE / 2 },
-                    pin.length === 0 && styles.actionDialMuted,
-                  ]}
+          {/* Bottom Row: Biometrics, 0, Delete */}
+          <View style={styles.keypadRow}>
+            <View style={{ width: DIAL_SIZE, alignItems: 'center', justifyContent: 'center' }}>
+              {biometricStatus?.isAvailable && (
+                <TouchableOpacity 
+                  onPress={handleBiometricPress}
                   activeOpacity={0.6}
-                  onPress={handleDelete}
-                  disabled={pin.length === 0}
                 >
-                  <Ionicons
-                    name="backspace-outline"
-                    size={26}
-                    color={pin.length > 0 ? '#0F172A' : '#CBD5E1'}
-                  />
+                  <Animated.View style={[styles.biometricBtn, { transform: [{ scale: faceIdScale }] }]}>
+                    <Ionicons
+                      name={biometricStatus.biometricType === 'FaceID' ? 'scan-outline' : 'finger-print'}
+                      size={28}
+                      color="#3B82F6"
+                    />
+                  </Animated.View>
                 </TouchableOpacity>
-              </View>
+              )}
             </View>
 
-            {/* Footer Action */}
             <TouchableOpacity
-              style={styles.switchAccountBtn}
-              activeOpacity={0.7}
-              onPress={handleForgotPin}
+              style={[styles.dialBtn, { width: DIAL_SIZE, height: DIAL_SIZE, borderRadius: DIAL_SIZE / 2 }]}
+              activeOpacity={0.2}
+              onPress={() => handleKeyPress('0')}
             >
-              <Text style={styles.switchAccountText}>Sign in with another account</Text>
+              <Text style={styles.dialText}>0</Text>
             </TouchableOpacity>
-          </LinearGradient>
+
+            <View style={{ width: DIAL_SIZE, alignItems: 'center', justifyContent: 'center' }}>
+              <TouchableOpacity
+                onPress={handleDelete}
+                activeOpacity={0.4}
+                style={styles.deleteBtn}
+              >
+                <Feather name="delete" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
+
+        {/* Footer */}
+        <TouchableOpacity style={styles.footerBtn} onPress={handleForgotPin} activeOpacity={0.6}>
+          <Text style={styles.footerBtnText}>Sign in with another account</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -269,231 +259,129 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-  ambientGlowTop: {
-    position: 'absolute',
-    top: -50,
-    right: -30,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(37, 99, 235, 0.09)',
-  },
-  ambientGlowBottom: {
-    position: 'absolute',
-    bottom: -60,
-    left: -40,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(124, 58, 237, 0.06)',
+    backgroundColor: '#F8FAFC',
   },
   container: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
   },
-
-  // Header
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  brandCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  brandDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#0D9488',
-  },
-  brandTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.4,
-  },
-  brandSubtitle: {
-    fontSize: 12.5,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-
-  // Glass Card
-  glassPasscodeCard: {
-    width: '100%',
-    maxWidth: 380,
-    borderRadius: 28,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 28,
-    elevation: 0,
-  },
-  glassTopSpecular: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    zIndex: 2,
-  },
-  cardInner: {
-    paddingVertical: 26,
-    paddingHorizontal: 22,
+  headerIconContainer: {
+    marginBottom: 24,
     alignItems: 'center',
   },
-
-  // Shield Lens
-  shieldLens: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  lockIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(37, 99, 235, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 0,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
-  passcodeTitle: {
-    fontSize: 21,
+  title: {
+    fontSize: 26,
     fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 4,
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
-  passcodeSubtitle: {
-    fontSize: 12.5,
-    color: '#94A3B8',
+  subtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 32,
     textAlign: 'center',
-    lineHeight: 17,
-    marginBottom: 18,
-    paddingHorizontal: 12,
   },
-
-  // Apple PIN Dots
   dotsContainer: {
     flexDirection: 'row',
     gap: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-    height: 24,
+    height: 24, // Fixed height prevents shifting
+    marginBottom: 20,
   },
   dot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 1.8,
-    borderColor: '#CBD5E1',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#E2E8F0',
   },
   dotFilled: {
-    backgroundColor: '#0D9488',
-    borderColor: '#14B8A6',
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 0,
-    transform: [{ scale: 1.1 }],
+    backgroundColor: '#3B82F6',
   },
-  dotLoading: {
-    opacity: 0.5,
+  statusContainer: {
+    height: 36, // Fixed height prevents layout shift
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-
-  // Error
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginBottom: 10,
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 6,
     borderWidth: 1,
-    borderColor: '#FECDD3',
+    borderColor: '#FCA5A5',
   },
   errorText: {
-    color: '#E11D48',
-    fontSize: 12,
+    color: '#EF4444',
+    fontSize: 13,
     fontWeight: '600',
   },
-
-  // Keypad
   keypad: {
     width: '100%',
-    maxWidth: 290,
-    gap: 12,
-    marginTop: 8,
+    maxWidth: 300,
+    gap: 16,
   },
   keypadRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  circularDial: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 1)',
+  dialBtn: {
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 0,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  dialNumberText: {
-    fontSize: 25,
+  dialText: {
+    fontSize: 28,
     fontWeight: '700',
     color: '#0F172A',
   },
-  actionDial: {
+  biometricBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
   },
-  actionDialMuted: {
-    opacity: 0.35,
+  deleteBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  biometricLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#14B8A6',
-    marginTop: 2,
+  footerBtn: {
+    marginTop: 40,
+    padding: 10,
   },
-  dialEmpty: {
-    backgroundColor: 'transparent',
-  },
-
-  // Footer
-  switchAccountBtn: {
-    marginTop: 22,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  switchAccountText: {
-    fontSize: 12.5,
+  footerBtnText: {
+    color: '#64748B',
+    fontSize: 14,
     fontWeight: '600',
-    color: '#94A3B8',
   },
 });

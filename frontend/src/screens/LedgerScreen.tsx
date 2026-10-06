@@ -50,7 +50,7 @@ export function LedgerScreen({ navigation, route, onSuccess, onResetAuth, ...pro
         <View style={styles.screenTitleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-              <Feather name="menu" size={24} color="#F8FAFC" />
+              <Feather name="menu" size={24} color="#0F172A" />
             </TouchableOpacity>
             <View>
               <Text style={styles.screenHeading}>Transactions</Text>
@@ -123,7 +123,7 @@ export function LedgerScreen({ navigation, route, onSuccess, onResetAuth, ...pro
               return (
                 <View key={tx.id} style={styles.transactionCard}>
                   <View style={styles.txLeft}>
-                    <View style={[styles.txIconBox, { backgroundColor: isIncome ? 'rgba(0, 209, 178, 0.15)' : 'rgba(255, 77, 77, 0.15)' }]}>
+                    <View style={[styles.txIconBox, { backgroundColor: isIncome ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 77, 77, 0.15)' }]}>
                       <Feather name={iconName} size={16} color={isIncome ? colors.primary : colors.coral} />
                     </View>
                     <View>
@@ -182,12 +182,12 @@ const styles = StyleSheet.create({
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#19202A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 14,
     height: 44,
     borderWidth: 1,
-    borderColor: '#242D3D',
+    borderColor: '#E2E8F0',
     marginBottom: 12,
   },
   searchInput: {
@@ -203,11 +203,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#19202A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#242D3D',
+    borderColor: '#E2E8F0',
   },
   filterPillActive: {
     backgroundColor: colors.primary,
@@ -238,11 +238,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#19202A',
+    backgroundColor: '#FFFFFF',
     padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#242D3D',
+    borderColor: '#E2E8F0',
   },
   txLeft: {
     flexDirection: 'row',

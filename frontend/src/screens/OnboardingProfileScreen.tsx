@@ -154,7 +154,7 @@ export function OnboardingProfileScreen({
             <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)']} style={styles.cardGradient}>
               
               <View style={styles.cardHeader}>
-                <Feather name="user" size={18} color="#F8FAFC" />
+                <Feather name="user" size={18} color="#0F172A" />
                 <Text style={styles.cardTitle}>Identity</Text>
               </View>
 
@@ -207,7 +207,7 @@ export function OnboardingProfileScreen({
             <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)']} style={styles.cardGradient}>
               
               <View style={styles.cardHeader}>
-                <Feather name="target" size={18} color="#F8FAFC" />
+                <Feather name="target" size={18} color="#0F172A" />
                 <Text style={styles.cardTitle}>Monthly Budget</Text>
               </View>
 
@@ -265,7 +265,7 @@ export function OnboardingProfileScreen({
 
         <TouchableOpacity activeOpacity={0.85} onPress={handleSave} disabled={loading} style={styles.submitBtnWrapper}>
           <LinearGradient
-            colors={['#0D9488', '#0F766E']}
+            colors={['#3B82F6', '#0F766E']}
             style={styles.submitBtn}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           >
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   mainHeading: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#F8FAFC',
+    color: '#0F172A',
     letterSpacing: -1.2,
   },
   subHeading: {
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 20,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     letterSpacing: -0.5,
   },
   recessedInputRow: {
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
     marginBottom: 24,
   },
   avatarHero: {
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   avatarDock: {
     flexDirection: 'row',
@@ -400,8 +400,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   avatarLabel: {
     fontSize: 11,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 28,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   presetRow: {
     flexDirection: 'row',
@@ -442,11 +442,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 4,
     paddingVertical: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 14,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   presetPillSelected: {
     backgroundColor: 'rgba(20, 184, 166, 0.2)',
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   presetText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#CBD5E1',
+    color: '#64748B',
   },
   presetTextSelected: {
     color: '#14B8A6',
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   allocCol: {
     flex: 1,
@@ -480,11 +480,11 @@ const styles = StyleSheet.create({
   allocValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   allocDivider: {
     width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     marginHorizontal: 16,
   },
   submitBtnWrapper: {
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitBtnText: {
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.5,

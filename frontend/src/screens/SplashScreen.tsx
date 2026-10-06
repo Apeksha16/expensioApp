@@ -1,145 +1,170 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
-  TouchableOpacity,
   Platform,
+  Easing,
 } from 'react-native';
 import { spacing } from '../theme';
 import { IconWallet } from '../components/icons/Icons';
-import { useTheme } from '../theme/ThemeContext';
+import { Feather } from '@expo/vector-icons';
 import { haptics } from '../services/haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
-import { LinearGradient } from 'expo-linear-gradient';
+const VERBIAGES = [
+  "Initializing secure vault...",
+  "Syncing your accounts...",
+  "Encrypting financial data...",
+  "Fetching biometric details...",
+];
 
 export function SplashScreen({ onFinish }: SplashScreenProps) {
-  const { isDark } = useTheme();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
   const isNative = Platform.OS !== 'web';
+  
+  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const faceIdOpacity = useRef(new Animated.Value(0)).current;
+  const scanLineAnim = useRef(new Animated.Value(0)).current;
+  
+  const [verbiageIndex, setVerbiageIndex] = useState(0);
 
   useEffect(() => {
-    // ... animation code ...
-    Animated.timing(fadeAnim, {
+    // 1. Initial Logo pop-in
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: isNative,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: isNative,
+      })
+    ]).start();
+
+    // 2. Verbiage cycle
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      currentIndex++;
+      if (currentIndex < VERBIAGES.length) {
+        // Fade out
+        Animated.timing(textOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: isNative,
+        }).start(() => {
+          setVerbiageIndex(currentIndex);
+          // Fade in
+          Animated.timing(textOpacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: isNative,
+          }).start();
+        });
+      }
+    }, 800);
+
+    // Initial fade in for first text
+    Animated.timing(textOpacity, {
       toValue: 1,
       duration: 400,
+      delay: 400,
       useNativeDriver: isNative,
     }).start();
 
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.04,
-          duration: 1000,
-          useNativeDriver: isNative,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: isNative,
-        }),
-      ])
-    );
-    pulseLoop.start();
+    // 3. Trigger Face ID scanning animation near the end
+    setTimeout(() => {
+      Animated.timing(faceIdOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: isNative,
+      }).start();
 
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 1800,
-      useNativeDriver: false,
-    }).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanLineAnim, {
+            toValue: 1,
+            duration: 800,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: isNative,
+          }),
+          Animated.timing(scanLineAnim, {
+            toValue: 0,
+            duration: 800,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: isNative,
+          })
+        ])
+      ).start();
+      
+      haptics.medium();
+    }, 2400); // 2.4s in, show face id
 
+    // 4. Finish
     const timer = setTimeout(() => {
-      haptics.light();
-      onFinish();
-    }, 1900);
+      clearInterval(interval);
+      Animated.timing(logoOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: isNative,
+      }).start(() => {
+        haptics.success();
+        onFinish();
+      });
+    }, 3800);
 
     return () => {
-      pulseLoop.stop();
+      clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [fadeAnim, pulseAnim, progressAnim, isNative, onFinish]);
+  }, []);
 
-  const handleSkip = () => {
-    haptics.light();
-    onFinish();
-  };
-
-  const progressWidth = progressAnim.interpolate({
+  const scanLineTranslateY = scanLineAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
+    outputRange: [-20, 20],
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: '#022C22' }]}>
+    <View style={styles.container}>
       <LinearGradient
-        colors={['#022C22', '#064E3B', '#0F766E']}
+        colors={['#F8FAFC', '#E0F2FE']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        {/* Minimal Icon Badge */}
-        <Animated.View
-          style={[
-            styles.iconWrapper,
-            {
-              backgroundColor: isDark ? 'rgba(0, 229, 168, 0.1)' : '#F0FDF9',
-              borderColor: isDark ? 'rgba(0, 229, 168, 0.25)' : '#CCFBF1',
-              transform: [{ scale: pulseAnim }],
-            },
-          ]}
-        >
-          <IconWallet size={36} color="#00E5A8" />
-        </Animated.View>
-
-        {/* Minimal Typography */}
-        <Text style={[styles.brandTitle, { color: '#F8FAFC' }]}>
-          expensio
-        </Text>
-        <Text style={[styles.brandSubtitle, { color: '#94A3B8' }]}>
-          Smart wealth & shared expenses
-        </Text>
-
-        {/* Hairline Progress Indicator */}
-        <View style={styles.loadingWrapper}>
-          <View
-            style={[
-              styles.progressBarBg,
-              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' },
-            ]}
-          >
-            <Animated.View
-              style={[
-                styles.progressBarFill,
-                { width: progressWidth, backgroundColor: '#14B8A6' },
-              ]}
-            />
-          </View>
+      
+      <Animated.View style={[styles.content, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
+        
+        {/* Core Logo */}
+        <View style={styles.iconWrapper}>
+          <IconWallet size={48} color="#3B82F6" />
         </View>
 
-        {/* Skip button */}
-        <TouchableOpacity
-          style={styles.skipButton}
-          activeOpacity={0.6}
-          onPress={handleSkip}
-        >
-          <Text style={[styles.skipButtonText, { color: '#94A3B8' }]}>
-            Continue →
-          </Text>
-        </TouchableOpacity>
+        <Text style={styles.brandTitle}>
+          Expensio
+        </Text>
+        
+        {/* Animated Face ID Scanner */}
+        <Animated.View style={[styles.faceIdContainer, { opacity: faceIdOpacity }]}>
+          <Feather name="smile" size={32} color="#3B82F6" />
+          <Animated.View style={[styles.scanLine, { transform: [{ translateY: scanLineTranslateY }] }]} />
+        </Animated.View>
+
+        {/* Dynamic Verbiages */}
+        <View style={styles.verbiageContainer}>
+          <Animated.Text style={[styles.verbiageText, { opacity: textOpacity }]}>
+            {VERBIAGES[verbiageIndex]}
+          </Animated.Text>
+        </View>
+
       </Animated.View>
     </View>
   );
@@ -150,54 +175,65 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    backgroundColor: '#F8FAFC',
   },
   content: {
     alignItems: 'center',
     width: '100%',
-    maxWidth: 340,
   },
   iconWrapper: {
-    width: 76,
-    height: 76,
-    borderRadius: 22,
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 4,
+    marginBottom: 20,
     borderWidth: 1,
-    marginBottom: spacing.lg,
+    borderColor: '#EFF6FF',
   },
   brandTitle: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
+    color: '#0F172A',
     letterSpacing: -0.8,
-    marginBottom: 6,
+    marginBottom: 40,
   },
-  brandSubtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginBottom: spacing.xxl,
-  },
-  loadingWrapper: {
-    width: 140,
-    marginBottom: spacing.lg,
-  },
-  progressBarBg: {
-    width: '100%',
-    height: 3,
-    borderRadius: 2,
+  faceIdContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     overflow: 'hidden',
   },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 2,
+  scanLine: {
+    position: 'absolute',
+    width: '100%',
+    height: 2,
+    backgroundColor: '#10B981',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  skipButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+  verbiageContainer: {
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  skipButtonText: {
-    fontSize: 13,
+  verbiageText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
   },
 });

@@ -22,7 +22,7 @@ export function SwipeableRow({
   children,
   onEdit,
   onDelete,
-  editColor = '#00D1B2',
+  editColor = '#3B82F6',
   deleteColor = '#FF4D4D',
 }: SwipeableRowProps) {
   const pan = useRef(new Animated.Value(0)).current;

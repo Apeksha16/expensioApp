@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
   },
   methodBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 1,

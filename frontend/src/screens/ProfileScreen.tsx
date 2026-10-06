@@ -34,7 +34,7 @@ export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...pr
         <Feather name={icon} size={18} color={color} />
       </View>
       <Text style={styles.optionLabel}>{label}</Text>
-      {rightElement || <Feather name="chevron-right" size={18} color="#CBD5E1" />}
+      {rightElement || <Feather name="chevron-right" size={18} color="#64748B" />}
     </TouchableOpacity>
   );
 
@@ -54,7 +54,7 @@ export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...pr
 
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color="#F8FAFC" />
+          <Feather name="arrow-left" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile & Settings</Text>
         <View style={{ width: 24 }} />
@@ -72,7 +72,7 @@ export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...pr
               <Text style={styles.avatarText}>A</Text>
             </LinearGradient>
             <TouchableOpacity style={styles.editAvatarBtn}>
-              <Feather name="camera" size={14} color="#FFFFFF" />
+              <Feather name="camera" size={14} color="#0F172A" />
             </TouchableOpacity>
           </View>
           
@@ -99,12 +99,12 @@ export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...pr
           <OptionItem 
             icon="fingerprint" 
             label="Biometric Login" 
-            color="#F8FAFC"
+            color="#0F172A"
             rightElement={
               <Switch 
                 value={biometricsEnabled} 
                 onValueChange={(v) => { haptics.selection(); setBiometricsEnabled(v); }} 
-                trackColor={{ false: '#CBD5E1', true: '#2563EB' }}
+                trackColor={{ false: '#64748B', true: '#2563EB' }}
               />
             }
           />
@@ -117,7 +117,7 @@ export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...pr
               <Switch 
                 value={notificationsEnabled} 
                 onValueChange={(v) => { haptics.selection(); setNotificationsEnabled(v); }} 
-                trackColor={{ false: '#CBD5E1', true: '#2563EB' }}
+                trackColor={{ false: '#64748B', true: '#2563EB' }}
               />
             }
           />
@@ -130,7 +130,7 @@ export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...pr
               <Switch 
                 value={darkModeEnabled} 
                 onValueChange={(v) => { haptics.selection(); setDarkModeEnabled(v); }} 
-                trackColor={{ false: '#CBD5E1', true: '#2563EB' }}
+                trackColor={{ false: '#64748B', true: '#2563EB' }}
               />
             }
           />
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 24,
     padding: 24,
     marginTop: 10,
@@ -221,25 +221,25 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 36,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
   editAvatarBtn: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: '#F8FAFC',
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: '#0F172A',
   },
   profileName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 4,
   },
   profileHandle: {
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   sectionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 20,
     paddingHorizontal: 16,
     marginBottom: 24,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     marginLeft: 50,
   },
   logoutBtn: {

@@ -12,12 +12,14 @@ import {
   NativeModules,
   ScrollView,
   Image,
+  Pressable,
 } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { haptics } from '../services/haptics';
 import { secureStore, SECURE_KEYS } from '../services/secureStore';
 import { storage, STORAGE_KEYS } from '../services/storage';
@@ -154,12 +156,12 @@ function LiquidGlassTabBar({ state, navigation, insets }: any) {
         { bottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16 },
       ]}
     >
-      <View style={styles.glassBar}>
+      <BlurView tint="light" intensity={80} style={styles.glassBar}>
         {renderTab('Dashboard', 0)}
         {renderTab('Transactions', 1)}
         {renderTab('Analytics', 2)}
         {renderTab('Budgets', 3)}
-      </View>
+      </BlurView>
     </View>
   );
 }
@@ -223,9 +225,10 @@ export function RootNavigator({
     return (
       <Modal visible={drawerVisible} transparent animationType="fade" onRequestClose={() => setDrawerVisible(false)}>
         <View style={{ flex: 1, flexDirection: 'row' }}>
-          <TouchableWithoutFeedback onPress={() => setDrawerVisible(false)}>
-            <View style={{ ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.6)' }} />
-          </TouchableWithoutFeedback>
+          <Pressable 
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]} 
+            onPress={() => setDrawerVisible(false)} 
+          />
           <View style={styles.drawerWrapper}>
             <View style={[styles.drawerContainer, { backgroundColor: colors.surface, paddingTop: insets.top + 20 }]}>
               <View style={styles.drawerProfileSection}>
@@ -399,9 +402,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 66,
     borderRadius: 32,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -412,7 +416,7 @@ const styles = StyleSheet.create({
           '0 12px 32px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95)',
       },
       ios: {
-        shadowColor: '#F8FAFC',
+        shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.15,
         shadowRadius: 24,
@@ -449,7 +453,7 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     fontWeight: '700',
-    color: '#14B8A6',
+    color: '#3B82F6',
   },
 
   // Center Spacer to give breathing room for the elevated FAB
@@ -468,7 +472,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#0D9488',
+    backgroundColor: '#3B82F6',
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -498,7 +502,7 @@ const styles = StyleSheet.create({
   },
   bottomSheet: {
     width: '100%',
-    backgroundColor: '#0F172A', // Solid dark slate background
+    backgroundColor: '#FFFFFF', // Solid dark slate background
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderBottomLeftRadius: 0,
@@ -533,7 +537,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     letterSpacing: -0.5,
     marginBottom: 4,
   },
@@ -549,11 +553,11 @@ const styles = StyleSheet.create({
   sheetActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   sheetActionIcon: {
     width: 48,
@@ -569,7 +573,7 @@ const styles = StyleSheet.create({
   sheetActionTitle: {
     fontSize: 15.5,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 2,
   },
   sheetActionSub: {
@@ -578,11 +582,11 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   sheetCancelBtn: {
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#F8FAFC',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -591,7 +595,7 @@ const styles = StyleSheet.create({
   sheetCancelText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#0F172A',
     letterSpacing: 0.2,
   },
 
@@ -612,11 +616,11 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
     overflow: 'hidden',
     borderRightWidth: 1,
-    borderRightColor: '#242D3D',
+    borderRightColor: '#E2E8F0',
     borderTopWidth: 1,
-    borderTopColor: '#242D3D',
+    borderTopColor: '#E2E8F0',
     borderBottomWidth: 1,
-    borderBottomColor: '#242D3D',
+    borderBottomColor: '#E2E8F0',
   },
   drawerProfileSection: {
     flexDirection: 'row',
@@ -624,7 +628,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#242D3D',
+    borderBottomColor: '#E2E8F0',
     marginBottom: 16,
   },
   drawerAvatar: {
@@ -636,7 +640,7 @@ const styles = StyleSheet.create({
   drawerName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#0F172A',
     marginBottom: 2,
   },
   drawerHandle: {
@@ -657,7 +661,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 209, 178, 0.15)',
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -665,7 +669,7 @@ const styles = StyleSheet.create({
   drawerItemText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: '#475569',
   },
   drawerFooter: {
     flexDirection: 'row',
@@ -675,7 +679,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#242D3D',
+    borderTopColor: '#E2E8F0',
   },
   drawerVersion: {
     fontSize: 12,
@@ -686,11 +690,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#19202A',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#242D3D',
+    borderColor: '#E2E8F0',
   },
 });
 

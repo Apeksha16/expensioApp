@@ -29,7 +29,7 @@ export function ReportsScreen({ navigation, route, onSuccess, onResetAuth, ...pr
         <View style={styles.screenTitleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-              <Feather name="menu" size={24} color="#F8FAFC" />
+              <Feather name="menu" size={24} color="#0F172A" />
             </TouchableOpacity>
             <View>
               <Text style={styles.screenHeading}>Reports</Text>
@@ -42,7 +42,7 @@ export function ReportsScreen({ navigation, route, onSuccess, onResetAuth, ...pr
         <View style={styles.glassCard}>
           <View style={styles.glassTopSpecular} />
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
+            colors={['rgba(0, 0, 0, 0.05)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardInner}
@@ -89,14 +89,14 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === 'android' ? 44 : 20,
     marginBottom: 24,
   },
-  screenHeading: { fontSize: 24, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.5 },
+  screenHeading: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
   screenSubheading: { fontSize: 12.5, color: '#94A3B8', fontWeight: '500', marginTop: 2 },
   
   glassCard: {
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
@@ -111,16 +111,16 @@ const styles = StyleSheet.create({
   cardInner: { padding: 32, alignItems: 'center' },
   iconCircle: {
     width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
     borderWidth: 1, borderColor: 'rgba(37, 99, 235, 0.15)',
   },
-  titleText: { fontSize: 20, fontWeight: '800', color: '#F8FAFC', marginBottom: 12 },
+  titleText: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
   subtitleText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   actionBtn: {
-    backgroundColor: '#0D9488', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
+    backgroundColor: '#3B82F6', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
     shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 0,
   },
-  actionBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  actionBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
 });

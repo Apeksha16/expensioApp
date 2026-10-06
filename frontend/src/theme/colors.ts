@@ -1,58 +1,58 @@
 /**
- * Expensio Design System
+ * Expensio Design System - Light Theme
  * 
  * Target Palette:
- * - Primary: #00E5A8 (Electric Mint)
- * - Secondary: #9D4EDD (Vibrant Purple)
- * - Background: #070D18 (Deep Midnight Blue)
+ * - Primary: #3B82F6 (Vibrant Blue)
+ * - Secondary: #10B981 (Emerald Green)
+ * - Background: #F8FAFC (Slate 50)
  */
 
 export const colors = {
-  primary: '#00D1B2',
-  primaryDark: '#00A88D',
-  primaryMuted: 'rgba(0, 209, 178, 0.12)',
+  primary: '#3B82F6',
+  primaryDark: '#2563EB',
+  primaryMuted: 'rgba(59, 130, 246, 0.15)',
 
-  secondary: '#6EE7F9',
-  secondaryDark: '#4DB9C8',
-  secondaryMuted: 'rgba(110, 231, 249, 0.12)',
+  secondary: '#10B981',
+  secondaryDark: '#059669',
+  secondaryMuted: 'rgba(16, 185, 129, 0.15)',
 
   dark: '#000000',
-  background: '#0B0F14',
-  backgroundLight: '#11171E',
-  surface: '#141922',
-  surfaceElevated: '#1A212D',
-  surfaceLight: '#1E2634',
+  background: '#F8FAFC',
+  backgroundLight: '#FFFFFF',
+  surface: '#FFFFFF',
+  surfaceElevated: '#F1F5F9',
+  surfaceLight: '#F3F4F6',
 
-  border: '#242D3D',
-  borderLight: '#1A212D',
-  borderActive: '#00D1B2',
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
+  borderActive: '#3B82F6',
 
-  textPrimary: '#FFFFFF',
-  textSecondary: '#A1A8B3',
-  textMuted: '#687383',
-  textDark: '#FFFFFF',
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#94A3B8',
+  textDark: '#000000',
 
-  emerald: '#00D1B2',
-  emeraldMuted: 'rgba(0, 209, 178, 0.12)',
-  coral: '#FF4D4D',
-  coralMuted: 'rgba(255, 77, 77, 0.12)',
-  warning: '#FFB84D',
-  warningMuted: 'rgba(255, 184, 77, 0.12)',
-  gold: '#FFB84D',
-  purple: '#9D4EDD',
+  emerald: '#10B981',
+  emeraldMuted: 'rgba(16, 185, 129, 0.15)',
+  coral: '#EF4444',
+  coralMuted: 'rgba(239, 68, 68, 0.15)',
+  warning: '#F59E0B',
+  warningMuted: 'rgba(245, 158, 11, 0.15)',
+  gold: '#F59E0B',
+  purple: '#8B5CF6',
 
   categories: {
-    food: '#FF4D4D',
-    travel: '#00D1B2',
-    shopping: '#9D4EDD',
-    bills: '#FFB84D',
-    entertainment: '#6EE7F9',
-    health: '#00D1B2',
+    food: '#EF4444',
+    travel: '#3B82F6',
+    shopping: '#8B5CF6',
+    bills: '#F59E0B',
+    entertainment: '#EC4899',
+    health: '#10B981',
   },
 
-  gradientBrand: ['#00D1B2', '#00A88D'],
-  gradientGold: ['#FFD166', '#FFB84D'],
-  gradientDanger: ['#FF6B6B', '#FF4D4D'],
+  gradientBrand: ['#60A5FA', '#3B82F6'],
+  gradientGold: ['#FCD34D', '#F59E0B'],
+  gradientDanger: ['#F87171', '#EF4444'],
 };
 
 export const spacing = {

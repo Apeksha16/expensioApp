@@ -19,6 +19,7 @@ import { useAuth } from '../hooks/useAuth';
 import { SplashScreen } from './SplashScreen';
 import { MpinScreen } from './MpinScreen';
 import { OnboardingProfileScreen } from './OnboardingProfileScreen';
+import { IntroCarouselScreen } from './IntroCarouselScreen';
 
 interface AuthScreenProps {
   onAuthenticated: (user: any, isProfileComplete?: boolean) => void;
@@ -96,6 +97,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     sendOtp,
     verifyOtp,
     finishSplash,
+    finishIntro,
     onMpinSuccess,
     onResetAuth,
     onOnboardingCompleted,
@@ -107,12 +109,17 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     return <SplashScreen onFinish={finishSplash} />;
   }
 
-  // 2. MPIN Guard
+  // 2. Intro Carousel
+  if (flowState === 'intro_carousel') {
+    return <IntroCarouselScreen onFinish={finishIntro} />;
+  }
+
+  // 3. MPIN Guard
   if (flowState === 'mpin_guard') {
     return <MpinScreen onSuccess={onMpinSuccess} onResetAuth={onResetAuth} />;
   }
 
-  // 3. Onboarding Setup
+  // 4. Onboarding Setup
   if (flowState === 'onboarding') {
     return (
       <OnboardingProfileScreen
@@ -181,9 +188,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                 activeOpacity={0.7} 
                 onPress={() => setCountryModalVisible(true)}
               >
-                <Text style={styles.flagEmoji}>{selectedCountry.flag}</Text>
                 <View style={{ justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 10, color: '#94A3B8', fontWeight: '600' }}>{selectedCountry.name}</Text>
                   <Text style={styles.countryCode}>{selectedCountry.callingCode}</Text>
                 </View>
                 <Feather name="chevron-down" size={16} color="#94A3B8" style={{ marginLeft: 6 }} />
@@ -197,12 +202,13 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                 maxLength={10}
                 value={phone}
                 onChangeText={setPhone}
+                autoFocus={true}
               />
             </View>
 
             <TouchableOpacity activeOpacity={0.85} onPress={sendOtp} disabled={loading}>
               <LinearGradient
-                colors={['#0D9488', '#0F766E']}
+                colors={['#3B82F6', '#0F766E']}
                 style={styles.submitButtonPill}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               >
@@ -211,10 +217,10 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   {loading ? (
                     <ActivityIndicator color="#FFF" />
                   ) : (
-                    <Text style={styles.submitButtonText}>Continue with OTP</Text>
+                    <Text style={styles.submitButtonText}>Send Verification Code</Text>
                   )}
                   <View style={styles.buttonIconBox}>
-                    <Feather name="arrow-right" size={18} color="#FFFFFF" />
+                    <Feather name="arrow-right" size={18} color="#0F172A" />
                   </View>
                 </View>
               </LinearGradient>
@@ -237,7 +243,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
             <TouchableOpacity activeOpacity={0.85} onPress={verifyOtp} disabled={loading}>
               <LinearGradient
-                colors={['#0D9488', '#0F766E']}
+                colors={['#3B82F6', '#0F766E']}
                 style={styles.submitButtonPill}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               >
@@ -249,7 +255,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                     <Text style={styles.submitButtonText}>Verify & Proceed</Text>
                   )}
                   <View style={styles.buttonIconBox}>
-                    <Feather name="check" size={18} color="#FFFFFF" />
+                    <Feather name="check" size={18} color="#0F172A" />
                   </View>
                 </View>
               </LinearGradient>
@@ -293,8 +299,12 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Country</Text>
-              <TouchableOpacity onPress={() => setCountryModalVisible(false)}>
-                <Feather name="x" size={24} color="#F8FAFC" />
+              <TouchableOpacity 
+                onPress={() => setCountryModalVisible(false)}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                activeOpacity={0.6}
+              >
+                <Feather name="x" size={24} color="#0F172A" />
               </TouchableOpacity>
             </View>
 
@@ -359,7 +369,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 28,
-    paddingBottom: 40,
+    paddingBottom: 120, // ensure button is above keypad
   },
   headerArea: {
     zIndex: 2,
@@ -370,7 +380,7 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
@@ -398,17 +408,17 @@ const styles = StyleSheet.create({
   cardBg2: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   cardBg1: {
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   cardMain: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.4,
@@ -425,7 +435,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   cardIconBox: {
     width: 28,
@@ -439,7 +449,7 @@ const styles = StyleSheet.create({
   cardItemTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 1,
   },
   cardItemSubtitle: {
@@ -454,7 +464,7 @@ const styles = StyleSheet.create({
   mainHeading: {
     fontSize: 38,
     fontWeight: '900',
-    color: '#F8FAFC',
+    color: '#0F172A',
     lineHeight: 44,
     marginBottom: 12,
     letterSpacing: -1,
@@ -477,7 +487,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.25)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 24,
     height: 64,
     paddingHorizontal: 16,
@@ -496,12 +506,12 @@ const styles = StyleSheet.create({
   countryCode: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   divider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     marginRight: 12,
     marginLeft: 12,
   },
@@ -510,7 +520,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 18,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   otpInput: {
     flex: 1,
@@ -519,7 +529,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 8,
     textAlign: 'center',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   submitButtonPill: {
     height: 60,
@@ -539,7 +549,7 @@ const styles = StyleSheet.create({
   },
   buttonSpacer: { width: 44 },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -589,30 +599,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Modal Styles (Dark Theme)
+  // Modal Styles (Light Theme)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
     justifyContent: 'flex-end',
   },
   modalDismissArea: { flex: 1 },
   modalContent: {
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     height: '75%',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingTop: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
+    width: 48,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -623,24 +636,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#F1F5F9',
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: '#E2E8F0',
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   countryList: { paddingBottom: 40 },
   countryRow: {
@@ -649,10 +662,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   countryRowSelected: {
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
+    backgroundColor: '#F0FDFA',
     borderRadius: 12,
     borderBottomWidth: 0,
     paddingHorizontal: 12,
@@ -662,7 +675,7 @@ const styles = StyleSheet.create({
   countryRowFlag: { fontSize: 24, marginRight: 12 },
   countryRowName: {
     fontSize: 15,
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontWeight: '500',
   },
   countryRowRight: { flexDirection: 'row', alignItems: 'center' },

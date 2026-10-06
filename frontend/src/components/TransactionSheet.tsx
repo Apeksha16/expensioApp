@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 20,
   },
   segmentedRow: {
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   segmentTextActive: {
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   input: {
     backgroundColor: '#1E293B',
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 52,
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 15,
     fontWeight: '600',
     marginBottom: 16,
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   splitContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 16,
     padding: 16,
     marginTop: 10,
@@ -578,22 +578,22 @@ const styles = StyleSheet.create({
   shareName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   shareValueText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
   },
   shareInput: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#334155',
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 38,
     width: 100,
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'right',
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
   validationText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     letterSpacing: 0.5,
   },
   actionRow: {

@@ -94,7 +94,7 @@ export function AccountGaugeWidget({
           cx: knobX,
           cy: knobY,
           r: knobR,
-          fill: '#FFFFFF',
+          fill: '#0F172A',
           stroke: colors.background,
           strokeWidth: 2,
         })
@@ -142,7 +142,7 @@ export function AccountGaugeWidget({
             borderRadius: knobR,
             backgroundColor: colors.secondary,
             borderWidth: 2,
-            borderColor: '#FFFFFF',
+            borderColor: '#0F172A',
             elevation: 0,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Platform.select({
       web: {
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(0, 0, 0, 0.05)',
       },
       ios: {
         shadowColor: '#000',
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: 'rgba(0, 0, 0, 0.03)',
   },
   statCol: {
     gap: 3,
@@ -408,6 +408,6 @@ const styles = StyleSheet.create({
     width: 20,
   },
   dotInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
 });

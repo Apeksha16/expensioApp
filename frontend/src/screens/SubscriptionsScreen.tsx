@@ -68,7 +68,7 @@ export function SubscriptionsScreen({ navigation, route, onSuccess, onResetAuth,
         <View style={styles.titleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-              <Feather name="menu" size={24} color="#F8FAFC" />
+              <Feather name="menu" size={24} color="#0F172A" />
             </TouchableOpacity>
             <View>
               <Text style={styles.pageTitle}>Subscriptions</Text>
@@ -82,7 +82,7 @@ export function SubscriptionsScreen({ navigation, route, onSuccess, onResetAuth,
           <View style={styles.glassTopSpecular} />
 
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
+            colors={['rgba(0, 0, 0, 0.05)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCardInner}
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     letterSpacing: -0.5,
   },
   pageSubtitle: {
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
     paddingVertical: 4,
     paddingHorizontal: 9,
     borderRadius: 10,
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#0D9488',
+    backgroundColor: '#3B82F6',
   },
   activeDotText: {
     fontSize: 10,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   totalRecurringAmount: {
     fontSize: 34,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     letterSpacing: -1,
     marginBottom: 14,
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -330,11 +330,11 @@ const styles = StyleSheet.create({
   // Segmented Tabs
   segmentedTabRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     padding: 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
     marginBottom: 16,
   },
   segmentBtn: {
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   segmentBtnActive: {
-    backgroundColor: '#0D9488',
+    backgroundColor: '#3B82F6',
     shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   segmentTextActive: {
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
 
   // List Header
@@ -387,11 +387,11 @@ const styles = StyleSheet.create({
   subCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
     shadowColor: '#1E293B',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   subTitleText: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 2,
   },
   subDueText: {
@@ -427,14 +427,14 @@ const styles = StyleSheet.create({
   subAmountText: {
     fontSize: 14.5,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 4,
   },
   paidBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 6,
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     color: '#34D399',
   },
   payActionBtn: {
-    backgroundColor: '#0D9488',
+    backgroundColor: '#3B82F6',
     paddingVertical: 5,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -453,15 +453,15 @@ const styles = StyleSheet.create({
   payActionText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
   emptyCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     padding: 24,
     borderRadius: 18,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   emptyText: {
     fontSize: 13,

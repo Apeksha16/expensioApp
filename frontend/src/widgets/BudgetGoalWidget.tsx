@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   badgeDays: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   },
   barTrack: {
     height: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 10,

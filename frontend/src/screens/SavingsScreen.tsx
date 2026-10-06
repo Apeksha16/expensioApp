@@ -132,7 +132,7 @@ export function SavingsScreen({ navigation }: any) {
         <View style={styles.screenTitleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
-              <Feather name="arrow-left" size={24} color="#F8FAFC" />
+              <Feather name="arrow-left" size={24} color="#0F172A" />
             </TouchableOpacity>
             <View>
               <Text style={styles.screenHeading}>Savings</Text>
@@ -146,7 +146,7 @@ export function SavingsScreen({ navigation }: any) {
           <View style={styles.heroCard}>
             <View style={styles.balanceHeaderRow}>
               <Text style={styles.balanceLabel}>TOTAL SAVINGS</Text>
-              <View style={[styles.growthPill, savingsSummary.growthStatus === 'shrinking' && { backgroundColor: 'rgba(255, 77, 77, 0.15)' }, savingsSummary.growthStatus === 'neutral' && { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <View style={[styles.growthPill, savingsSummary.growthStatus === 'shrinking' && { backgroundColor: 'rgba(255, 77, 77, 0.15)' }, savingsSummary.growthStatus === 'neutral' && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
                 <Ionicons name={savingsSummary.growthStatus === 'growing' ? "arrow-up" : savingsSummary.growthStatus === 'shrinking' ? "arrow-down" : "remove"} size={10} color={savingsSummary.growthStatus === 'growing' ? colors.primary : savingsSummary.growthStatus === 'shrinking' ? colors.coral : colors.textSecondary} />
                 <Text style={[styles.growthText, savingsSummary.growthStatus === 'shrinking' && { color: colors.coral }, savingsSummary.growthStatus === 'neutral' && { color: colors.textSecondary }]}>
                   {savingsSummary.growthStatus === 'growing' ? 'Active ↗' : savingsSummary.growthStatus === 'shrinking' ? 'Declining ↘' : 'Neutral'}
@@ -178,7 +178,7 @@ export function SavingsScreen({ navigation }: any) {
               return (
                 <View key={tx.id} style={styles.transactionCard}>
                   <View style={styles.txLeft}>
-                    <View style={[styles.txIconBox, { backgroundColor: isIncome ? 'rgba(0, 209, 178, 0.15)' : 'rgba(255, 77, 77, 0.15)' }]}>
+                    <View style={[styles.txIconBox, { backgroundColor: isIncome ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 77, 77, 0.15)' }]}>
                       <Feather name={isIncome ? 'arrow-down-left' : 'arrow-up-right'} size={16} color={isIncome ? colors.primary : colors.coral} />
                     </View>
                     <View>
@@ -315,17 +315,17 @@ const styles = StyleSheet.create({
   screenSubheading: { fontSize: 13, color: colors.textSecondary, fontWeight: '500', marginTop: 2 },
   
   heroCard: {
-    borderRadius: 20, marginBottom: 28, backgroundColor: '#1E2634',
-    padding: 24, borderWidth: 1, borderColor: '#2A3441',
+    borderRadius: 20, marginBottom: 28, backgroundColor: '#F1F5F9',
+    padding: 24, borderWidth: 1, borderColor: '#E2E8F0',
   },
   balanceHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   balanceLabel: { fontSize: 14, fontWeight: '500', color: colors.textSecondary },
-  growthPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0, 209, 178, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
+  growthPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59, 130, 246, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
   growthText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
   balanceAmount: { fontSize: 36, fontWeight: '700', color: colors.textPrimary, marginBottom: 20 },
-  divider: { height: 1, backgroundColor: '#2A3441', marginBottom: 16 },
+  divider: { height: 1, backgroundColor: '#E2E8F0', marginBottom: 16 },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-around' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#19202A', borderRadius: 12, borderWidth: 1, borderColor: '#242D3D' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
   actionBtnText: { color: colors.textPrimary, fontWeight: '600', fontSize: 13 },
 
   listContainer: { flex: 1 },
@@ -334,8 +334,8 @@ const styles = StyleSheet.create({
   
   transactionCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#19202A', padding: 14, borderRadius: 16,
-    borderWidth: 1, borderColor: '#242D3D', marginBottom: 10,
+    backgroundColor: '#FFFFFF', padding: 14, borderRadius: 16,
+    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 10,
   },
   txLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   txIconBox: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
@@ -348,11 +348,11 @@ const styles = StyleSheet.create({
   formRow: { marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 },
   input: {
-    backgroundColor: 'rgba(25, 32, 42, 0.5)', borderWidth: 1, borderColor: '#242D3D',
+    backgroundColor: 'rgba(25, 32, 42, 0.5)', borderWidth: 1, borderColor: '#E2E8F0',
     borderRadius: 12, paddingHorizontal: 16, height: 50, color: colors.textPrimary, fontSize: 15,
   },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#19202A', borderWidth: 1, borderColor: '#242D3D' },
+  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   chipTextActive: { color: colors.background },

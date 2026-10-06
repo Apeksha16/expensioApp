@@ -26,7 +26,7 @@ const renderSvg = (size: number, paths: React.ReactNode, viewBox: string = '0 0 
 };
 
 // 1. Dashboard / Grid Icon
-export const IconDashboard: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', style }) => {
+export const IconDashboard: React.FC<IconProps> = ({ size = 22, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -55,7 +55,7 @@ export const IconDashboard: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF
 };
 
 // 2. Wallet Icon
-export const IconWallet: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', style }) => {
+export const IconWallet: React.FC<IconProps> = ({ size = 22, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -88,7 +88,7 @@ export const IconWallet: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', 
 };
 
 // 3. Analytics / Chart Icon
-export const IconAnalytics: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', style }) => {
+export const IconAnalytics: React.FC<IconProps> = ({ size = 22, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -123,7 +123,7 @@ export const IconAnalytics: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF
 };
 
 // 4. Ledger / Book Icon
-export const IconLedger: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', style }) => {
+export const IconLedger: React.FC<IconProps> = ({ size = 22, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -149,7 +149,7 @@ export const IconLedger: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', 
 };
 
 // 5. Users / Friends Icon
-export const IconUsers: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', style }) => {
+export const IconUsers: React.FC<IconProps> = ({ size = 22, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -185,7 +185,7 @@ export const IconUsers: React.FC<IconProps> = ({ size = 22, color = '#FFFFFF', s
 };
 
 // 6. Bell / Notification Icon
-export const IconBell: React.FC<IconProps & { hasBadge?: boolean }> = ({ size = 20, color = '#FFFFFF', hasBadge, style }) => {
+export const IconBell: React.FC<IconProps & { hasBadge?: boolean }> = ({ size = 20, color = '#0F172A', hasBadge, style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={[{ position: 'relative' }, style]}>
@@ -266,7 +266,7 @@ export const IconSparkles: React.FC<IconProps> = ({ size = 20, color = '#2DD4BF'
 };
 
 // 8. Scan QR Icon
-export const IconScan: React.FC<IconProps> = ({ size = 20, color = '#FFFFFF', style }) => {
+export const IconScan: React.FC<IconProps> = ({ size = 20, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -289,7 +289,7 @@ export const IconScan: React.FC<IconProps> = ({ size = 20, color = '#FFFFFF', st
 };
 
 // 9. Send / Transfer Icon
-export const IconSend: React.FC<IconProps> = ({ size = 20, color = '#FFFFFF', style }) => {
+export const IconSend: React.FC<IconProps> = ({ size = 20, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -333,7 +333,7 @@ export const IconSplit: React.FC<IconProps> = ({ size = 20, color = '#F97316', s
 };
 
 // 11. Plus / Add Icon
-export const IconPlus: React.FC<IconProps> = ({ size = 20, color = '#FFFFFF', style }) => {
+export const IconPlus: React.FC<IconProps> = ({ size = 20, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -613,7 +613,7 @@ export const IconCheck: React.FC<IconProps> = ({ size = 18, color = '#34D399', s
 };
 
 // 24. Cross / Close Icon
-export const IconCross: React.FC<IconProps> = ({ size = 18, color = '#FFFFFF', style }) => {
+export const IconCross: React.FC<IconProps> = ({ size = 18, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>
@@ -698,7 +698,7 @@ export const IconTarget: React.FC<IconProps> = ({ size = 18, color = '#38BDF8', 
 };
 
 // 28. Apple Brand Icon (iOS Native)
-export const IconApple: React.FC<IconProps> = ({ size = 20, color = '#FFFFFF', style }) => {
+export const IconApple: React.FC<IconProps> = ({ size = 20, color = '#0F172A', style }) => {
   if (Platform.OS === 'web') {
     return (
       <View style={style}>

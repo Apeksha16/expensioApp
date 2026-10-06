@@ -8,9 +8,9 @@ import {
   Platform,
   ActivityIndicator,
   StatusBar,
-  SafeAreaView,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { biometrics, BiometricStatus } from '../services/biometrics';

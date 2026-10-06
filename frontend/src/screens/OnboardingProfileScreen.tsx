@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { haptics } from '../services/haptics';
 import { api } from '../services/api';
@@ -47,6 +48,7 @@ export function OnboardingProfileScreen({
   initialUser,
   onCompleted,
 }: OnboardingProfileScreenProps) {
+  const insets = useSafeAreaInsets();
   const [username, setUsername] = useState(
     initialUser?.username ? initialUser.username.replace('@', '') : 'apeksha'
   );
@@ -139,7 +141,7 @@ export function OnboardingProfileScreen({
         <View style={styles.blob3} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContainer, { paddingTop: insets.top + 20 }]} showsVerticalScrollIndicator={false}>
         
         <View style={styles.header}>
           <Text style={styles.mainHeading}>Your Profile</Text>
@@ -301,7 +303,6 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 70 : 50,
     paddingBottom: 40,
   },
   header: {

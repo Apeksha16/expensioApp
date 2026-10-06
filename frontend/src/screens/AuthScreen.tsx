@@ -16,6 +16,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { SplashScreen } from './SplashScreen';
 import { MpinScreen } from './MpinScreen';
@@ -80,6 +81,7 @@ const FloatingCards = () => (
 );
 
 export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
+  const insets = useSafeAreaInsets();
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
   const [isCountryModalVisible, setCountryModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,7 +146,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -360,7 +362,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 28,
-    paddingTop: 80, 
     paddingBottom: 40,
   },
   headerArea: {

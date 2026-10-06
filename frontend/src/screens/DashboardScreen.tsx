@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
@@ -20,6 +21,7 @@ import { formatters } from '../utils/formatters';
 import { SettlementSheet } from '../components/SettlementSheet';
 
 export function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
   const { state, summary } = useFinance();
   const [activeTab, setActiveTab] = useState<'salary' | 'cash' | 'savings'>('salary');
@@ -42,7 +44,7 @@ export function DashboardScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -393,7 +395,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 140, // Space for bottom nav
   },

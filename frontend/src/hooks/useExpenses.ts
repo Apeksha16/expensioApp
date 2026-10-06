@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { ExpenseItem, ExpenseCategory, AccountType } from '../types';
-import { api } from '../services/api';
 import { notifications } from '../services/notifications';
 import { haptics } from '../services/haptics';
 import { formatters } from '../utils/formatters';
+import { useFinance } from './FinanceContext';
 
 export interface NewExpensePayload {
   title: string;
@@ -15,35 +15,13 @@ export interface NewExpensePayload {
 }
 
 export function useExpenses() {
-  const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchExpenses = useCallback(async () => {
-    try {
-      setError(null);
-      const res = await api.getExpenses();
-      if (res && res.transactions) {
-        setExpenses(res.transactions);
-      }
-    } catch (e: any) {
-      setError(e.message || 'Failed to load expenses');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchExpenses();
-  }, [fetchExpenses]);
+  const { state, refresh: financeRefresh, loading, addTransaction, deleteTransaction } = useFinance();
 
   const refresh = useCallback(async () => {
-    setRefreshing(true);
     await haptics.light();
-    await fetchExpenses();
-  }, [fetchExpenses]);
+    await financeRefresh();
+  }, [financeRefresh]);
 
   const addExpense = useCallback(
     async (payload: NewExpensePayload): Promise<boolean> => {
@@ -60,18 +38,18 @@ export function useExpenses() {
       }
 
       try {
-        const res = await api.addExpense({
+        const localItem: ExpenseItem = {
+          id: `tx_${Date.now()}`,
           title: trimmedTitle,
           amount: numAmount,
-          category: payload.category,
+          category: payload.category || 'general',
+          date: new Date().toISOString(),
+          method: (payload.method as any) || 'UPI',
           account: payload.account || 'salary',
-          method: payload.method || 'UPI',
           type: payload.type || 'expense',
-        });
+        };
 
-        if (res && res.transaction) {
-          setExpenses((prev) => [res.transaction, ...prev]);
-        }
+        addTransaction(localItem);
 
         await haptics.success();
         await notifications.sendInstantNotification(
@@ -85,25 +63,25 @@ export function useExpenses() {
         return false;
       }
     },
-    []
+    [addTransaction]
   );
 
   const deleteExpense = useCallback(async (id: string) => {
     await haptics.heavy();
-    setExpenses((prev) => prev.filter((item) => item.id !== id));
-  }, []);
+    deleteTransaction(id);
+  }, [deleteTransaction]);
 
   const totalSpend = useMemo(() => {
-    return expenses.reduce((acc, curr) => acc + (curr.type === 'income' ? 0 : curr.amount), 0);
-  }, [expenses]);
+    return state.transactions.reduce((acc, curr) => acc + (curr.type === 'income' ? 0 : curr.amount), 0);
+  }, [state.transactions]);
 
   return {
-    expenses,
+    expenses: state.transactions,
     loading,
-    refreshing,
+    refreshing: loading,
     error,
     totalSpend,
-    expenseCount: expenses.length,
+    expenseCount: state.transactions.length,
     addExpense,
     deleteExpense,
     refresh,

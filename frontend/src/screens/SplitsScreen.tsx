@@ -129,9 +129,7 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
       if (!isSettled) {
         return (
           <SwipeableRow
-            actionText="Settle"
-            actionColor="#34D399"
-            onAction={() => {
+            onEdit={() => {
               haptics.success();
               settleSplit(item.id);
             }}
@@ -230,7 +228,7 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
               <Text style={styles.activeDotText}>NET SOCIAL BALANCE</Text>
             </View>
             <Text style={styles.activeFriendsCount}>
-              {summary.fromPeopleCount} active debtors
+              {summary.getPeopleCount} active debtors
             </Text>
           </View>
 
@@ -245,7 +243,7 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
                 <Text style={styles.tileAmountGreen}>
                   +{formatters.currency(summary.youllGet)}
                 </Text>
-                <Text style={styles.tileSubNote}>from {summary.fromPeopleCount} friends</Text>
+                <Text style={styles.tileSubNote}>from {summary.getPeopleCount} friends</Text>
               </View>
             </View>
 

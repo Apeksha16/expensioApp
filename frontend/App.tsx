@@ -64,10 +64,14 @@ function AppContent() {
   );
 }
 
+import { FinanceProvider } from './src/hooks/FinanceContext';
+
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <FinanceProvider>
+        <AppContent />
+      </FinanceProvider>
     </ThemeProvider>
   );
 }

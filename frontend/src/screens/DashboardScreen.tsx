@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { useDrawer } from '../navigation/RootNavigator';
+import { useFinance } from '../hooks/FinanceContext';
+import { toRupees } from '../utils/financeCalculations';
+import { formatters } from '../utils/formatters';
+import { SettlementSheet } from '../components/SettlementSheet';
 
 export function DashboardScreen() {
   const { openDrawer } = useDrawer();
+  const { state, summary } = useFinance();
+  const [activeTab, setActiveTab] = useState<'salary' | 'cash' | 'savings'>('salary');
+  
+  const [settlePerson, setSettlePerson] = useState<{name: string, balance: number} | null>(null);
 
-  const totalBalance = 12450.80;
-  const spentThisMonth = 2100;
+  const { salary, cash, savings, totalBalance } = summary;
+  const spentThisMonth = toRupees(salary.spentThisMonth);
 
   return (
     <View style={styles.container}>
@@ -81,7 +89,7 @@ export function DashboardScreen() {
             </View>
           </View>
           <Text style={styles.balanceAmount}>
-            ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formatters.currency(toRupees(totalBalance))}
           </Text>
           <View style={styles.divider} />
           <View style={styles.accountsRow}>
@@ -93,104 +101,248 @@ export function DashboardScreen() {
           </View>
         </View>
 
-        {/* Income / Expenses / Savings Summary */}
-        <Text style={styles.sectionTitle}>Income /Expenses/Savings summary</Text>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryCardHeader}>
-              <Text style={styles.summaryLabel}>Income</Text>
-              <View style={styles.summaryIconUp}>
-                <Feather name="arrow-up" size={12} color={colors.primary} />
-              </View>
-            </View>
-            <Text style={styles.summaryAmount}>$2,000</Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: '80%', backgroundColor: colors.primary }]} />
-            </View>
-          </View>
+        {/* Account Tabs */}
+        <View style={styles.tabsRow}>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'salary' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('salary')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'salary' && styles.tabButtonTextActive]}>Salary</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'cash' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('cash')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'cash' && styles.tabButtonTextActive]}>Cash</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'savings' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('savings')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'savings' && styles.tabButtonTextActive]}>Savings</Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryCardHeader}>
-              <Text style={styles.summaryLabel}>Expenses</Text>
-              <View style={styles.summaryIconDown}>
-                <Feather name="arrow-down" size={12} color={colors.coral} />
+        {/* Dynamic Account Card */}
+        <View style={styles.accountCard}>
+          {activeTab === 'salary' && (
+            <>
+              <View style={styles.accountCardHeader}>
+                <Text style={styles.accountCardLabel}>REMAINING</Text>
               </View>
-            </View>
-            <Text style={styles.summaryAmount}>$1,200</Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: '45%', backgroundColor: colors.coral }]} />
-            </View>
-          </View>
+              <Text style={styles.accountCardAmount}>{formatters.currency(toRupees(salary.remaining))}</Text>
+              <View style={styles.accountCardStats}>
+                <View style={styles.accountCardStat}>
+                  <Text style={styles.statLabel}>SPENT THIS MONTH</Text>
+                  <Text style={styles.statValue}>{formatters.currency(toRupees(salary.spentThisMonth))}</Text>
+                </View>
+                <View style={styles.accountCardStat}>
+                  <Text style={styles.statLabel}>SALARY LIMIT</Text>
+                  <Text style={styles.statValue}>{formatters.currency(toRupees(salary.salaryLimit))}</Text>
+                </View>
+              </View>
+            </>
+          )}
 
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryCardHeader}>
-              <Text style={styles.summaryLabel}>Savings</Text>
-              <View style={styles.summaryIconSave}>
-                <Feather name="briefcase" size={12} color={colors.secondary} />
+          {activeTab === 'cash' && (
+            <>
+              <View style={styles.accountCardHeader}>
+                <Text style={styles.accountCardLabel}>CASH BALANCE</Text>
               </View>
-            </View>
-            <Text style={styles.summaryAmount}>$1,100</Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: '80%', backgroundColor: colors.secondary }]} />
-            </View>
-          </View>
+              <Text style={styles.accountCardAmount}>{formatters.currency(toRupees(cash.cashBalance))}</Text>
+              <View style={[styles.accountCardStats, { justifyContent: 'space-between', alignItems: 'center' }]}>
+                <View style={styles.accountCardStat}>
+                  <Text style={styles.statLabel}>CASH SPENT</Text>
+                  <Text style={styles.statValue}>{formatters.currency(toRupees(cash.cashSpent))}</Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Cash')} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.primary, borderRadius: 12 }}>
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Manage</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {activeTab === 'savings' && (
+            <>
+              <View style={styles.accountCardHeader}>
+                <Text style={styles.accountCardLabel}>TOTAL SAVINGS</Text>
+                <View style={[styles.growthPill, savings.growthStatus === 'shrinking' && { backgroundColor: 'rgba(255, 77, 77, 0.15)' }, savings.growthStatus === 'neutral' && { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                  <Ionicons name={savings.growthStatus === 'growing' ? "arrow-up" : savings.growthStatus === 'shrinking' ? "arrow-down" : "remove"} size={10} color={savings.growthStatus === 'growing' ? colors.primary : savings.growthStatus === 'shrinking' ? colors.coral : colors.textSecondary} />
+                  <Text style={[styles.growthText, savings.growthStatus === 'shrinking' && { color: colors.coral }, savings.growthStatus === 'neutral' && { color: colors.textSecondary }]}>
+                    {savings.growthStatus === 'growing' ? 'Active ↗' : savings.growthStatus === 'shrinking' ? 'Declining ↘' : 'Neutral'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.accountCardAmount}>{formatters.currency(toRupees(savings.totalSavings))}</Text>
+              <View style={[styles.accountCardStats, { justifyContent: 'space-between', alignItems: 'center' }]}>
+                <View style={styles.accountCardStat}>
+                  <Text style={styles.statLabel}>ACCUMULATED</Text>
+                  <Text style={styles.statValue}>{formatters.currency(toRupees(savings.accumulated))}</Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Savings')} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.primary, borderRadius: 12 }}>
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Manage</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Upcoming Payments */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Upcoming Payments</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Payments')}>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.transactionsList}>
+          {(() => {
+            const pendingPayments = state.payments
+              .filter(p => p.status === 'pending')
+              .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+            if (pendingPayments.length === 0) {
+              return (
+                <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                  <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 4 }}>No upcoming payments</Text>
+                  <Text style={{ color: colors.textSecondary, textAlign: 'center', fontSize: 13 }}>You're all caught up! Enjoy your stress-free month.</Text>
+                </View>
+              );
+            }
+
+            return pendingPayments.slice(0, 3).map(payment => {
+              let iconName: any = 'credit-card';
+              switch (payment.category?.toLowerCase()) {
+                case 'food': iconName = 'coffee'; break;
+                case 'travel': iconName = 'navigation'; break;
+                case 'shopping': iconName = 'shopping-bag'; break;
+                case 'bills': iconName = 'file-text'; break;
+                case 'health': iconName = 'heart'; break;
+                case 'entertainment': iconName = 'tv'; break;
+              }
+
+              const isOverdue = new Date(payment.dueDate).getTime() < new Date().getTime();
+
+              return (
+                <View key={payment.id} style={styles.transactionCard}>
+                  <View style={styles.txLeft}>
+                    <View style={[styles.txIconBox, { backgroundColor: isOverdue ? 'rgba(255, 77, 77, 0.15)' : 'rgba(255, 184, 77, 0.15)' }]}>
+                      <Feather name={iconName} size={16} color={isOverdue ? colors.coral : '#FFB84D'} />
+                    </View>
+                    <View>
+                      <Text style={styles.txTitle}>{payment.title}</Text>
+                      <Text style={[styles.txDate, isOverdue && { color: colors.coral, fontWeight: '600' }]}>
+                        {isOverdue ? 'Overdue: ' : 'Due: '}{formatters.timestamp(new Date(payment.dueDate))}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.txRight}>
+                    <Text style={styles.txAmountNegative}>
+                      {formatters.currency(payment.amount)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            });
+          })()}
         </View>
 
         {/* Recent Transactions */}
-        <Text style={styles.sectionTitle}>Recent Transactions</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
         
         <View style={styles.transactionsList}>
-          {/* Transaction 1 */}
-          <View style={styles.transactionCard}>
-            <View style={styles.txLeft}>
-              <View style={[styles.txIconBox, { backgroundColor: 'rgba(0, 209, 178, 0.15)' }]}>
-                <Feather name="shopping-bag" size={16} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.txTitle}>Groceries - Whole Foods</Text>
-                <Text style={styles.txDate}>Jun 14, 2022</Text>
-              </View>
-            </View>
-            <View style={styles.txRight}>
-              <Text style={styles.txAmountNegative}>-$100.00</Text>
-              <Text style={styles.txBalance}>-$1,200.00</Text>
-            </View>
-          </View>
+          {state.transactions.length === 0 ? (
+            <Text style={{ color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }}>No recent transactions</Text>
+          ) : (
+            [...state.transactions]
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 5)
+              .map(tx => {
+                const isIncome = tx.type === 'income';
+                let iconName: any = 'credit-card';
+                switch (tx.category?.toLowerCase()) {
+                  case 'food': iconName = 'coffee'; break;
+                  case 'travel': iconName = 'navigation'; break;
+                  case 'shopping': iconName = 'shopping-bag'; break;
+                  case 'bills': iconName = 'file-text'; break;
+                  case 'health': iconName = 'heart'; break;
+                  case 'entertainment': iconName = 'tv'; break;
+                }
+                if (isIncome) iconName = 'arrow-down-left';
 
-          {/* Transaction 2 */}
-          <View style={styles.transactionCard}>
-            <View style={styles.txLeft}>
-              <View style={[styles.txIconBox, { backgroundColor: 'rgba(255, 184, 77, 0.15)' }]}>
-                <Feather name="coffee" size={16} color={colors.warning} />
-              </View>
-              <View>
-                <Text style={styles.txTitle}>Coffee - Starbucks</Text>
-                <Text style={styles.txDate}>Jun 10, 2022</Text>
-              </View>
-            </View>
-            <View style={styles.txRight}>
-              <Text style={styles.txAmountPositive}>+$20.00</Text>
-              <Text style={styles.txBalance}>-$300.00</Text>
-            </View>
-          </View>
-
-          {/* Transaction 3 */}
-          <View style={styles.transactionCard}>
-            <View style={styles.txLeft}>
-              <View style={[styles.txIconBox, { backgroundColor: 'rgba(110, 231, 249, 0.15)' }]}>
-                <Feather name="file-text" size={16} color={colors.secondary} />
-              </View>
-              <View>
-                <Text style={styles.txTitle}>Rent Payment</Text>
-                <Text style={styles.txDate}>Jun 13, 2022</Text>
-              </View>
-            </View>
-            <View style={styles.txRight}>
-              <Text style={styles.txAmountPositive}>+$50.00</Text>
-              <Text style={styles.txBalance}>-$115.00</Text>
-            </View>
-          </View>
+                return (
+                  <View key={tx.id} style={styles.transactionCard}>
+                    <View style={styles.txLeft}>
+                      <View style={[styles.txIconBox, { backgroundColor: isIncome ? 'rgba(0, 209, 178, 0.15)' : 'rgba(255, 77, 77, 0.15)' }]}>
+                        <Feather name={iconName} size={16} color={isIncome ? colors.primary : colors.coral} />
+                      </View>
+                      <View>
+                        <Text style={styles.txTitle}>{tx.title}</Text>
+                        <Text style={styles.txDate}>
+                          {formatters.timestamp(new Date(tx.date))} • {isIncome ? 'CREDIT' : (tx.method?.toUpperCase() || 'UPI')}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.txRight}>
+                      <Text style={isIncome ? styles.txAmountPositive : styles.txAmountNegative}>
+                        {isIncome ? '+' : '-'}{formatters.currency(tx.amount)}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+          )}
         </View>
+
+        {/* Split Balances Summary */}
+        {summary.splits.peopleBalances && summary.splits.peopleBalances.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Split Balances</Text>
+            <View style={styles.splitSummaryContainer}>
+              <View style={styles.splitSummaryBox}>
+                <Text style={styles.splitSummaryLabel}>YOU ARE OWED</Text>
+                <Text style={styles.splitSummaryAmountGreen}>{formatters.currency(summary.splits.youllGet)}</Text>
+              </View>
+              <View style={styles.splitSummaryDivider} />
+              <View style={styles.splitSummaryBox}>
+                <Text style={styles.splitSummaryLabel}>YOU OWE</Text>
+                <Text style={styles.splitSummaryAmountRed}>{formatters.currency(summary.splits.youOwe)}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.transactionsList}>
+              {summary.splits.peopleBalances.map((person, index) => (
+                <View key={`balance_${index}`} style={styles.transactionCard}>
+                  <View style={styles.txLeft}>
+                    <View style={[styles.txIconBox, { backgroundColor: person.balance > 0 ? 'rgba(0, 209, 178, 0.15)' : 'rgba(255, 77, 77, 0.15)' }]}>
+                      <Feather name="user" size={16} color={person.balance > 0 ? colors.primary : colors.coral} />
+                    </View>
+                    <View>
+                      <Text style={styles.txTitle}>{person.name}</Text>
+                      <Text style={styles.txDate}>{person.balance > 0 ? 'OWES YOU' : 'YOU OWE'}</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.txRight, { alignItems: 'flex-end' }]}>
+                    <Text style={person.balance > 0 ? styles.txAmountPositive : styles.txAmountNegative}>
+                      {formatters.currency(Math.abs(person.balance))}
+                    </Text>
+                    <TouchableOpacity 
+                      style={{ marginTop: 6, backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+                      onPress={() => setSettlePerson({ name: person.name, balance: person.balance })}
+                    >
+                      <Text style={{ fontSize: 10, color: '#F8FAFC', fontWeight: '700' }}>Settle Up</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Monthly Spending Analytics */}
         <Text style={styles.sectionTitle}>Monthly Spending Analytics</Text>
@@ -205,7 +357,7 @@ export function DashboardScreen() {
           </View>
           <View style={styles.analyticsInfo}>
             <Text style={styles.analyticsText}>
-              You've spent <Text style={styles.analyticsAmount}>${spentThisMonth.toLocaleString()}</Text>{'\n'}this month.
+              You've spent <Text style={styles.analyticsAmount}>{formatters.currency(spentThisMonth)}</Text>{'\n'}this month.
             </Text>
             <View style={styles.legendRow}>
               <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.primary }]} /><Text style={styles.legendText}>Spending</Text></View>
@@ -222,6 +374,15 @@ export function DashboardScreen() {
       >
         <Feather name="plus" size={24} color="#000" />
       </TouchableOpacity>
+
+      {settlePerson && (
+        <SettlementSheet
+          visible={!!settlePerson}
+          onClose={() => setSettlePerson(null)}
+          personName={settlePerson.name}
+          balanceAmount={settlePerson.balance}
+        />
+      )}
     </View>
   );
 }
@@ -369,76 +530,95 @@ const styles = StyleSheet.create({
   },
 
   // Sections
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: 16,
   },
-  summaryRow: {
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  // Account Tabs
+  tabsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 28,
-    gap: 10,
+    gap: 12,
+    marginBottom: 20,
   },
-  summaryCard: {
-    flex: 1,
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     backgroundColor: '#19202A',
-    borderRadius: 16,
-    padding: 14,
     borderWidth: 1,
     borderColor: '#242D3D',
   },
-  summaryCardHeader: {
+  tabButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  tabButtonTextActive: {
+    color: colors.background,
+    fontWeight: '700',
+  },
+
+  // Dynamic Account Card
+  accountCard: {
+    backgroundColor: '#19202A',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#242D3D',
+    marginBottom: 28,
+  },
+  accountCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  summaryIconUp: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 209, 178, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryIconDown: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 77, 77, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryIconSave: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(110, 231, 249, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
     marginBottom: 12,
   },
-  progressBarBg: {
-    height: 4,
-    backgroundColor: '#242D3D',
-    borderRadius: 2,
-    overflow: 'hidden',
+  accountCardLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 2,
+  accountCardAmount: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 24,
+  },
+  accountCardStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  accountCardStat: {
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
 
   // Transactions List
@@ -496,6 +676,43 @@ const styles = StyleSheet.create({
   txBalance: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+
+  // Split Summary
+  splitSummaryContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#19202A',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#242D3D',
+    marginBottom: 16,
+    paddingVertical: 16,
+  },
+  splitSummaryBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitSummaryDivider: {
+    width: 1,
+    backgroundColor: '#242D3D',
+  },
+  splitSummaryLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  splitSummaryAmountGreen: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#00D1B2',
+  },
+  splitSummaryAmountRed: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.coral,
   },
 
   // Analytics

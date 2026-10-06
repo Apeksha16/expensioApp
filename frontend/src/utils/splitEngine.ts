@@ -24,24 +24,49 @@ export const splitEngine = {
     let getPeople = 0;
     let owePeople = 0;
 
-    for (const item of splits) {
-      if (item.status === 'SETTLED') continue;
+    const balances: Record<string, number> = {};
 
-      if (item.youGet && item.youGet > 0) {
-        youllGet += item.youGet;
-        getPeople += 1;
-      }
-      if (item.youOwe && item.youOwe > 0) {
-        youOwe += item.youOwe;
-        owePeople += 1;
+    for (const split of splits) {
+      if (split.status === 'SETTLED') continue;
+
+      if (split.paidBy === 'YOU' && split.youGet) {
+        if (split.participants && split.participants.length > 0) {
+          split.participants.forEach((p) => {
+            let pShare = 0;
+            if (split.shares && split.shares[p] !== undefined) {
+              pShare = split.shares[p];
+            } else {
+              pShare = split.youGet! / split.participants!.length;
+            }
+            balances[p] = (balances[p] || 0) + pShare;
+          });
+        }
+      } else if (split.paidBy !== 'YOU' && split.youOwe) {
+        const p = split.paidBy;
+        const amountOwed = split.youOwe;
+        balances[p] = (balances[p] || 0) - amountOwed;
       }
     }
+
+    const peopleBalances: { name: string; balance: number }[] = [];
+    Object.entries(balances).forEach(([name, balance]) => {
+      if (balance > 0) {
+        youllGet += balance;
+        getPeople++;
+        peopleBalances.push({ name, balance: Math.round(balance * 100) / 100 });
+      } else if (balance < 0) {
+        youOwe += Math.abs(balance);
+        owePeople++;
+        peopleBalances.push({ name, balance: Math.round(balance * 100) / 100 });
+      }
+    });
 
     return {
       youllGet: Math.round(youllGet * 100) / 100,
       youOwe: Math.round(youOwe * 100) / 100,
       getPeopleCount: getPeople,
       owePeopleCount: owePeople,
+      peopleBalances: peopleBalances.sort((a, b) => b.balance - a.balance),
     };
   },
 

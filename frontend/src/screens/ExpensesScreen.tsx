@@ -15,38 +15,29 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BottomSheet } from '../components/BottomSheet';
 import { SwipeableRow } from '../components/SwipeableRow';
-import { useExpenses } from '../hooks';
-import { formatters } from '../utils/formatters';
-import { storage, STORAGE_KEYS } from '../services/storage';
-import { haptics } from '../services/haptics';
+import { useFinance } from '../hooks/FinanceContext';
+import { TransactionSheet } from '../components/TransactionSheet';
 import { useDrawer } from '../navigation/RootNavigator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { storage, STORAGE_KEYS } from '../services/storage';
+import { haptics } from '../services/haptics';
+import { formatters } from '../utils/formatters';
 import type { ExpenseItem, ExpenseCategory, AccountType } from '../types';
 
 export function ExpensesScreen({ route, navigation }: any) {
   const { openDrawer } = useDrawer();
   const insets = useSafeAreaInsets();
-  const {
-    expenses,
-    loading,
-    refreshing,
-    totalSpend,
-    addExpense,
-    deleteExpense,
-    refresh,
-  } = useExpenses();
+  
+  const { state, summary, deleteTransaction, loading, refresh } = useFinance();
+  const refreshing = loading;
+  const { transactions } = state;
+  const { salary, totalBalance } = summary;
 
   const [userProfile, setUserProfile] = useState<any>(null);
   const [selectedFilter, setSelectedFilter] = useState<'all' | ExpenseCategory>('all');
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [newType, setNewType] = useState<'expense' | 'income'>('expense');
-  const [newTitle, setNewTitle] = useState('');
-  const [newAmount, setNewAmount] = useState('');
-  const [newCategory, setNewCategory] = useState<ExpenseCategory>('food');
-  const [newAccount, setNewAccount] = useState<AccountType>('salary');
-  const [submitting, setSubmitting] = useState(false);
+  const [editingTx, setEditingTx] = useState<ExpenseItem | null>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -58,45 +49,36 @@ export function ExpensesScreen({ route, navigation }: any) {
 
   useEffect(() => {
     if (route?.params?.openNewExpense || route?.params?.openNewIncome) {
-      if (route.params.openNewIncome) {
-        setNewType('income');
-      } else {
-        setNewType('expense');
-      }
-      if (route.params.prefillAmount) setNewAmount(route.params.prefillAmount);
-      if (route.params.prefillTitle) setNewTitle(route.params.prefillTitle);
+      setEditingTx(null);
       setIsSheetOpen(true);
-      navigation.setParams({ openNewExpense: undefined, openNewIncome: undefined, prefillAmount: undefined, prefillTitle: undefined });
+      navigation.setParams({ openNewExpense: undefined, openNewIncome: undefined });
     }
   }, [route?.params?.openNewExpense, route?.params?.openNewIncome, navigation]);
 
   const user = userProfile?.user || userProfile;
   const rawSalary = Number(user?.salary) || 31627;
-  const remainingBudget = Math.max(0, rawSalary - totalSpend);
+
+  // Use dynamically calculated values from FinanceContext
+  const totalSpend = salary.spentThisMonth / 100;
+  const remainingBudget = salary.remaining / 100;
   const budgetPercent = Math.min(100, Math.round((totalSpend / rawSalary) * 100));
 
-  const cashBalance = -80;
-  const cashTotal = -80;
-  const cashPercent = 100; // Since it's negative, we just mock 100% or something visually.
-
-  const handleSave = async () => {
-    if (!newTitle.trim() || !newAmount.trim()) return;
-    setSubmitting(true);
-    const success = await addExpense({
-      title: newTitle.trim(),
-      amount: newAmount.trim(),
-      category: newCategory,
-      account: newAccount,
-      type: newType,
-    });
-    setSubmitting(false);
-
-    if (success) {
-      haptics.success();
-      setNewTitle('');
-      setNewAmount('');
-      setIsSheetOpen(false);
-    }
+  const handleDelete = (id: string) => {
+    Alert.alert(
+      'Delete Transaction',
+      'Are you sure you want to delete this transaction? All associated balances and splits will be reversed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive', 
+          onPress: () => {
+            haptics.medium();
+            deleteTransaction(id);
+          } 
+        }
+      ]
+    );
   };
 
   const getCategoryDetails = (title: string, category: ExpenseCategory) => {
@@ -120,8 +102,8 @@ export function ExpensesScreen({ route, navigation }: any) {
   };
 
   const filteredExpenses = selectedFilter === 'all'
-    ? expenses
-    : expenses.filter((e) => e.category === selectedFilter);
+    ? transactions
+    : transactions.filter((e) => e.category === selectedFilter);
 
   const renderExpenseItem = useCallback(
     ({ item }: ListRenderItemInfo<ExpenseItem>) => {
@@ -129,12 +111,12 @@ export function ExpensesScreen({ route, navigation }: any) {
 
       return (
         <SwipeableRow
-          actionText="Delete"
-          actionColor="#E11D48"
-          onAction={() => {
+          onEdit={() => {
             haptics.medium();
-            deleteExpense(item.id);
+            setEditingTx(item);
+            setIsSheetOpen(true);
           }}
+          onDelete={() => handleDelete(item.id)}
         >
           <View style={styles.txCard}>
             <View style={[styles.txIconBox, { backgroundColor: meta.bg }]}>
@@ -146,7 +128,7 @@ export function ExpensesScreen({ route, navigation }: any) {
                 {item.title}
               </Text>
               <Text style={styles.txMetaText}>
-                {item.date} • {item.method || 'UPI'}
+                {formatters.timestamp(new Date(item.date))} • {item.method || 'UPI'}
               </Text>
             </View>
 
@@ -156,7 +138,7 @@ export function ExpensesScreen({ route, navigation }: any) {
               </Text>
               <View style={styles.accountTag}>
                 <Text style={styles.accountTagText}>
-                  {item.account === 'salary' ? 'Salary' : 'General'}
+                  {item.account ? item.account.toUpperCase() : 'GENERAL'}
                 </Text>
               </View>
             </View>
@@ -164,7 +146,7 @@ export function ExpensesScreen({ route, navigation }: any) {
         </SwipeableRow>
       );
     },
-    [deleteExpense]
+    [deleteTransaction]
   );
 
   const renderHeader = () => (
@@ -343,94 +325,11 @@ export function ExpensesScreen({ route, navigation }: any) {
         )}
       </View>
 
-      {/* Light Theme Bottom Sheet for Adding Expense */}
-      <BottomSheet
-        visible={isSheetOpen}
-        onClose={() => setIsSheetOpen(false)}
-        theme="light"
-      >
-        <Text style={styles.sheetTitle}>New Transaction</Text>
-
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-          <TouchableOpacity
-            style={[styles.categoryChoiceChip, newType === 'expense' && styles.categoryChoiceChipActive]}
-            onPress={() => { haptics.selection(); setNewType('expense'); }}
-          >
-            <Text style={[styles.categoryChoiceText, newType === 'expense' && styles.categoryChoiceTextActive]}>EXPENSE</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.categoryChoiceChip, newType === 'income' && { backgroundColor: '#10B981', borderColor: '#10B981' }]}
-            onPress={() => { haptics.selection(); setNewType('income'); }}
-          >
-            <Text style={[styles.categoryChoiceText, newType === 'income' && styles.categoryChoiceTextActive]}>INCOME</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TextInput
-          style={styles.sheetInput}
-          placeholder="Expense title (e.g. Zepto, Coffee)"
-          placeholderTextColor="#94A3B8"
-          value={newTitle}
-          onChangeText={setNewTitle}
-        />
-
-        <TextInput
-          style={styles.sheetInput}
-          placeholder="Amount (₹)"
-          placeholderTextColor="#94A3B8"
-          keyboardType="decimal-pad"
-          value={newAmount}
-          onChangeText={setNewAmount}
-        />
-
-        <Text style={styles.sheetPickerLabel}>Select Category</Text>
-        <View style={styles.categoryPickerRow}>
-          {(['food', 'shopping', 'bills', 'general'] as ExpenseCategory[]).map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[
-                styles.categoryChoiceChip,
-                newCategory === cat && styles.categoryChoiceChipActive,
-              ]}
-              onPress={() => {
-                haptics.selection();
-                setNewCategory(cat);
-              }}
-            >
-              <Text
-                style={[
-                  styles.categoryChoiceText,
-                  newCategory === cat && styles.categoryChoiceTextActive,
-                ]}
-              >
-                {cat.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.sheetActionsRow}>
-          <TouchableOpacity
-            style={styles.sheetCancelBtn}
-            onPress={() => setIsSheetOpen(false)}
-          >
-            <Text style={styles.sheetCancelText}>Cancel</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.sheetSaveBtn}
-            activeOpacity={0.85}
-            onPress={handleSave}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.sheetSaveText}>Save {newType === 'income' ? 'Income' : 'Expense'}</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </BottomSheet>
+      <TransactionSheet 
+        visible={isSheetOpen} 
+        onClose={() => setIsSheetOpen(false)} 
+        existingTransaction={editingTx} 
+      />
     </View>
   );
 }
@@ -648,7 +547,7 @@ const styles = StyleSheet.create({
   },
   filterChipSelected: {
     backgroundColor: '#0D9488',
-    bordercolor: '#14B8A6',
+    borderColor: '#14B8A6',
   },
   filterChipText: {
     fontSize: 11.5,
@@ -738,87 +637,4 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
 
-  // Bottom Sheet
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#F8FAFC',
-    marginBottom: 16,
-  },
-  sheetInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
-    color: '#F8FAFC',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  sheetPickerLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#94A3B8',
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  categoryPickerRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  categoryChoiceChip: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-  },
-  categoryChoiceChipActive: {
-    backgroundColor: '#0D9488',
-    bordercolor: '#14B8A6',
-  },
-  categoryChoiceText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  categoryChoiceTextActive: {
-    color: '#FFFFFF',
-  },
-  sheetActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 12,
-  },
-  sheetCancelBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  sheetCancelText: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  sheetSaveBtn: {
-    backgroundColor: '#0D9488',
-    paddingVertical: 11,
-    paddingHorizontal: 22,
-    borderRadius: 12,
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 0,
-  },
-  sheetSaveText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
 });

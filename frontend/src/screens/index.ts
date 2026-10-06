@@ -14,3 +14,6 @@ export { EmisScreen } from './EmisScreen';
 export { GoalsScreen } from './GoalsScreen';
 export { LedgerScreen } from './LedgerScreen';
 export { ReportsScreen } from './ReportsScreen';
+export { PaymentsScreen } from './PaymentsScreen';
+export { SavingsScreen } from './SavingsScreen';
+export { CashScreen } from './CashScreen';

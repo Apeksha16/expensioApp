@@ -9,6 +9,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   ScrollView,
+  Text,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../theme';
@@ -20,6 +21,7 @@ interface BottomSheetProps {
   children: React.ReactNode;
   maxHeight?: number | string;
   theme?: 'light' | 'dark';
+  title?: string;
 }
 
 export function BottomSheet({
@@ -27,6 +29,7 @@ export function BottomSheet({
   onClose,
   children,
   theme = 'light',
+  title,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(600)).current;
@@ -106,6 +109,12 @@ export function BottomSheet({
               ]}
             />
           </View>
+          
+          {title && (
+            <Text style={[styles.title, isLight && { color: '#0F172A' }]}>
+              {title}
+            </Text>
+          )}
 
           <ScrollView
             bounces={false}
@@ -158,6 +167,14 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: '#022C22',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 20,
+    marginTop: -10,
+    textAlign: 'center',
   },
   content: {
     paddingHorizontal: spacing.xl,

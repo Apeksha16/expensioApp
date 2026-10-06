@@ -78,7 +78,7 @@ export function MpinScreen({ navigation, route, onSuccess, onResetAuth, ...props
         onSuccess();
       } else {
         await haptics.error();
-        setError(res.error || 'Incorrect PIN. Default is 1234');
+        setError(res.message || 'Incorrect PIN. Default is 1234');
         setPin('');
       }
     } catch {
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   },
   dotFilled: {
     backgroundColor: '#0D9488',
-    bordercolor: '#14B8A6',
+    borderColor: '#14B8A6',
     shadowColor: '#14B8A6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,

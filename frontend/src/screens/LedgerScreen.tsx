@@ -1,30 +1,52 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Platform } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Platform, ScrollView, TextInput } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
+import { useFinance } from '../hooks/FinanceContext';
+import { formatters } from '../utils/formatters';
 
 export function LedgerScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
   const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
+  const { state } = useFinance();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
+  const filteredTransactions = useMemo(() => {
+    let filtered = [...state.transactions];
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        tx => tx.title.toLowerCase().includes(q) || tx.category?.toLowerCase().includes(q) || tx.method?.toLowerCase().includes(q)
+      );
+    }
+
+    // Type filter
+    if (filterType !== 'all') {
+      filtered = filtered.filter(tx => tx.type === filterType);
+    }
+
+    // Sort order
+    filtered.sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    });
+
+    return filtered;
+  }, [state.transactions, searchQuery, filterType, sortOrder]);
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} translucent={true} />
       
-      {/* Ambient Glow */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <LinearGradient
-          colors={['#022C22', '#064E3B', '#0F766E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.ambientGlow} />
-      </View>
-
       <View style={styles.container}>
         {/* Title Bar */}
         <View style={styles.screenTitleRow}>
@@ -33,95 +55,232 @@ export function LedgerScreen({ navigation, route, onSuccess, onResetAuth, ...pro
               <Feather name="menu" size={24} color="#F8FAFC" />
             </TouchableOpacity>
             <View>
-              <Text style={styles.screenHeading}>Ledger</Text>
+              <Text style={styles.screenHeading}>Transactions</Text>
               <Text style={styles.screenSubheading}>Your complete financial history</Text>
             </View>
           </View>
         </View>
 
-        {/* Liquid Glass Empty State */}
-        <View style={styles.glassCard}>
-          <View style={styles.glassTopSpecular} />
-          <LinearGradient
-            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.02)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardInner}
-          >
-            <View style={styles.iconCircle}>
-              <Feather name="book" size={32} color="#14B8A6" />
-            </View>
-            <Text style={styles.titleText}>Ledger Coming Soon</Text>
-            <Text style={styles.subtitleText}>
-              We are working hard to bring you the best ledger experience. 
-              Stay tuned for the next update!
-            </Text>
-
-            <TouchableOpacity
-              style={styles.actionBtn}
-              activeOpacity={0.85}
-              onPress={() => haptics.light()}
+        {/* Filters and Search */}
+        <View style={styles.filtersContainer}>
+          <View style={styles.searchBox}>
+            <Feather name="search" size={18} color={colors.textSecondary} style={{ marginRight: 10 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search title, category, method..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+            <TouchableOpacity 
+              style={[styles.filterPill, filterType === 'all' && styles.filterPillActive]}
+              onPress={() => setFilterType('all')}
             >
-              <Text style={styles.actionBtnText}>Notify Me</Text>
+              <Text style={[styles.filterPillText, filterType === 'all' && styles.filterPillTextActive]}>All</Text>
             </TouchableOpacity>
-          </LinearGradient>
+            <TouchableOpacity 
+              style={[styles.filterPill, filterType === 'expense' && styles.filterPillActive]}
+              onPress={() => setFilterType('expense')}
+            >
+              <Text style={[styles.filterPillText, filterType === 'expense' && styles.filterPillTextActive]}>Expenses</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.filterPill, filterType === 'income' && styles.filterPillActive]}
+              onPress={() => setFilterType('income')}
+            >
+              <Text style={[styles.filterPillText, filterType === 'income' && styles.filterPillTextActive]}>Income</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.filterPill}
+              onPress={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+            >
+              <Feather name={sortOrder === 'desc' ? "arrow-down" : "arrow-up"} size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />
+              <Text style={styles.filterPillText}>Date</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
+
+        {/* Transaction List */}
+        <ScrollView style={styles.listContainer} contentContainerStyle={styles.listContent}>
+          {filteredTransactions.length === 0 ? (
+            <Text style={styles.emptyText}>No transactions found.</Text>
+          ) : (
+            filteredTransactions.map(tx => {
+              const isIncome = tx.type === 'income';
+              let iconName: any = 'credit-card';
+              switch (tx.category?.toLowerCase()) {
+                case 'food': iconName = 'coffee'; break;
+                case 'travel': iconName = 'navigation'; break;
+                case 'shopping': iconName = 'shopping-bag'; break;
+                case 'bills': iconName = 'file-text'; break;
+                case 'health': iconName = 'heart'; break;
+                case 'entertainment': iconName = 'tv'; break;
+              }
+              if (isIncome) iconName = 'arrow-down-left';
+
+              return (
+                <View key={tx.id} style={styles.transactionCard}>
+                  <View style={styles.txLeft}>
+                    <View style={[styles.txIconBox, { backgroundColor: isIncome ? 'rgba(0, 209, 178, 0.15)' : 'rgba(255, 77, 77, 0.15)' }]}>
+                      <Feather name={iconName} size={16} color={isIncome ? colors.primary : colors.coral} />
+                    </View>
+                    <View>
+                      <Text style={styles.txTitle}>{tx.title}</Text>
+                      <Text style={styles.txDate}>
+                        {formatters.timestamp(new Date(tx.date))} • {isIncome ? 'CREDIT' : (tx.method?.toUpperCase() || 'UPI')}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.txRight}>
+                    <Text style={isIncome ? styles.txAmountPositive : styles.txAmountNegative}>
+                      {isIncome ? '+' : '-'}{formatters.currency(tx.amount)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: 'transparent' },
-  ambientGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -20,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: colors.background 
   },
-  container: { flex: 1, paddingHorizontal: 20 },
+  container: { 
+    flex: 1, 
+    paddingHorizontal: 20 
+  },
   screenTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: Platform.OS === 'android' ? 44 : 20,
-    marginBottom: 24,
-  },
-  screenHeading: { fontSize: 24, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.5 },
-  screenSubheading: { fontSize: 12.5, color: '#94A3B8', fontWeight: '500', marginTop: 2 },
-  
-  glassCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 22,
-    elevation: 0,
-    marginTop: 20,
-  },
-  glassTopSpecular: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', zIndex: 2,
-  },
-  cardInner: { padding: 32, alignItems: 'center' },
-  iconCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center', justifyContent: 'center',
+    marginTop: Platform.OS === 'android' ? 24 : 10,
     marginBottom: 20,
-    borderWidth: 1, borderColor: 'rgba(37, 99, 235, 0.15)',
   },
-  titleText: { fontSize: 20, fontWeight: '800', color: '#F8FAFC', marginBottom: 12 },
-  subtitleText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  actionBtn: {
-    backgroundColor: '#0D9488', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
-    shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 0,
+  screenHeading: { 
+    fontSize: 24, 
+    fontWeight: '800', 
+    color: colors.textPrimary, 
+    letterSpacing: -0.5 
   },
-  actionBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  screenSubheading: { 
+    fontSize: 13, 
+    color: colors.textSecondary, 
+    fontWeight: '500', 
+    marginTop: 2 
+  },
+  filtersContainer: {
+    marginBottom: 20,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#19202A',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#242D3D',
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+  },
+  filterScroll: {
+    flexDirection: 'row',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#19202A',
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#242D3D',
+  },
+  filterPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  filterPillTextActive: {
+    color: colors.background,
+  },
+  listContainer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: 100,
+    gap: 10,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 14,
+  },
+  transactionCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#19202A',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#242D3D',
+  },
+  txLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  txIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  txTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  txDate: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  txRight: {
+    alignItems: 'flex-end',
+  },
+  txAmountNegative: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.coral,
+    marginBottom: 4,
+  },
+  txAmountPositive: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 4,
+  },
 });

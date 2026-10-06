@@ -132,33 +132,17 @@ export const api = {
 
   // Phase 2: Onboarding & User Profile
   getProfile: async () => {
-    const token = await secureStore.getAuthToken();
-    try {
-      const res = await fetch(`${API_BASE_URL}/user/profile`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      const data = await res.json();
-      if (data && data.user) {
-        await storage.set(STORAGE_KEYS.AUTH_USER, data.user);
-      }
-      return data;
-    } catch (e) {
-      console.warn('API getProfile fallback:', e);
-      const cached = await storage.get(STORAGE_KEYS.AUTH_USER, {
-        name: 'Apeksha',
-        username: '@apeksha',
-        salary: 31627,
-        avatarId: 'avatar_1',
-      });
-      return {
-        success: true,
-        user: cached,
-        isProfileComplete: Boolean(cached?.salary && cached?.avatarId && cached?.username),
-      };
-    }
+    const cached = await storage.get(STORAGE_KEYS.AUTH_USER, {
+      name: 'Apeksha',
+      username: '@apeksha',
+      salary: 31627,
+      avatarId: 'avatar_1',
+    });
+    return {
+      success: true,
+      user: cached,
+      isProfileComplete: Boolean(cached?.salary && cached?.avatarId && cached?.username),
+    };
   },
 
   updateProfile: async (profile: {
@@ -167,98 +151,39 @@ export const api = {
     avatarId: string;
     name?: string;
   }) => {
-    const token = await secureStore.getAuthToken();
-    try {
-      const res = await fetch(`${API_BASE_URL}/user/profile`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(profile),
-      });
-      const data = await res.json();
-      if (data && data.user) {
-        await storage.set(STORAGE_KEYS.AUTH_USER, data.user);
-      }
-      return data;
-    } catch (e) {
-      console.warn('API updateProfile offline fallback:', e);
-      const existing = await storage.get<any>(STORAGE_KEYS.AUTH_USER, {});
-      const updated = { ...existing, ...profile };
-      await storage.set(STORAGE_KEYS.AUTH_USER, updated);
-      return {
-        success: true,
-        user: updated,
-        isProfileComplete: true,
-      };
-    }
+    const existing = await storage.get<any>(STORAGE_KEYS.AUTH_USER, {});
+    const updated = { ...existing, ...profile };
+    await storage.set(STORAGE_KEYS.AUTH_USER, updated);
+    return {
+      success: true,
+      user: updated,
+      isProfileComplete: true,
+    };
   },
 
   // Phase 3: MPIN
   verifyMpin: async (mpin: string) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/mpin/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mpin }),
-      });
-      return await res.json();
-    } catch (e) {
-      // Local fallback: Accept 1234 or locally saved MPIN
-      const savedPin = await secureStore.getMpin();
-      const isValid = (savedPin && savedPin === mpin) || mpin === '1234';
-      return {
-        success: isValid,
-        message: isValid ? 'MPIN verified' : 'Incorrect MPIN',
-      };
-    }
+    const savedPin = await secureStore.getMpin();
+    const isValid = (savedPin && savedPin === mpin) || mpin === '1234';
+    return {
+      success: isValid,
+      message: isValid ? 'MPIN verified' : 'Incorrect MPIN',
+    };
   },
 
   setMpin: async (mpin: string) => {
     await secureStore.setMpin(mpin);
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/mpin/set`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mpin }),
-      });
-      return await res.json();
-    } catch (e) {
-      return { success: true, message: 'MPIN configured offline' };
-    }
+    return { success: true, message: 'MPIN configured offline' };
   },
 
   // Accounts
   getAccounts: async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/expenses/accounts`);
-      const data = await res.json();
-      if (data && data.accounts) {
-        await storage.set(STORAGE_KEYS.ACCOUNTS, data.accounts);
-      }
-      return data;
-    } catch (e) {
-      return await storage.get(STORAGE_KEYS.ACCOUNTS, null);
-    }
+    return await storage.get(STORAGE_KEYS.ACCOUNTS, null);
   },
 
   // Expenses & Transactions (Offline-first)
   getExpenses: async (): Promise<{ success: boolean; transactions: ExpenseItem[] }> => {
-    // 1. Check local storage cache first
     const cached = await storage.get<ExpenseItem[]>(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/expenses`);
-      const data = await res.json();
-      if (data && data.transactions) {
-        await storage.set(STORAGE_KEYS.EXPENSES, data.transactions);
-        return data;
-      }
-    } catch (e) {
-      console.warn('API getExpenses using offline storage cache');
-    }
-
     return { success: true, transactions: cached };
   },
 
@@ -285,38 +210,15 @@ export const api = {
     const existing = await storage.get<ExpenseItem[]>(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES);
     await storage.set(STORAGE_KEYS.EXPENSES, [localItem, ...existing]);
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/expenses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      return await res.json();
-    } catch (e) {
-      console.warn('API addExpense recorded to offline storage');
-      return {
-        success: true,
-        message: 'Expense recorded offline',
-        transaction: localItem,
-      };
-    }
+    return {
+      success: true,
+      message: 'Expense recorded offline',
+      transaction: localItem,
+    };
   },
 
-  // Splits (Offline-first)
   getSplits: async () => {
     const cached = await storage.get(STORAGE_KEYS.SPLITS, DEFAULT_SPLITS);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/splits`);
-      const data = await res.json();
-      if (data && data.splits) {
-        await storage.set(STORAGE_KEYS.SPLITS, data.splits);
-        return data;
-      }
-    } catch (e) {
-      console.warn('API getSplits using offline storage cache');
-    }
-
     return { success: true, splits: cached };
   },
 
@@ -330,30 +232,19 @@ export const api = {
       await storage.set(STORAGE_KEYS.SPLITS, { ...cached, expenses: updated });
     }
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/splits/${id}/settle`, {
-        method: 'POST',
-      });
-      return await res.json();
-    } catch (e) {
-      return { success: true, message: 'Expense settled offline' };
-    }
+    return { success: true, message: 'Expense settled offline' };
   },
 
   // Subscriptions
   getSubscriptions: async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/subscriptions`);
-      return await res.json();
-    } catch (e) {
-      return {
-        success: true,
-        totalMonthly: 180,
-        subscriptions: [
-          { id: 'sub_1', name: 'YouTube Premium', amount: 50, dueDate: 'Sep 15', status: 'OVERDUE', daysLeft: -3 },
-          { id: 'sub_2', name: 'Netflix 4K', amount: 130, dueDate: 'Sep 27', status: 'UPCOMING', daysLeft: 2 },
-        ],
-      };
-    }
+    const cached = await storage.get(STORAGE_KEYS.SUBSCRIPTIONS, {
+      success: true,
+      totalMonthly: 180,
+      subscriptions: [
+        { id: 'sub_1', name: 'YouTube Premium', amount: 50, dueDate: 'Sep 15', status: 'OVERDUE', daysLeft: -3 },
+        { id: 'sub_2', name: 'Netflix 4K', amount: 130, dueDate: 'Sep 27', status: 'UPCOMING', daysLeft: 2 },
+      ],
+    });
+    return cached;
   },
 };

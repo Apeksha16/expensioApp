@@ -38,6 +38,9 @@ import {
   GoalsScreen,
   LedgerScreen,
   ReportsScreen,
+  PaymentsScreen,
+  SavingsScreen,
+  CashScreen,
 } from '../screens';
 import { useTheme } from '../theme/ThemeContext';
 import type { NavTab } from '../types';
@@ -53,6 +56,9 @@ export type RootStackParamList = {
   Goals: undefined;
   Ledger: undefined;
   Reports: undefined;
+  Payments: undefined;
+  Savings: undefined;
+  Cash: undefined;
 };
 
 type DrawerContextType = {
@@ -72,7 +78,6 @@ export type MainTabParamList = {
   Transactions: undefined;
   Analytics: undefined;
   Budgets: undefined;
-  ProfileTab: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -179,11 +184,7 @@ function MainTabs({ navigation }: any) {
       <Tab.Screen name="Dashboard">
         {({ navigation: tabNavigation }: any) => (
           <View style={styles.screenWrapper}>
-            <DashboardScreen
-              onNavigateTab={() => {}}
-              onOpenAddExpense={() => {}}
-              onOpenSplitModal={() => {}}
-            />
+            <DashboardScreen />
           </View>
         )}
       </Tab.Screen>
@@ -229,7 +230,7 @@ export function RootNavigator({
       <Modal visible={drawerVisible} transparent animationType="fade" onRequestClose={() => setDrawerVisible(false)}>
         <View style={{ flex: 1, flexDirection: 'row' }}>
           <TouchableWithoutFeedback onPress={() => setDrawerVisible(false)}>
-            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' }} />
+            <View style={{ ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.6)' }} />
           </TouchableWithoutFeedback>
           <View style={styles.drawerWrapper}>
             <View style={[styles.drawerContainer, { backgroundColor: colors.surface }]}>
@@ -371,6 +372,9 @@ export function RootNavigator({
               <Stack.Screen name="Goals" component={GoalsScreen} />
               <Stack.Screen name="Ledger" component={LedgerScreen} />
               <Stack.Screen name="Reports" component={ReportsScreen} />
+              <Stack.Screen name="Payments" component={PaymentsScreen} />
+              <Stack.Screen name="Savings" component={SavingsScreen} />
+              <Stack.Screen name="Cash" component={CashScreen} />
             </>
           )}
         </Stack.Navigator>

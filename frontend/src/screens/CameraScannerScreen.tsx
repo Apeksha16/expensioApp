@@ -118,7 +118,7 @@ export function CameraScannerScreen({ navigation, route, onSuccess, onResetAuth,
       <View style={styles.cameraContainer}>
         <CameraView 
           ref={cameraRef}
-          style={StyleSheet.absoluteFillObject} 
+          style={StyleSheet.absoluteFill}
           facing="back"
           enableTorch={flash}
         >
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   bl: { bottom: -2, left: -2, borderBottomWidth: 4, borderLeftWidth: 4 },
   br: { bottom: -2, right: -2, borderBottomWidth: 4, borderRightWidth: 4 },
   scanningOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.7)',
     alignItems: 'center',
     justifyContent: 'center',

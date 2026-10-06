@@ -37,6 +37,20 @@ export interface ExpenseItem {
   type?: 'expense' | 'income';
 }
 
+export interface PaymentItem {
+  id: string;
+  title: string;
+  amount: number;
+  dueDate: string;
+  category: ExpenseCategory;
+  account: AccountType;
+  recurring: boolean;
+  recurrenceType?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  status: 'pending' | 'paid';
+  notes?: string;
+  method?: 'UPI' | 'Card' | 'Cash' | 'NetBanking';
+}
+
 export interface SplitItem {
   id: string;
   title: string;
@@ -48,6 +62,9 @@ export interface SplitItem {
   youOwe?: number;
   group?: string;
   participants?: string[];
+  strategy?: 'equally' | 'custom' | 'settlement';
+  shares?: Record<string, number>; // Maps participant to their exact share
+  transactionId?: string; // Links this split back to the actual ExpenseItem
 }
 
 export interface SplitSummaryData {
@@ -55,6 +72,7 @@ export interface SplitSummaryData {
   youOwe: number;
   getPeopleCount: number;
   owePeopleCount: number;
+  peopleBalances: { name: string; balance: number }[]; // Positive: they owe you, Negative: you owe them
 }
 
 export interface SplitGroup {

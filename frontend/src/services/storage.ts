@@ -1,12 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const STORAGE_KEYS = {
+  DB_VERSION: '@expensio_db_version',
   AUTH_USER: '@expensio_auth_user',
   EXPENSES: '@expensio_expenses_cache',
   SPLITS: '@expensio_splits_cache',
   SUBSCRIPTIONS: '@expensio_subscriptions_cache',
   ACCOUNTS: '@expensio_accounts_cache',
+  PAYMENTS: '@expensio_payments_cache',
 } as const;
+
+export const CURRENT_DB_VERSION = 1;
 
 // In-memory memory map for reliable fallback
 const memoryMap = new Map<string, string>();
@@ -72,4 +76,17 @@ export const storage = {
       // Cleared memoryMap
     }
   },
+
+  /**
+   * Initializes database and handles schema migrations.
+   */
+  async initDb(): Promise<void> {
+    const version = await this.get<number>(STORAGE_KEYS.DB_VERSION, 0);
+    if (version < CURRENT_DB_VERSION) {
+      console.log(`Migrating DB from version ${version} to ${CURRENT_DB_VERSION}`);
+      // Future migration logic goes here
+      // if (version === 1) { ... migrate to 2 ... }
+      await this.set(STORAGE_KEYS.DB_VERSION, CURRENT_DB_VERSION);
+    }
+  }
 };

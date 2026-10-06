@@ -7,7 +7,6 @@ import {
   TextInput,
   ActivityIndicator,
   FlatList,
-  StatusBar,
   ListRenderItemInfo,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -299,7 +298,6 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Atmospheric Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

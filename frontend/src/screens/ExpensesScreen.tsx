@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
-  StatusBar,
   ListRenderItemInfo,
   Alert,
 } from 'react-native';
@@ -288,7 +287,6 @@ export function ExpensesScreen({ route, navigation }: any) {
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Ambient Atmospheric Light */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

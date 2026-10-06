@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  StatusBar,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -49,7 +48,6 @@ export function SubscriptionsScreen({ navigation, route, onSuccess, onResetAuth,
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Atmospheric Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

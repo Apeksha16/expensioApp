@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, TextInput } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
@@ -45,8 +45,6 @@ export function LedgerScreen({ navigation, route, onSuccess, onResetAuth, ...pro
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} translucent={true} />
-      
       <View style={styles.container}>
         {/* Title Bar */}
         <View style={styles.screenTitleRow}>

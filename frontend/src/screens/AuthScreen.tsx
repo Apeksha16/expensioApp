@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StatusBar,
   Modal,
   FlatList,
 } from 'react-native';
@@ -133,7 +132,6 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.root}
     >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       <View style={StyleSheet.absoluteFill}>
         <LinearGradient
           colors={['#022C22', '#064E3B', '#0F766E']}

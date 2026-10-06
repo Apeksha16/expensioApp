@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  StatusBar,
   ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -127,7 +126,6 @@ export function OnboardingProfileScreen({
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Dark Emerald App Theme Background */}
       <View style={StyleSheet.absoluteFill}>

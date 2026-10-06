@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  StatusBar,
   Dimensions,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -115,7 +114,6 @@ export function MpinScreen({ onSuccess, onResetAuth }: MpinScreenProps) {
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* Atmospheric Ambient Liquid Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

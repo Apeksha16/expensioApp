@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { haptics } from '../services/haptics';
@@ -12,7 +12,6 @@ export function ReportsScreen({ navigation, route, onSuccess, onResetAuth, ...pr
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       
       {/* Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

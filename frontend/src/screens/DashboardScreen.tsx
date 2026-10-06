@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   Image,
   Alert,
 } from 'react-native';
@@ -35,7 +34,6 @@ export function DashboardScreen({ navigation: propNavigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       
       {/* Background Gradient */}
       <View style={StyleSheet.absoluteFill}>

@@ -6,11 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#022C22"
-    },
+
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,
@@ -45,6 +41,15 @@
         "expo-local-authentication",
         {
           "faceIDPermission": "Allow Expensio to use Face ID for secure login."
+        }
+      ],
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#022C22"
         }
       ]
     ]

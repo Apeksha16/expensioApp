@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  StatusBar,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -111,8 +110,6 @@ export function CameraScannerScreen({ navigation, route, onSuccess, onResetAuth,
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
-      
       <View style={styles.cameraContainer}>
         <CameraView 
           ref={cameraRef}

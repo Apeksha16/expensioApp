@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  StatusBar,
   ScrollView,
   Switch,
 } from 'react-native';
@@ -41,7 +40,6 @@ export function ProfileScreen({ navigation, route, onSuccess, onResetAuth, ...pr
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       
       {/* Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

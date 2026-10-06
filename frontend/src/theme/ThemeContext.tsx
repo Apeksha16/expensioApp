@@ -40,9 +40,9 @@ export const lightColors: ThemeColors = {
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textInverse: '#FFFFFF',
-  primary: '#2563EB',
-  primaryDark: '#1D4ED8',
-  primaryMuted: 'rgba(37, 99, 235, 0.12)',
+  primary: '#00D1B2',
+  primaryDark: '#00A88D',
+  primaryMuted: 'rgba(0, 209, 178, 0.12)',
   secondary: '#7C3AED',
   accent: '#E11D48',
   purple: '#8B5CF6',
@@ -61,19 +61,19 @@ export const lightColors: ThemeColors = {
 
 export const darkColors: ThemeColors = {
   isDark: true,
-  background: '#070D18',
+  background: '#0B0F14',
   backgroundSecondary: '#0A111F',
-  surface: '#111A26',
+  surface: '#141922',
   surfaceElevated: '#1E293B',
   border: 'rgba(255, 255, 255, 0.1)',
   borderLight: 'rgba(255, 255, 255, 0.15)',
   textPrimary: '#FFFFFF',
   textSecondary: '#94A3B8',
   textMuted: '#64748B',
-  textInverse: '#070D18',
-  primary: '#2563EB',
-  primaryDark: '#1D4ED8',
-  primaryMuted: 'rgba(37, 99, 235, 0.12)',
+  textInverse: '#0B0F14',
+  primary: '#00D1B2',
+  primaryDark: '#00A88D',
+  primaryMuted: 'rgba(0, 209, 178, 0.12)',
   secondary: '#7C3AED',
   accent: '#E11D48',
   purple: '#8B5CF6',
@@ -99,9 +99,9 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  mode: 'light', 
-  isDark: false,
-  colors: lightColors,
+  mode: 'dark', 
+  isDark: true,
+  colors: darkColors,
   toggleTheme: () => {},
   setTheme: () => {},
 });
@@ -109,18 +109,11 @@ const ThemeContext = createContext<ThemeContextValue>({
 export const THEME_STORAGE_KEY = '@expensio_theme_mode';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>('light');
+  const [mode, setMode] = useState<ThemeMode>('dark');
 
   useEffect(() => {
     async function loadSavedTheme() {
-      try {
-        const saved = await storage.get<ThemeMode>(THEME_STORAGE_KEY, 'light');
-        if (saved === 'dark' || saved === 'light') {
-          setMode(saved);
-        }
-      } catch (e) {
-        setMode('light');
-      }
+      setMode('dark'); // Force dark mode for high-end fintech theme
     }
     loadSavedTheme();
   }, []);

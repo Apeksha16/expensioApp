@@ -12,6 +12,8 @@ import {
   Alert,
   Share,
   NativeModules,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -67,9 +69,10 @@ export const useDrawer = () => useContext(DrawerContext);
 
 export type MainTabParamList = {
   Dashboard: undefined;
-  Expenses: undefined;
-  Splits: undefined;
-  Subscriptions: undefined;
+  Transactions: undefined;
+  Analytics: undefined;
+  Budgets: undefined;
+  ProfileTab: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -77,94 +80,35 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 interface TabItemConfig {
   label: string;
-  activeIcon: keyof typeof Ionicons.glyphMap;
-  inactiveIcon: keyof typeof Ionicons.glyphMap;
+  activeIcon: keyof typeof Feather.glyphMap;
+  inactiveIcon: keyof typeof Feather.glyphMap;
 }
 
 const TAB_CONFIG: Record<string, TabItemConfig> = {
   Dashboard: {
-    label: 'Home',
-    activeIcon: 'home',
-    inactiveIcon: 'home-outline',
+    label: 'Dashboard',
+    activeIcon: 'grid',
+    inactiveIcon: 'grid',
   },
-  Expenses: {
-    label: 'Analytics',
-    activeIcon: 'bar-chart',
-    inactiveIcon: 'bar-chart-outline',
-  },
-  Splits: {
-    label: 'Split',
-    activeIcon: 'people',
-    inactiveIcon: 'people-outline',
-  },
-  Subscriptions: {
-    label: 'Subs',
+  Transactions: {
+    label: 'Transactions',
     activeIcon: 'repeat',
-    inactiveIcon: 'repeat-outline',
+    inactiveIcon: 'repeat',
+  },
+  Analytics: {
+    label: 'Analytics',
+    activeIcon: 'bar-chart-2',
+    inactiveIcon: 'bar-chart-2',
+  },
+  Budgets: {
+    label: 'Budgets',
+    activeIcon: 'pie-chart',
+    inactiveIcon: 'pie-chart',
   },
 };
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 function LiquidGlassTabBar({ state, navigation, insets }: any) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Smooth Animations for Option 3 Expanding Radial Menu
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.4)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  const openExpandingFab = () => {
-    haptics.medium();
-    setIsExpanded(true);
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 6,
-        tension: 90,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const closeExpandingFab = (onComplete?: () => void) => {
-    haptics.light();
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 0.4,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotateAnim, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setIsExpanded(false);
-      if (onComplete) onComplete();
-    });
-  };
-
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
-  });
+  const { colors } = useTheme();
 
   const renderTab = (routeName: string, routeIndex: number) => {
     const isFocused = state.index === routeIndex;
@@ -190,14 +134,14 @@ function LiquidGlassTabBar({ state, navigation, insets }: any) {
         onPress={onPress}
         style={styles.tabItem}
       >
-        <Ionicons
+        <Feather
           name={isFocused ? config.activeIcon : config.inactiveIcon}
-          size={22}
-          color={isFocused ? '#2563EB' : '#94A3B8'}
+          size={20}
+          color={isFocused ? colors.primary : '#687383'}
         />
         <Text
           numberOfLines={1}
-          style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
+          style={[styles.tabLabel, isFocused && { color: colors.primary }]}
         >
           {config.label}
         </Text>
@@ -206,131 +150,19 @@ function LiquidGlassTabBar({ state, navigation, insets }: any) {
   };
 
   return (
-    <>
-      {/* Floating Bottom Bar Container with Glassmorphism */}
-      <View
-        style={[
-          styles.tabBarContainer,
-          { bottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16 },
-        ]}
-      >
-        {/* Glassmorphic Bar Dock */}
-        <View style={styles.glassBar}>
-          {/* Top Edge Specular Reflection Line */}
-          <View style={styles.topSpecularLine} />
-
-          {/* Left Tabs: Home & Analytics */}
-          {renderTab('Dashboard', 0)}
-          {renderTab('Expenses', 1)}
-
-          {/* Center Pocket Spacer to accommodate the elevated Floating Action Button */}
-          <View style={styles.centerFabSpacer} />
-
-          {/* Right Tabs: Split & Subs */}
-          {renderTab('Splits', 2)}
-          {renderTab('Subscriptions', 3)}
-        </View>
-
-        {/* Elevated Center Floating Action Button (FAB) */}
-        <View style={styles.centerFabWrapper} pointerEvents="box-none">
-          <TouchableOpacity
-            activeOpacity={0.88}
-            style={styles.floatingFab}
-            onPress={openExpandingFab}
-          >
-            <Feather name="plus" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+    <View
+      style={[
+        styles.tabBarContainer,
+        { bottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16 },
+      ]}
+    >
+      <View style={styles.glassBar}>
+        {renderTab('Dashboard', 0)}
+        {renderTab('Transactions', 1)}
+        {renderTab('Analytics', 2)}
+        {renderTab('Budgets', 3)}
       </View>
-
-      {/* Option 3: Expanding FAB (Quick Actions) Modal */}
-      <Modal
-        visible={isExpanded}
-        transparent
-        animationType="none"
-        onRequestClose={() => closeExpandingFab()}
-      >
-        <TouchableWithoutFeedback onPress={() => closeExpandingFab()}>
-          <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-            <BlurView intensity={75} tint="light" style={StyleSheet.absoluteFill} />
-            <TouchableWithoutFeedback>
-              <Animated.View
-                style={[
-                  styles.bottomSheet,
-                  {
-                    transform: [
-                      {
-                        translateY: fadeAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [600, 0],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <View style={styles.sheetHandle} />
-                
-                <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>Quick Actions</Text>
-                  <Text style={styles.sheetSubtitle}>What would you like to do?</Text>
-                </View>
-
-                <View style={styles.sheetActionList}>
-                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Expenses', { openNewExpense: true }))}>
-                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(244, 63, 94, 0.12)' }]}>
-                      <Ionicons name="receipt" size={24} color="#F43F5E" />
-                    </View>
-                    <View style={styles.sheetActionTextCol}>
-                      <Text style={styles.sheetActionTitle}>Add Expense</Text>
-                      <Text style={styles.sheetActionSub}>Record a new spend</Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Expenses', { openNewIncome: true }))}>
-                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                      <Ionicons name="wallet" size={24} color="#10B981" />
-                    </View>
-                    <View style={styles.sheetActionTextCol}>
-                      <Text style={styles.sheetActionTitle}>Add Income</Text>
-                      <Text style={styles.sheetActionSub}>Record cash in</Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Splits', { openNewSplit: true }))}>
-                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(37, 99, 235, 0.12)' }]}>
-                      <Ionicons name="people" size={24} color="#3B82F6" />
-                    </View>
-                    <View style={styles.sheetActionTextCol}>
-                      <Text style={styles.sheetActionTitle}>Split Bill</Text>
-                      <Text style={styles.sheetActionSub}>Share expenses</Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity activeOpacity={0.7} style={styles.sheetActionRow} onPress={() => closeExpandingFab(() => navigation.navigate('Scanner'))}>
-                    <View style={[styles.sheetActionIcon, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
-                      <Ionicons name="scan" size={24} color="#6366F1" />
-                    </View>
-                    <View style={styles.sheetActionTextCol}>
-                      <Text style={styles.sheetActionTitle}>Scan Receipt</Text>
-                      <Text style={styles.sheetActionSub}>Smart AI scanner</Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color="#CBD5E1" />
-                  </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity activeOpacity={0.7} style={styles.sheetCancelBtn} onPress={() => closeExpandingFab()}>
-                  <Text style={styles.sheetCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </Animated.View>
-            </TouchableWithoutFeedback>
-          </Animated.View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </>
+    </View>
   );
 }
 
@@ -348,21 +180,16 @@ function MainTabs({ navigation }: any) {
         {({ navigation: tabNavigation }: any) => (
           <View style={styles.screenWrapper}>
             <DashboardScreen
-              onNavigateTab={(tab: NavTab) => {
-                if (tab === 'expenses') tabNavigation.navigate('Expenses');
-                else if (tab === 'splits') tabNavigation.navigate('Splits');
-                else if (tab === 'subscriptions') tabNavigation.navigate('Subscriptions');
-              }}
-              onOpenAddExpense={() => tabNavigation.navigate('Expenses')}
-              onOpenSplitModal={() => tabNavigation.navigate('Splits')}
+              onNavigateTab={() => {}}
+              onOpenAddExpense={() => {}}
+              onOpenSplitModal={() => {}}
             />
           </View>
         )}
       </Tab.Screen>
-
-      <Tab.Screen name="Expenses" component={ExpensesScreen} />
-      <Tab.Screen name="Splits" component={SplitsScreen} />
-      <Tab.Screen name="Subscriptions" component={SubscriptionsScreen} />
+      <Tab.Screen name="Transactions" component={LedgerScreen} />
+      <Tab.Screen name="Analytics" component={ReportsScreen} />
+      <Tab.Screen name="Budgets" component={BudgetsScreen} />
     </Tab.Navigator>
   );
 }
@@ -402,20 +229,22 @@ export function RootNavigator({
       <Modal visible={drawerVisible} transparent animationType="fade" onRequestClose={() => setDrawerVisible(false)}>
         <View style={{ flex: 1, flexDirection: 'row' }}>
           <TouchableWithoutFeedback onPress={() => setDrawerVisible(false)}>
-            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.45)' }} />
+            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' }} />
           </TouchableWithoutFeedback>
-          <View style={styles.drawerContainer}>
-            <View style={styles.drawerProfileSection}>
-              <View style={styles.drawerAvatar}>
-                <Feather name="user" size={32} color="#14B8A6" />
+          <View style={styles.drawerWrapper}>
+            <View style={[styles.drawerContainer, { backgroundColor: colors.surface }]}>
+              <View style={styles.drawerProfileSection}>
+                <Image 
+                  source={{ uri: 'https://i.pravatar.cc/100?img=11' }} 
+                  style={styles.drawerAvatar} 
+                />
+                <View>
+                  <Text style={styles.drawerName}>Apeksha</Text>
+                  <Text style={styles.drawerHandle}>@apeksha</Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.drawerName}>Apeksha</Text>
-                <Text style={styles.drawerHandle}>@apeksha</Text>
-              </View>
-            </View>
 
-            <View style={{ paddingHorizontal: 16, flex: 1 }}>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
               {[
                 { name: 'Dashboard', icon: 'grid' as const },
                 { name: 'Expenses', icon: 'credit-card' as const },
@@ -442,19 +271,20 @@ export function RootNavigator({
                        }
                     } else {
                        if (navigationRef.current) {
-                           // Special mapping for EMIs
                            const routeName = item.name === 'EMIs' ? 'Emis' : item.name;
                            navigationRef.current.navigate(routeName);
                        }
                     }
                   }}
                 >
-                  <Feather name={item.icon} size={18} color="#94A3B8" style={{ marginRight: 14 }} />
+                  <View style={styles.drawerItemIconBox}>
+                    <Feather name={item.icon} size={16} color={colors.primary} />
+                  </View>
                   <Text style={styles.drawerItemText}>{item.name}</Text>
-                  <Feather name="chevron-right" size={16} color="#CBD5E1" style={{ marginLeft: 'auto' }} />
+                  <Feather name="chevron-right" size={16} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
                 </TouchableOpacity>
               ))}
-            </View>
+              </ScrollView>
 
             <View style={styles.drawerFooter}>
               <Text style={styles.drawerVersion}>v1.0.27</Text>
@@ -475,7 +305,7 @@ export function RootNavigator({
                     }
                   }}
                 >
-                  <Feather name="refresh-cw" size={16} color="#0284C7" />
+                  <Feather name="refresh-cw" size={16} color={colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.drawerFooterIcon}
@@ -490,7 +320,7 @@ export function RootNavigator({
                     }
                   }}
                 >
-                  <Feather name="share" size={16} color="#14B8A6" />
+                  <Feather name="share" size={16} color={colors.secondary} />
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.drawerFooterIcon}
@@ -511,11 +341,12 @@ export function RootNavigator({
                     ]);
                   }}
                 >
-                  <Feather name="power" size={16} color="#E11D48" />
+                  <Feather name="power" size={16} color={colors.accent} />
                 </TouchableOpacity>
               </View>
             </View>
           </View>
+        </View>
         </View>
       </Modal>
     );
@@ -663,13 +494,13 @@ const styles = StyleSheet.create({
   // 3. Option 3: Expanding FAB (Quick Actions) Overlay Styles
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', // Light elegant backdrop
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Darker backdrop to dim background
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
   bottomSheet: {
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#0F172A', // Solid dark slate background
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderBottomLeftRadius: 0,
@@ -767,19 +598,28 @@ const styles = StyleSheet.create({
   },
 
   // Custom Drawer Styles
-  drawerContainer: {
+  drawerWrapper: {
     width: '78%',
     maxWidth: 320,
-    backgroundColor: '#064E3B', // Solid dark emerald background
     height: '100%',
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    borderTopRightRadius: 24,
-    borderBottomRightRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 5, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    shadowOffset: { width: 10, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
     elevation: 0,
+  },
+  drawerContainer: {
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    borderTopRightRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
+    borderRightWidth: 1,
+    borderRightColor: '#242D3D',
+    borderTopWidth: 1,
+    borderTopColor: '#242D3D',
+    borderBottomWidth: 1,
+    borderBottomColor: '#242D3D',
   },
   drawerProfileSection: {
     flexDirection: 'row',
@@ -787,43 +627,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: '#242D3D',
     marginBottom: 16,
   },
   drawerAvatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 16,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   drawerName: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#F8FAFC',
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   drawerHandle: {
     fontSize: 13,
-    color: '#38BDF8',
-    fontWeight: '600',
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   drawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: 'transparent',
+  },
+  drawerItemIconBox: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    marginBottom: 4,
+    backgroundColor: 'rgba(0, 209, 178, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
   drawerItemText: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E2E8F0',
   },
   drawerFooter: {
     flexDirection: 'row',
@@ -833,22 +678,22 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: '#242D3D',
   },
   drawerVersion: {
     fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '600',
+    color: '#64748B',
+    fontWeight: '500',
   },
   drawerFooterIcon: {
     width: 36,
     height: 36,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 18,
+    backgroundColor: '#19202A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: '#242D3D',
   },
 });
 

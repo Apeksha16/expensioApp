@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
 import { api } from '../services/api';
 import { biometrics, BiometricStatus } from '../services/biometrics';
 import { storage, STORAGE_KEYS } from '../services/storage';

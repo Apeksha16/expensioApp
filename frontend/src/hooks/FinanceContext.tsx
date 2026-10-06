@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
-import type { ExpenseItem, SplitItem, AccountType, PaymentItem } from '../types';
+import type { ExpenseItem, SplitItem, PaymentItem } from '../types';
 import { api } from '../services/api';
-import { calculateDashboardSummary, toRupees, toPaise, FinanceState } from '../utils/financeCalculations';
+import { calculateDashboardSummary, toPaise, FinanceState } from '../utils/financeCalculations';
 import { storage, STORAGE_KEYS } from '../services/storage';
 
 interface FinanceContextValue {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { IconTarget, IconChevronRight } from '../components/icons/Icons';
+import { IconTarget } from '../components/icons/Icons';
 import { colors } from '../theme/colors';
 
 interface BudgetGoalWidgetProps {

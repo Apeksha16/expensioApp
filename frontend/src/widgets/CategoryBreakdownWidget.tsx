@@ -5,7 +5,6 @@ import {
   IconFilm,
   IconCoffee,
   IconZap,
-  IconChevronRight,
 } from '../components/icons/Icons';
 import { colors } from '../theme/colors';
 

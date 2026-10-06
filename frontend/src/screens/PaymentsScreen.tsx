@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform, ScrollView, TextInput, KeyboardAvoidingView, Switch, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';

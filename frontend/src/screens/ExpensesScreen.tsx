@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   FlatList,
   Platform,
@@ -12,8 +11,7 @@ import {
   ListRenderItemInfo,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { useFinance } from '../hooks/FinanceContext';
@@ -23,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage, STORAGE_KEYS } from '../services/storage';
 import { haptics } from '../services/haptics';
 import { formatters } from '../utils/formatters';
-import type { ExpenseItem, ExpenseCategory, AccountType } from '../types';
+import type { ExpenseItem, ExpenseCategory } from '../types';
 
 export function ExpensesScreen({ route, navigation }: any) {
   const { openDrawer } = useDrawer();

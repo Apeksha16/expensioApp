@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { SplitItem, SplitSummaryData } from '../types';
+import type { SplitItem } from '../types';
 import { api } from '../services/api';
 import { splitEngine } from '../utils/splitEngine';
 import { notifications } from '../services/notifications';

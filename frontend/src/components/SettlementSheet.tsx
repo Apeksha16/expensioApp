@@ -8,10 +8,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { BottomSheet } from './BottomSheet';
 import { haptics } from '../services/haptics';
-import { colors } from '../theme/colors';
 import { formatters } from '../utils/formatters';
 import type { ExpenseItem, SplitItem, AccountType } from '../types';
 import { useFinance } from '../hooks/FinanceContext';

@@ -5,7 +5,6 @@ import {
   PanResponder,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,7 @@ import {
   TouchableOpacity,
   Platform,
   Modal,
-  Animated,
   TouchableWithoutFeedback,
-  Dimensions,
   Alert,
   Share,
   NativeModules,
@@ -19,17 +17,13 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import { Feather } from '@expo/vector-icons';
 import { haptics } from '../services/haptics';
 import { secureStore, SECURE_KEYS } from '../services/secureStore';
 import { storage, STORAGE_KEYS } from '../services/storage';
 import {
   AuthScreen,
   DashboardScreen,
-  ExpensesScreen,
-  SplitsScreen,
-  SubscriptionsScreen,
   ProfileScreen,
   CameraScannerScreen,
   BudgetsScreen,
@@ -43,7 +37,6 @@ import {
   CashScreen,
 } from '../screens';
 import { useTheme } from '../theme/ThemeContext';
-import type { NavTab } from '../types';
 
 export type RootStackParamList = {
   Auth: undefined;

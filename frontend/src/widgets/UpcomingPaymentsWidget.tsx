@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { IconZap, IconCalendar, IconFilm } from '../components/icons/Icons';
+import { IconZap, IconFilm } from '../components/icons/Icons';
 import { colors } from '../theme/colors';
 
 export interface PaymentItem {

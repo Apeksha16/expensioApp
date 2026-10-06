@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Platform, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, Platform, ViewStyle } from 'react-native';
 
 export interface IconProps {
   size?: number;

@@ -13,7 +13,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
-import { SwipeableRow } from '../components/SwipeableRow';
 import { useDrawer } from '../navigation/RootNavigator';
 import { useFinance } from '../hooks/FinanceContext';
 import { toRupees } from '../utils/financeCalculations';

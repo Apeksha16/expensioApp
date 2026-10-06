@@ -7,12 +7,10 @@ import {
   TextInput,
   ActivityIndicator,
   FlatList,
-  Platform,
   StatusBar,
   ListRenderItemInfo,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheet } from '../components/BottomSheet';
 import { SwipeableRow } from '../components/SwipeableRow';

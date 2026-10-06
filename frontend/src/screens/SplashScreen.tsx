@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import { radius, spacing } from '../theme';
+import { spacing } from '../theme';
 import { IconWallet } from '../components/icons/Icons';
 import { useTheme } from '../theme/ThemeContext';
 import { haptics } from '../services/haptics';

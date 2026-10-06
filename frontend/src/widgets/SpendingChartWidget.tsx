@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { IconAnalytics, IconTrendDown } from '../components/icons/Icons';
+import { IconTrendDown } from '../components/icons/Icons';
 import { colors } from '../theme/colors';
 
 export interface DaySpend {

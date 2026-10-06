@@ -4,7 +4,6 @@ import {
   IconUsers,
   IconTrendDown,
   IconTrendUp,
-  IconChevronRight,
 } from '../components/icons/Icons';
 import { colors } from '../theme/colors';
 

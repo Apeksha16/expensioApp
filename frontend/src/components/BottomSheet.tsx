@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
-  TouchableOpacity,
   Modal,
   Animated,
   KeyboardAvoidingView,
@@ -12,7 +11,7 @@ import {
   Text,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, spacing } from '../theme';
+import { colors, spacing } from '../theme';
 import { haptics } from '../services/haptics';
 
 interface BottomSheetProps {

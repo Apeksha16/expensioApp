@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage, STORAGE_KEYS } from '../services/storage';
 import { haptics } from '../services/haptics';
 import { formatters } from '../utils/formatters';
+import { BottomSheet } from '../components/BottomSheet';
+import { colors } from '../theme/colors';
 import type { ExpenseItem, ExpenseCategory } from '../types';
 
 export function ExpensesScreen({ route, navigation }: any) {
@@ -35,6 +37,26 @@ export function ExpensesScreen({ route, navigation }: any) {
   const [selectedFilter, setSelectedFilter] = useState<'all' | ExpenseCategory>('all');
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<ExpenseItem | null>(null);
+
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  
+  const recentMonths = React.useMemo(() => {
+    const result = [];
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    for(let i=0; i<12; i++) {
+      result.push(new Date(d));
+      d.setMonth(d.getMonth() - 1);
+    }
+    return result;
+  }, []);
 
   useEffect(() => {
     async function loadUser() {
@@ -98,9 +120,12 @@ export function ExpensesScreen({ route, navigation }: any) {
     return { icon: 'credit-card' as const, color: '#14B8A6', bg: 'rgba(20, 184, 166, 0.15)', label: 'General' };
   };
 
-  const filteredExpenses = selectedFilter === 'all'
-    ? transactions
-    : transactions.filter((e) => e.category === selectedFilter);
+  const filteredExpenses = transactions.filter((e) => {
+    const d = new Date(e.date);
+    const matchesMonth = d.getMonth() === selectedMonth.getMonth() && d.getFullYear() === selectedMonth.getFullYear();
+    const matchesCategory = selectedFilter === 'all' || e.category === selectedFilter;
+    return matchesMonth && matchesCategory;
+  });
 
   const renderExpenseItem = useCallback(
     ({ item }: ListRenderItemInfo<ExpenseItem>) => {
@@ -165,10 +190,12 @@ export function ExpensesScreen({ route, navigation }: any) {
           activeOpacity={0.7}
           onPress={() => {
             haptics.selection();
-            Alert.alert('Coming Soon', 'Month selection will be available in the next update.');
+            setShowMonthPicker(true);
           }}
         >
-          <Text style={styles.monthBadgeText}>This Month ▾</Text>
+          <Text style={styles.monthBadgeText}>
+            {selectedMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} ▾
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -326,6 +353,30 @@ export function ExpensesScreen({ route, navigation }: any) {
         onClose={() => setIsSheetOpen(false)} 
         existingTransaction={editingTx} 
       />
+
+      <BottomSheet visible={showMonthPicker} onClose={() => setShowMonthPicker(false)} theme="light">
+        <Text style={[styles.screenHeading, { textAlign: 'center', marginBottom: 20 }]}>Select Month</Text>
+        <View style={styles.monthGrid}>
+          {recentMonths.map((m, i) => {
+            const isSelected = m.getTime() === selectedMonth.getTime();
+            return (
+              <TouchableOpacity
+                key={i}
+                style={[styles.monthBox, isSelected && styles.monthBoxSelected]}
+                onPress={() => {
+                  haptics.selection();
+                  setSelectedMonth(m);
+                  setShowMonthPicker(false);
+                }}
+              >
+                <Text style={[styles.monthBoxText, isSelected && styles.monthBoxTextSelected]}>
+                  {m.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
     </View>
   );
 }
@@ -631,6 +682,39 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '600',
     color: '#94A3B8',
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingBottom: 20,
+  },
+  monthBox: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 0,
+  },
+  monthBoxSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  monthBoxText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  monthBoxTextSelected: {
+    color: '#FFFFFF',
   },
 
 });

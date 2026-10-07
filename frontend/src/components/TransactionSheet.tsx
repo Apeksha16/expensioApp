@@ -47,6 +47,9 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
   const [strategy, setStrategy] = useState<'equally' | 'custom'>('equally');
   const [customShares, setCustomShares] = useState<Record<string, string>>({});
 
+  const [txDate, setTxDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   useEffect(() => {
     if (visible) {
       if (existingTransaction) {
@@ -56,6 +59,7 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
         setCategory(existingTransaction.category);
         setAccount(existingTransaction.account || 'salary');
         setMethod(existingTransaction.method || 'UPI');
+        setTxDate(new Date(existingTransaction.date));
 
         if (existingSplit) {
           setIsSplit(true);
@@ -83,6 +87,7 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
         setCategory('general');
         setAccount('salary');
         setMethod('UPI');
+        setTxDate(new Date());
         setIsSplit(false);
         setPaidBy('YOU');
         setParticipants([]);
@@ -192,7 +197,7 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
         account,
         method,
         type,
-        date: existingTransaction ? existingTransaction.date : new Date().toISOString(),
+        date: txDate.toISOString(),
       };
 
       addTransaction(newTx);
@@ -447,6 +452,18 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
               )}
             </View>
           )}
+
+          <Text style={styles.label}>DATE</Text>
+          <TouchableOpacity 
+            style={styles.dateBtn}
+            onPress={() => { haptics.selection(); setShowDatePicker(true); }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Feather name="calendar" size={16} color="#94A3B8" />
+              <Text style={styles.dateBtnText}>{formatters.timestamp(txDate).split(',')[0]}</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color="#94A3B8" />
+          </TouchableOpacity>
         </>
       )}
 
@@ -466,6 +483,33 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
           )}
         </TouchableOpacity>
       </View>
+
+      <BottomSheet visible={showDatePicker} onClose={() => setShowDatePicker(false)} theme="dark">
+        <Text style={styles.sheetTitle}>Select Date</Text>
+        <View style={{ maxHeight: 300 }}>
+          {[...Array(30)].map((_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const isSelected = d.toDateString() === txDate.toDateString();
+            return (
+              <TouchableOpacity
+                key={i}
+                style={[styles.dateOptionBtn, isSelected && styles.dateOptionBtnSelected]}
+                onPress={() => {
+                  haptics.selection();
+                  setTxDate(d);
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={[styles.dateOptionText, isSelected && styles.dateOptionTextSelected]}>
+                  {i === 0 ? 'Today' : i === 1 ? 'Yesterday' : formatters.timestamp(d).split(',')[0]}
+                </Text>
+                {isSelected && <Feather name="check" size={16} color={colors.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
     </BottomSheet>
   );
 }
@@ -652,5 +696,43 @@ const styles = StyleSheet.create({
     color: '#022C22',
     fontWeight: '800',
     fontSize: 15,
+  },
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 52,
+    marginBottom: 16,
+  },
+  dateBtnText: {
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  dateOptionBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  dateOptionBtnSelected: {
+    backgroundColor: 'rgba(20, 184, 166, 0.1)',
+  },
+  dateOptionText: {
+    fontSize: 15,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  dateOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: '700',
   },
 });

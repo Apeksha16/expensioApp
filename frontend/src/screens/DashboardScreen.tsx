@@ -1,11 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  PanResponder,
   Platform,
   Dimensions,
 } from 'react-native';
@@ -34,20 +33,6 @@ export function DashboardScreen({ navigation: propNavigation }: any) {
   
   const [aiVisible, setAiVisible] = useState(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return gestureState.x0 < 40 && gestureState.dx > 10;
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        if (gestureState.dx > 50) {
-          openDrawer();
-        }
-      },
-    })
-  ).current;
-
   // Colors based on theme
   const bgColor = isDark ? '#090909' : '#F6F3EE';
   const cardBg = isDark ? '#121212' : '#FFFFFF';
@@ -57,7 +42,7 @@ export function DashboardScreen({ navigation: propNavigation }: any) {
   const iconBoxBg = isDark ? 'rgba(255, 255, 255, 0.05)' : '#EBE6DE';
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]} {...panResponder.panHandlers}>
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
@@ -240,7 +225,7 @@ export function DashboardScreen({ navigation: propNavigation }: any) {
         {/* Insights Card */}
         <View style={[styles.insightsCard, { backgroundColor: cardBg }]}>
           <View style={[styles.insightIconBox, { backgroundColor: iconBoxBg, borderColor: isDark ? borderColor : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-             <Feather name={isDark ? "lightbulb" : "star"} size={20} color="#C6A584" />
+             <Feather name={isDark ? "zap" : "star"} size={20} color="#C6A584" />
           </View>
           <View style={styles.insightContent}>
             <Text style={[styles.insightLabel, { color: textSecondary }]}>INSIGHTS</Text>

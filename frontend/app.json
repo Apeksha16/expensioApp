@@ -6,18 +6,18 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,
-      "bundleIdentifier": "com.expensio.app"
+      "bundleIdentifier": "com.aptech.expensio.app",
+      "appleTeamId": "JS58863CSG"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F8FAFC"
       },
-      "package": "com.expensio.app",
+      "package": "com.aptech.expensio.app",
       "predictiveBackGestureEnabled": true
     },
     "web": {
@@ -51,7 +51,16 @@
           "resizeMode": "contain",
           "backgroundColor": "#F8FAFC"
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ],
+      "./plugins/withReleaseScheme"
     ]
   }
 }

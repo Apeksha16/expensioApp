@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,26 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSubscriptions } from '../hooks';
 import { formatters } from '../utils/formatters';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../theme/ThemeContext';
+import { colors } from '../theme/colors';
+import { SwipeableRow } from '../components/SwipeableRow';
+import { BottomSheet } from '../components/BottomSheet';
+import type { SubscriptionItem } from '../types';
 
-export function SubscriptionsScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+export function SubscriptionsScreen({ navigation, route, ...props }: any) {
   const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
+  const { isDark } = useTheme();
+
   const {
     subscriptions,
     subTab,
@@ -25,20 +33,95 @@ export function SubscriptionsScreen({ navigation, route, onSuccess, onResetAuth,
     totalMonthly,
     changeSubTab,
     markPaid,
+    addSubscription,
+    updateSubscription,
+    deleteSubscription,
   } = useSubscriptions();
+
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingSub, setEditingSub] = useState<SubscriptionItem | null>(null);
+  
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const bgColor = isDark ? '#090909' : '#F6F3EE';
+  const cardBg = isDark ? '#121212' : '#FFFFFF';
+  const textPrimary = isDark ? '#FFFFFF' : '#1C1C1E';
+  const textSecondary = isDark ? '#A1A1AA' : '#8E8E93';
+  const borderColor = isDark ? '#27272A' : '#EBE6DE';
+
+  const openSheet = (sub?: SubscriptionItem) => {
+    if (sub) {
+      setEditingSub(sub);
+      setName(sub.name);
+      setAmount(sub.amount.toString());
+      setDueDate(sub.dueDate);
+    } else {
+      setEditingSub(null);
+      setName('');
+      setAmount('');
+      setDueDate('');
+    }
+    setIsSheetOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim() || !amount.trim() || !dueDate.trim()) return;
+    setSubmitting(true);
+    
+    if (editingSub) {
+      await updateSubscription(editingSub.id, { name: name.trim(), amount: parseFloat(amount), dueDate: dueDate.trim() });
+    } else {
+      await addSubscription({ name: name.trim(), amount: parseFloat(amount), dueDate: dueDate.trim() });
+    }
+    
+    setSubmitting(false);
+    setIsSheetOpen(false);
+  };
+
+  const handleDelete = (id: string) => {
+    Alert.alert('Delete Subscription', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteSubscription(id) },
+    ]);
+  };
 
   const getSubMeta = (name: string) => {
     const lower = (name || '').toLowerCase();
     if (lower.includes('netflix') || lower.includes('prime') || lower.includes('hotstar')) {
-      return { icon: 'film' as const, color: '#FB7185', bg: 'rgba(251, 113, 133, 0.15)' };
+      return { icon: 'film' as const, color: '#FB7185', bg: isDark ? 'rgba(251, 113, 133, 0.15)' : 'rgba(251, 113, 133, 0.1)' };
     }
     if (lower.includes('youtube') || lower.includes('music') || lower.includes('spotify')) {
-      return { icon: 'play-circle' as const, color: '#A78BFA', bg: 'rgba(167, 139, 250, 0.15)' };
+      return { icon: 'play-circle' as const, color: '#A78BFA', bg: isDark ? 'rgba(167, 139, 250, 0.15)' : 'rgba(167, 139, 250, 0.1)' };
     }
     if (lower.includes('wifi') || lower.includes('broadband') || lower.includes('airtel')) {
-      return { icon: 'wifi' as const, color: '#38BDF8', bg: 'rgba(56, 189, 248, 0.15)' };
+      return { icon: 'wifi' as const, color: '#38BDF8', bg: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.1)' };
     }
-    return { icon: 'zap' as const, color: '#FBBF24', bg: 'rgba(251, 191, 36, 0.15)' };
+    return { icon: 'zap' as const, color: '#FBBF24', bg: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 191, 36, 0.1)' };
+  };
+
+  const getStatusBadgeStyles = (sub: any) => {
+    if (sub.status === 'OVERDUE') {
+      return {
+        text: `OVERDUE BY ${Math.abs(sub.daysLeft || 0)} DAY(S)`,
+        color: '#EF4444',
+        bg: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'
+      };
+    }
+    if (sub.status === 'UPCOMING' && sub.monthGroup === 'this') {
+      return {
+        text: `DUE IN ${sub.daysLeft || 0} DAY(S)`,
+        color: '#8B5CF6',
+        bg: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)'
+      };
+    }
+    return {
+      text: `DUE ON ${sub.dueDate.toUpperCase()}`,
+      color: textSecondary,
+      bg: isDark ? '#1E1E1E' : '#F1F5F9'
+    };
   };
 
   const filteredSubs = subscriptions.filter((s) => {
@@ -46,426 +129,197 @@ export function SubscriptionsScreen({ navigation, route, onSuccess, onResetAuth,
     return s.status === 'PAID';
   });
 
-  return (
-    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+  const thisMonthSubs = filteredSubs.filter(s => s.monthGroup === 'this' || !s.monthGroup);
+  const nextMonthSubs = filteredSubs.filter(s => s.monthGroup === 'next');
 
-      {/* Atmospheric Ambient Glow */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <LinearGradient
-          colors={['#F8FAFC', '#F1F5F9']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.ambientGlow} />
-      </View>
+  const renderSubCard = (sub: any) => {
+    const meta = getSubMeta(sub.name);
+    const isPaid = sub.status === 'PAID';
+    const badgeMeta = getStatusBadgeStyles(sub);
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.titleRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-              <Feather name="menu" size={24} color="#0F172A" />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.pageTitle}>Subscriptions</Text>
-              <Text style={styles.pageSubtitle}>Autopay trackers & upcoming renewals</Text>
+    return (
+      <SwipeableRow key={sub.id} onEdit={() => openSheet(sub)} onDelete={() => handleDelete(sub.id)}>
+        <View style={[styles.subCard, { backgroundColor: cardBg, borderColor }]}>
+          <View style={[styles.subIconBox, { backgroundColor: meta.bg }]}>
+            <Feather name={meta.icon} size={20} color={meta.color} />
+          </View>
+
+          <View style={styles.subContentCol}>
+            <View style={styles.subTopRow}>
+              <Text style={[styles.subTitleText, { color: textPrimary }]}>{sub.name}</Text>
+              <Text style={[styles.subAmountText, { color: textPrimary }]}>{formatters.currency(sub.amount)}</Text>
+            </View>
+            
+            <View style={styles.subBottomRow}>
+              {isPaid ? (
+                <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.15)' : 'rgba(52, 211, 153, 0.1)' }]}>
+                  <Text style={[styles.statusBadgeText, { color: '#34D399' }]}>PAID ON {sub.dueDate}</Text>
+                </View>
+              ) : (
+                <View style={[styles.statusBadge, { backgroundColor: badgeMeta.bg }]}>
+                  <Text style={[styles.statusBadgeText, { color: badgeMeta.color }]}>{badgeMeta.text}</Text>
+                </View>
+              )}
+
+              {isPaid ? (
+                <View style={[styles.paidActionBadge, { backgroundColor: isDark ? '#1E1E1E' : '#F8FAFC' }]}>
+                  <Feather name="check" size={10} color="#D946EF" />
+                  <Text style={[styles.paidActionText, { color: '#D946EF' }]}>PAID</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.payActionBtn}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    haptics.medium();
+                    markPaid(sub.id);
+                  }}
+                >
+                  <Feather name="check" size={10} color="#FFF" />
+                  <Text style={styles.payActionBtnText}>PAID</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
+      </SwipeableRow>
+    );
+  };
 
-        {/* 1. HERO APPLE LIQUID GLASS RECURRING CARD */}
-        <View style={styles.heroGlassCard}>
-          <View style={styles.glassTopSpecular} />
-
-          <LinearGradient
-            colors={['rgba(0, 0, 0, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCardInner}
-          >
-            <View style={styles.cardStatusRow}>
-              <View style={styles.activeDotPill}>
-                <View style={styles.activeDot} />
-                <Text style={styles.activeDotText}>RECURRING COMMITMENTS</Text>
-              </View>
-              <Text style={styles.activeSubsCount}>{subscriptions.length} active services</Text>
-            </View>
-
-            <Text style={styles.totalRecurringLabel}>TOTAL MONTHLY RECURRING</Text>
-            <Text style={styles.totalRecurringAmount}>
-              {formatters.currency(totalMonthly)}
-            </Text>
-
-            <View style={styles.shieldTipBox}>
-              <Feather name="shield" size={13} color="#34D399" />
-              <Text style={styles.shieldTipText}>
-                All renewals are synced with your primary salary account.
-              </Text>
-            </View>
-          </LinearGradient>
+  return (
+    <View style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: bgColor }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.titleRow}>
+          <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 16 }}>
+            <Feather name="menu" size={24} color={textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.pageTitle, { color: textPrimary }]}>Subscriptions</Text>
         </View>
 
-        {/* 2. SUB-TABS: UPCOMING / PAID */}
-        <View style={styles.segmentedTabRow}>
-          <TouchableOpacity
-            style={[styles.segmentBtn, subTab === 'upcoming' && styles.segmentBtnActive]}
-            activeOpacity={0.8}
-            onPress={() => {
-              haptics.selection();
-              changeSubTab('upcoming');
-            }}
-          >
-            <Text style={[styles.segmentText, subTab === 'upcoming' && styles.segmentTextActive]}>
-              Upcoming Renewals
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.segmentBtn, subTab === 'paid' && styles.segmentBtnActive]}
-            activeOpacity={0.8}
-            onPress={() => {
-              haptics.selection();
-              changeSubTab('paid');
-            }}
-          >
-            <Text style={[styles.segmentText, subTab === 'paid' && styles.segmentTextActive]}>
-              Paid This Month
-            </Text>
-          </TouchableOpacity>
+        <View style={[styles.heroCard, { backgroundColor: cardBg, borderColor }]}>
+          <Text style={[styles.totalLabel, { color: textSecondary }]}>TOTAL MONTHLY SUBSCRIPTIONS</Text>
+          <Text style={[styles.totalAmount, { color: textPrimary }]}>{formatters.currency(totalMonthly)}</Text>
         </View>
 
-        {/* 3. SUBSCRIPTIONS LIST */}
-        <View style={styles.listHeaderRow}>
-          <Text style={styles.listHeaderTitle}>SERVICES</Text>
-          <Text style={styles.listHeaderCount}>{filteredSubs.length} items</Text>
+        <View style={styles.tabsRow}>
+          <TouchableOpacity style={[styles.tabBtn, subTab === 'upcoming' ? styles.tabBtnActive : { backgroundColor: cardBg, borderColor }]} onPress={() => changeSubTab('upcoming')}>
+            <Text style={[styles.tabText, subTab === 'upcoming' ? styles.tabTextActive : { color: textSecondary }]}>UPCOMING</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabBtn, subTab === 'paid' ? styles.tabBtnActive : { backgroundColor: cardBg, borderColor }]} onPress={() => changeSubTab('paid')}>
+            <Text style={[styles.tabText, subTab === 'paid' ? styles.tabTextActive : { color: textSecondary }]}>PAID</Text>
+          </TouchableOpacity>
         </View>
 
         {loading ? (
-          <ActivityIndicator color="#14B8A6" style={{ marginTop: 40 }} />
+          <ActivityIndicator color="#D946EF" style={{ marginTop: 40 }} />
         ) : (
           <View style={styles.itemsList}>
             {filteredSubs.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No subscriptions found in this view</Text>
+              <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor }]}>
+                <View style={styles.emptyIconBox}>
+                  <Feather name="check" size={24} color="#D946EF" />
+                </View>
+                <Text style={[styles.emptyTitle, { color: textPrimary }]}>Nothing paid yet</Text>
               </View>
             ) : (
-              filteredSubs.map((sub) => {
-                const meta = getSubMeta(sub.name);
-                const isPaid = sub.status === 'PAID';
-
-                return (
-                  <View key={sub.id} style={styles.subCard}>
-                    <View style={[styles.subIconBox, { backgroundColor: meta.bg }]}>
-                      <Feather name={meta.icon} size={18} color={meta.color} />
-                    </View>
-
-                    <View style={styles.subInfoCol}>
-                      <Text style={styles.subTitleText}>{sub.name}</Text>
-                      <Text style={styles.subDueText}>
-                        {isPaid ? 'Auto-debited' : `Due on ${sub.dueDate}`}
-                      </Text>
-                    </View>
-
-                    <View style={styles.subRightCol}>
-                      <Text style={styles.subAmountText}>
-                        {formatters.currency(sub.amount)}
-                      </Text>
-
-                      {isPaid ? (
-                        <View style={styles.paidBadge}>
-                          <Feather name="check" size={10} color="#34D399" />
-                          <Text style={styles.paidBadgeText}>Paid</Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.payActionBtn}
-                          activeOpacity={0.8}
-                          onPress={() => {
-                            haptics.medium();
-                            markPaid(sub.id);
-                          }}
-                        >
-                          <Text style={styles.payActionText}>Pay Now</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                );
-              })
+              <>
+                {thisMonthSubs.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: textSecondary }]}>THIS MONTH</Text>
+                    {thisMonthSubs.map(renderSubCard)}
+                  </>
+                )}
+                {nextMonthSubs.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: textSecondary, marginTop: 16 }]}>NEXT MONTH</Text>
+                    {nextMonthSubs.map(renderSubCard)}
+                  </>
+                )}
+              </>
             )}
           </View>
         )}
       </ScrollView>
+
+      <TouchableOpacity style={styles.fabBtn} activeOpacity={0.8} onPress={() => { haptics.medium(); openSheet(); }}>
+        <Feather name="plus" size={26} color="#FFF" />
+      </TouchableOpacity>
+
+      <BottomSheet visible={isSheetOpen} onClose={() => setIsSheetOpen(false)}>
+        <Text style={[styles.sheetTitle, { color: textPrimary }]}>{editingSub ? 'Edit Subscription' : 'New Subscription'}</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: isDark ? '#1E1E1E' : '#F8FAFC', borderColor, color: textPrimary }]}
+          placeholder="Service Name (e.g. Netflix)"
+          placeholderTextColor={textSecondary}
+          value={name}
+          onChangeText={setName}
+        />
+        <TextInput
+          style={[styles.input, { backgroundColor: isDark ? '#1E1E1E' : '#F8FAFC', borderColor, color: textPrimary }]}
+          placeholder="Monthly Amount (₹)"
+          placeholderTextColor={textSecondary}
+          keyboardType="decimal-pad"
+          value={amount}
+          onChangeText={setAmount}
+        />
+        <TextInput
+          style={[styles.input, { backgroundColor: isDark ? '#1E1E1E' : '#F8FAFC', borderColor, color: textPrimary }]}
+          placeholder="Due Date (e.g. 4th, Sep 15)"
+          placeholderTextColor={textSecondary}
+          value={dueDate}
+          onChangeText={setDueDate}
+        />
+        
+        <View style={styles.sheetActionsRow}>
+          <TouchableOpacity style={styles.sheetCancelBtn} onPress={() => setIsSheetOpen(false)}>
+            <Text style={[styles.sheetCancelText, { color: textSecondary }]}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.sheetSaveBtn, { backgroundColor: '#D946EF' }]} onPress={handleSave} disabled={submitting}>
+            {submitting ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.sheetSaveText}>Save</Text>}
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  ambientGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -20,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 110, // clear floating tab bar
-  },
-  titleRow: {
-    marginBottom: 16,
-  },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.5,
-  },
-  pageSubtitle: {
-    fontSize: 12.5,
-    color: '#94A3B8',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-
-  // Hero Glass Card
-  heroGlassCard: {
-    borderRadius: 24,
-    marginBottom: 16,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 22,
-    elevation: 0,
-  },
-  glassTopSpecular: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    zIndex: 2,
-  },
-  heroCardInner: {
-    padding: 20,
-  },
-  cardStatusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  activeDotPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderRadius: 10,
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#3B82F6',
-  },
-  activeDotText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#14B8A6',
-    letterSpacing: 0.6,
-  },
-  activeSubsCount: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-  totalRecurringLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94A3B8',
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  totalRecurringAmount: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -1,
-    marginBottom: 14,
-  },
-  shieldTipBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(167, 243, 208, 0.8)',
-  },
-  shieldTipText: {
-    fontSize: 11.5,
-    color: '#34D399',
-    fontWeight: '600',
-  },
-
-  // Segmented Tabs
-  segmentedTabRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    padding: 4,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    marginBottom: 16,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  segmentBtnActive: {
-    backgroundColor: '#3B82F6',
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 0,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  segmentTextActive: {
-    color: '#0F172A',
-  },
-
-  // List Header
-  listHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingHorizontal: 2,
-  },
-  listHeaderTitle: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 0.8,
-  },
-  listHeaderCount: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#94A3B8',
-  },
-
-  // Cards
-  itemsList: {
-    gap: 10,
-  },
-  subCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 0,
-  },
-  subIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  subInfoCol: {
-    flex: 1,
-    marginRight: 10,
-  },
-  subTitleText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 2,
-  },
-  subDueText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  subRightCol: {
-    alignItems: 'flex-end',
-  },
-  subAmountText: {
-    fontSize: 14.5,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  paidBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-  },
-  paidBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#34D399',
-  },
-  payActionBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  payActionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  emptyCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    padding: 24,
-    borderRadius: 18,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
+  safeArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 110 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  pageTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  heroCard: { borderRadius: 20, padding: 24, marginBottom: 24, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  totalLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
+  totalAmount: { fontSize: 38, fontWeight: '800', letterSpacing: -1 },
+  tabsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  tabBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 12, borderWidth: 1 },
+  tabBtnActive: { backgroundColor: '#D946EF', borderColor: '#D946EF', borderWidth: 1 },
+  tabText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  tabTextActive: { color: '#FFF' },
+  sectionTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12, marginLeft: 4 },
+  itemsList: { gap: 12 },
+  subCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 18, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
+  subIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  subContentCol: { flex: 1, justifyContent: 'center' },
+  subTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  subTitleText: { fontSize: 15, fontWeight: '700' },
+  subAmountText: { fontSize: 15, fontWeight: '800' },
+  subBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  statusBadge: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6 },
+  statusBadgeText: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.5 },
+  paidActionBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6 },
+  paidActionText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  payActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D946EF', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6 },
+  payActionBtnText: { fontSize: 10, fontWeight: '700', color: '#FFF', letterSpacing: 0.5 },
+  emptyCard: { padding: 40, borderRadius: 24, alignItems: 'center', borderWidth: 1, marginTop: 10 },
+  emptyIconBox: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(217, 70, 239, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', marginBottom: 8 },
+  fabBtn: { position: 'absolute', bottom: 100, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: '#D946EF', alignItems: 'center', justifyContent: 'center', shadowColor: '#D946EF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5, zIndex: 10 },
+  sheetTitle: { fontSize: 18, fontWeight: '800', marginBottom: 16 },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, height: 52, fontSize: 14, fontWeight: '600', marginBottom: 12 },
+  sheetActionsRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 10 },
+  sheetCancelBtn: { paddingVertical: 10, paddingHorizontal: 16 },
+  sheetCancelText: { fontSize: 13, fontWeight: '600' },
+  sheetSaveBtn: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12 },
+  sheetSaveText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
 });

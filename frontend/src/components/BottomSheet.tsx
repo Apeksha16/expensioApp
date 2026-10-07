@@ -13,13 +13,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
 import { haptics } from '../services/haptics';
+import { useTheme } from '../theme/ThemeContext';
 
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
   maxHeight?: number | string;
-  theme?: 'light' | 'dark';
+  theme?: 'light' | 'dark'; // kept for backward compatibility, but we use useTheme
   title?: string;
 }
 
@@ -27,14 +28,17 @@ export function BottomSheet({
   visible,
   onClose,
   children,
-  theme = 'light',
   title,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const isLight = theme === 'light';
+  const { isDark } = useTheme();
+  const bgColor = isDark ? '#121212' : '#FFFFFF';
+  const borderColor = isDark ? '#27272A' : '#EBE6DE';
+  const textPrimary = isDark ? '#FFFFFF' : '#1C1C1E';
+  const handleColor = isDark ? '#333333' : '#E2E8F0';
 
   useEffect(() => {
     if (visible) {
@@ -80,7 +84,6 @@ export function BottomSheet({
           <Animated.View
             style={[
               styles.backdrop,
-              isLight && { backgroundColor: 'rgba(15, 23, 42, 0.45)' },
               { opacity: fadeAnim },
             ]}
           />
@@ -89,11 +92,9 @@ export function BottomSheet({
         <Animated.View
           style={[
             styles.sheetContainer,
-            isLight && {
-              backgroundColor: '#022C22',
-              borderColor: 'rgba(0, 0, 0, 0.1)',
-            },
             {
+              backgroundColor: bgColor,
+              borderColor: borderColor,
               transform: [{ translateY: slideAnim }],
               paddingBottom: insets.bottom,
             },
@@ -104,13 +105,13 @@ export function BottomSheet({
             <View
               style={[
                 styles.handleBar,
-                isLight && { backgroundColor: '#64748B' },
+                { backgroundColor: handleColor },
               ]}
             />
           </View>
           
           {title && (
-            <Text style={[styles.title, isLight && { color: '#FFFFFF' }]}>
+            <Text style={[styles.title, { color: textPrimary }]}>
               {title}
             </Text>
           )}
@@ -119,6 +120,7 @@ export function BottomSheet({
             bounces={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
           >
             {children}
           </ScrollView>
@@ -138,12 +140,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
   sheetContainer: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: colors.border,
     maxHeight: '88%',
     width: '100%',
     ...Platform.select({
@@ -165,12 +165,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#022C22',
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0F172A',
     marginBottom: 20,
     marginTop: -10,
     textAlign: 'center',

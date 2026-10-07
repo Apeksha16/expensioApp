@@ -18,6 +18,8 @@ export function useSubscriptions() {
           amount: s.amount,
           dueDate: s.dueStatus || s.dueDate,
           status: s.isPaid ? 'PAID' : (s.isOverdue ? 'OVERDUE' : (s.status || 'UPCOMING')),
+          daysLeft: s.daysLeft,
+          monthGroup: s.monthGroup || 'this',
         }));
         setSubscriptions(mapped);
       }
@@ -37,16 +39,42 @@ export function useSubscriptions() {
 
   const markPaid = useCallback(async (id: string) => {
     await haptics.success();
-    setSubscriptions((prev) => {
-      const next = prev.map((sub) => (sub.id === id ? { ...sub, status: 'PAID' as const } : sub));
-      api.getSubscriptions().then(res => {
-         const _newCached = res.subscriptions.map((s: any) => (s.id === id ? { ...s, status: 'PAID' } : s));
-         // Need to import storage if we want to save it directly, or we can just let `api.ts` handle it if we add a `updateSubscription` method.
-         // Actually, let's ignore subscriptions for now since it's going to be redesigned, but I will persist it if possible.
-      });
-      return next;
-    });
-  }, []);
+    const subToUpdate = subscriptions.find(s => s.id === id);
+    if (subToUpdate) {
+      await api.updateSubscription(id, { status: 'PAID' });
+      await fetchSubscriptions();
+    }
+  }, [subscriptions, fetchSubscriptions]);
+
+  const addSubscription = useCallback(async (data: any) => {
+    await haptics.success();
+    const res = await api.addSubscription(data);
+    if (res.success) {
+      await fetchSubscriptions();
+      return true;
+    }
+    return false;
+  }, [fetchSubscriptions]);
+
+  const updateSubscription = useCallback(async (id: string, data: any) => {
+    await haptics.success();
+    const res = await api.updateSubscription(id, data);
+    if (res.success) {
+      await fetchSubscriptions();
+      return true;
+    }
+    return false;
+  }, [fetchSubscriptions]);
+
+  const deleteSubscription = useCallback(async (id: string) => {
+    await haptics.success();
+    const res = await api.deleteSubscription(id);
+    if (res.success) {
+      await fetchSubscriptions();
+      return true;
+    }
+    return false;
+  }, [fetchSubscriptions]);
 
   const filteredSubscriptions = useMemo(() => {
     return subscriptions.filter((sub) =>
@@ -66,6 +94,9 @@ export function useSubscriptions() {
     totalMonthly,
     changeSubTab,
     markPaid,
+    addSubscription,
+    updateSubscription,
+    deleteSubscription,
     refresh: fetchSubscriptions,
   };
 }

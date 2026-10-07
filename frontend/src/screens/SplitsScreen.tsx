@@ -10,7 +10,6 @@ import {
   ListRenderItemInfo,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheet } from '../components/BottomSheet';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { useSplits } from '../hooks';
@@ -20,10 +19,14 @@ import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SplitItem, SplitGroup } from '../types';
+import { useTheme } from '../theme/ThemeContext';
+import { colors } from '../theme/colors';
 
-export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+export function SplitsScreen({ navigation, route, ...props }: any) {
   const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
+  const { isDark } = useTheme();
+  
   const {
     splits,
     groups,
@@ -43,6 +46,13 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
   const [newAmount, setNewAmount] = useState('');
   const [peopleCount, setPeopleCount] = useState('2');
   const [submitting, setSubmitting] = useState(false);
+
+  // Dynamic Theme Variables
+  const bgColor = isDark ? '#090909' : '#F6F3EE';
+  const cardBg = isDark ? '#121212' : '#FFFFFF';
+  const textPrimary = isDark ? '#FFFFFF' : '#1C1C1E';
+  const textSecondary = isDark ? '#A1A1AA' : '#8E8E93';
+  const borderColor = isDark ? '#27272A' : '#EBE6DE';
 
   React.useEffect(() => {
     if (route?.params?.openNewSplit) {
@@ -75,50 +85,54 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
       const isSettled = item.status === 'SETTLED';
 
       const content = (
-        <View style={styles.splitCard}>
-          <View style={[styles.splitIconBox, { backgroundColor: isSettled ? 'rgba(0, 0, 0, 0.08)' : 'rgba(56, 189, 248, 0.15)' }]}>
-            <Feather
-              name={isSettled ? 'check-circle' : 'users'}
-              size={18}
-              color={isSettled ? '#94A3B8' : '#38BDF8'}
-            />
-          </View>
+        <View style={[styles.splitCard, { backgroundColor: cardBg, borderColor, padding: 16 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <View style={[styles.expenseIconBox, { borderColor: isSettled ? borderColor : 'rgba(244, 63, 94, 0.4)' }]}>
+              <Feather name="shopping-bag" size={20} color={isSettled ? textSecondary : '#F43F5E'} />
+            </View>
 
-          <View style={styles.splitInfoCol}>
-            <Text style={styles.splitTitleText}>{item.title}</Text>
-            <Text style={styles.splitMetaText}>
-              {item.date} • Paid by {item.paidBy}
-            </Text>
-          </View>
-
-          <View style={styles.splitRightCol}>
-            <Text style={styles.splitTotalAmount}>
-              {formatters.currency(item.amount)}
-            </Text>
-
-            {isSettled ? (
-              <View style={styles.settledBadge}>
-                <Text style={styles.settledBadgeText}>SETTLED</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.settleActionBtn}
-                activeOpacity={0.8}
-                onPress={() => {
-                  haptics.medium();
-                  settleSplit(item.id);
-                }}
-                disabled={settlingId === item.id}
-              >
-                {settlingId === item.id ? (
-                  <ActivityIndicator size="small" color="#0F172A" />
-                ) : (
-                  <Text style={styles.settleActionText}>
-                    Get {formatters.currency(item.youGet || 0)}
+            <View style={{ marginLeft: 16, flex: 1 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <Text style={[styles.cardTitle, { color: textPrimary, fontSize: 16 }]} numberOfLines={1}>{item.title}</Text>
+                  <Text style={{ color: textSecondary, fontSize: 10.5, fontWeight: '700', marginTop: 4, letterSpacing: 0.5 }}>
+                    {item.date.toUpperCase()} • PAID BY {item.paidBy.toUpperCase()}
                   </Text>
+                </View>
+                <Text style={[styles.cardAmount, { color: textPrimary, fontSize: 16 }]}>
+                  {formatters.currency(item.amount)}
+                </Text>
+              </View>
+
+              <View style={{ marginTop: 12 }}>
+                {isSettled ? (
+                  <View style={[styles.settledPill, { borderColor }]}>
+                    <Text style={[styles.settledText, { color: textSecondary }]}>SETTLED</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.actionGetBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                    <Text style={[styles.actionGetText, { color: item.youGet ? '#10B981' : '#F43F5E' }]}>
+                      {item.youGet ? `You get ${formatters.currency(item.youGet)}` : `You owe ${formatters.currency(item.youOwe || 0)}`}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.settleBtn, { backgroundColor: cardBg, borderColor }]}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        haptics.medium();
+                        settleSplit(item.id);
+                      }}
+                      disabled={settlingId === item.id}
+                    >
+                      {settlingId === item.id ? (
+                        <ActivityIndicator size="small" color={textPrimary} />
+                      ) : (
+                        <Text style={[styles.settleBtnText, { color: textPrimary }]}>Settle</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 )}
-              </TouchableOpacity>
-            )}
+              </View>
+            </View>
           </View>
         </View>
       );
@@ -135,10 +149,9 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
           </SwipeableRow>
         );
       }
-
       return content;
     },
-    [settleSplit, settlingId]
+    [settleSplit, settlingId, cardBg, borderColor, isDark, textPrimary, textSecondary]
   );
 
   const isExpensesTab = subTab !== 'groups';
@@ -150,144 +163,131 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
       const hasGet = typeof item.youllGet === 'number' && item.youllGet > 0;
 
       return (
-        <View style={styles.splitCard}>
-          <View style={[styles.splitIconBox, { backgroundColor: 'rgba(0, 0, 0, 0.08)' }]}>
-            <Feather name="folder" size={18} color="#7C3AED" />
-          </View>
+        <View style={[styles.splitCard, { backgroundColor: cardBg, borderColor, padding: 16 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <View style={[styles.groupIconBox, { backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.1)' }]}>
+              <Feather name="users" size={20} color="#F97316" />
+            </View>
+            
+            <View style={{ marginLeft: 16, flex: 1 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={[styles.cardTitle, { color: textPrimary, fontSize: 15 }]} numberOfLines={1}>
+                  {item.name || 'Group'}
+                </Text>
+                <View style={[styles.archivePill, { backgroundColor: isDark ? '#1E1E1E' : '#F1F5F9' }]}>
+                  <Text style={[styles.archiveText, { color: textSecondary }]}>ARCHIVE</Text>
+                </View>
+              </View>
 
-          <View style={styles.splitInfoCol}>
-            <Text style={styles.splitTitleText}>{item.name || 'Group'}</Text>
-            <Text style={styles.splitMetaText}>
-              {members} members • INR
-            </Text>
-          </View>
-
-          <View style={styles.splitRightCol}>
-            <Text
-              style={[
-                styles.groupBalanceText,
-                hasOwe ? { color: '#E11D48' } : hasGet ? { color: '#34D399' } : { color: '#94A3B8' },
-              ]}
-            >
-              {hasOwe
-                ? `You owe ${formatters.currency(item.youOwe || 0)}`
-                : hasGet
-                ? `You get ${formatters.currency(item.youllGet || 0)}`
-                : 'All Settled'}
-            </Text>
+              <Text style={{ color: textSecondary, fontSize: 12.5, fontWeight: '500', marginBottom: 12 }}>
+                {members} members
+              </Text>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: textSecondary, letterSpacing: 0.5 }}>
+                  {hasOwe ? 'YOU OWE ' : hasGet ? 'YOU GET ' : 'ALL SETTLED'}
+                </Text>
+                {(hasOwe || hasGet) && (
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: hasOwe ? '#F43F5E' : '#10B981', marginLeft: 2 }}>
+                    {formatters.currency(hasOwe ? item.youOwe! : item.youllGet!)}
+                  </Text>
+                )}
+              </View>
+            </View>
           </View>
         </View>
       );
     },
-    []
+    [cardBg, borderColor, textPrimary, textSecondary]
   );
+
+  const getPeopleCount = summary?.getPeopleCount || (summary as any)?.fromPeopleCount || 0;
+  const owePeopleCount = summary?.owePeopleCount || (summary as any)?.toPeopleCount || 0;
 
   const renderHeader = () => (
     <View style={styles.headerBlock}>
-      {/* Title */}
+      {/* 1. Header Title Row */}
       <View style={styles.titleRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-            <Feather name="menu" size={24} color="#0F172A" />
+          <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 16 }}>
+            <Feather name="menu" size={24} color={textPrimary} />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.pageTitle}>Group Splits</Text>
-            <Text style={styles.pageSubtitle}>Social ledger & instant settlements</Text>
-          </View>
+          <Text style={[styles.pageTitle, { color: textPrimary }]}>Splits</Text>
         </View>
-
-        <TouchableOpacity
-          style={styles.newSplitPill}
-          activeOpacity={0.85}
-          onPress={() => {
-            haptics.medium();
-            setIsSheetOpen(true);
-          }}
-        >
-          <Feather name="plus" size={15} color="#0F172A" />
-          <Text style={styles.newSplitPillText}>New Split</Text>
+        <TouchableOpacity onPress={() => haptics.selection()}>
+          <Feather name="filter" size={20} color={textPrimary} />
         </TouchableOpacity>
       </View>
 
-      {/* 1. HERO APPLE LIQUID GLASS CARD: DUAL NET SETTLEMENT */}
-      <View style={styles.heroGlassCard}>
-        <View style={styles.glassTopSpecular} />
-
-        <LinearGradient
-          colors={['rgba(0, 0, 0, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroCardInner}
-        >
-          <View style={styles.summaryBadgeRow}>
-            <View style={styles.activeDotPill}>
-              <View style={styles.greenPulseDot} />
-              <Text style={styles.activeDotText}>NET SOCIAL BALANCE</Text>
-            </View>
-            <Text style={styles.activeFriendsCount}>
-              {summary.getPeopleCount} active debtors
-            </Text>
+      {/* 2. Hero Cards (2 Columns) */}
+      <View style={styles.heroGrid}>
+        <View style={[styles.heroCard, { backgroundColor: cardBg, borderColor }]}>
+          <View style={[styles.heroIconBox, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.15)' : 'rgba(96, 165, 250, 0.1)' }]}>
+            <Feather name="arrow-down" size={16} color="#60A5FA" />
           </View>
+          <Text style={[styles.heroLabel, { color: textSecondary }]}>You'll Get</Text>
+          <Text style={[styles.heroAmount, { color: textPrimary }]}>{formatters.currency(summary.youllGet || 0)}</Text>
+          <Text style={[styles.heroSub, { color: textSecondary }]}>from {getPeopleCount} people</Text>
+        </View>
 
-          {/* Dual Balance Tiles */}
-          <View style={styles.dualTilesRow}>
-            <View style={styles.settlementTileGreen}>
-              <View style={styles.tileIconCircleGreen}>
-                <Feather name="arrow-down-left" size={16} color="#34D399" />
-              </View>
-              <View>
-                <Text style={styles.tileMicroLabel}>YOU WILL GET</Text>
-                <Text style={styles.tileAmountGreen}>
-                  +{formatters.currency(summary.youllGet)}
-                </Text>
-                <Text style={styles.tileSubNote}>from {summary.getPeopleCount} friends</Text>
-              </View>
-            </View>
-
-            <View style={styles.settlementTileRed}>
-              <View style={styles.tileIconCircleRed}>
-                <Feather name="arrow-up-right" size={16} color="#E11D48" />
-              </View>
-              <View>
-                <Text style={styles.tileMicroLabel}>YOU OWE</Text>
-                <Text style={styles.tileAmountRed}>
-                  -{formatters.currency(summary.youOwe)}
-                </Text>
-                <Text style={styles.tileSubNote}>all settled</Text>
-              </View>
-            </View>
+        <View style={[styles.heroCard, { backgroundColor: cardBg, borderColor }]}>
+          <View style={[styles.heroIconBox, { backgroundColor: isDark ? 'rgba(244, 63, 94, 0.15)' : 'rgba(244, 63, 94, 0.1)' }]}>
+            <Feather name="arrow-up" size={16} color="#F43F5E" />
           </View>
-        </LinearGradient>
+          <Text style={[styles.heroLabel, { color: textSecondary }]}>You Owe</Text>
+          <Text style={[styles.heroAmount, { color: textPrimary }]}>{formatters.currency(summary.youOwe || 0)}</Text>
+          <Text style={[styles.heroSub, { color: textSecondary }]}>to {owePeopleCount} people</Text>
+        </View>
       </View>
 
-      {/* 2. SUB-TABS: SPLITS / GROUPS */}
-      <View style={styles.segmentedTabRow}>
+      {/* 3. Segmented Tabs */}
+      <View style={styles.tabsRow}>
         <TouchableOpacity
-          style={[styles.segmentBtn, isExpensesTab && styles.segmentBtnActive]}
+          style={[
+            styles.tabBtn,
+            { backgroundColor: cardBg, borderColor: isExpensesTab ? colors.primary : cardBg },
+            isExpensesTab && styles.tabBtnActive,
+          ]}
           activeOpacity={0.8}
           onPress={() => {
             haptics.selection();
             changeSubTab('expenses');
           }}
         >
-          <Text style={[styles.segmentText, isExpensesTab && styles.segmentTextActive]}>
-            All Splits ({splits.length})
+          <Text style={[styles.tabText, isExpensesTab ? { color: colors.primary } : { color: textSecondary }]}>
+            Expenses
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.segmentBtn, !isExpensesTab && styles.segmentBtnActive]}
+          style={[
+            styles.tabBtn,
+            { backgroundColor: cardBg, borderColor: !isExpensesTab ? colors.primary : cardBg },
+            !isExpensesTab && styles.tabBtnActive,
+          ]}
           activeOpacity={0.8}
           onPress={() => {
             haptics.selection();
             changeSubTab('groups');
           }}
         >
-          <Text style={[styles.segmentText, !isExpensesTab && styles.segmentTextActive]}>
-            Groups ({groups.length})
+          <Text style={[styles.tabText, !isExpensesTab ? { color: colors.primary } : { color: textSecondary }]}>
+            Groups
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* 4. List Header */}
+      {isExpensesTab && (
+        <View style={styles.listHeaderRow}>
+          <Text style={[styles.listHeaderTitle, { color: textPrimary }]}>
+            ALL EXPENSES
+          </Text>
+          <TouchableOpacity style={[styles.settleUpBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+            <Text style={styles.settleUpText}>SETTLE UP</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
@@ -297,22 +297,11 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
       : 0;
 
   return (
-    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-
-      {/* Atmospheric Ambient Glow */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <LinearGradient
-          colors={['#F8FAFC', '#F1F5F9']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.ambientGlow} />
-      </View>
-
+    <View style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: bgColor }]}>
+      
       <View style={styles.container}>
         {loading ? (
-          <ActivityIndicator color="#14B8A6" style={{ marginTop: 40 }} />
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
         ) : (
           <FlatList
             data={isExpensesTab ? (splits as any) : (groups as any)}
@@ -323,49 +312,60 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
             onRefresh={refresh}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
-            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           />
         )}
       </View>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        activeOpacity={0.85}
+        onPress={() => {
+          haptics.medium();
+          setIsSheetOpen(true);
+        }}
+      >
+        <Feather name="plus" size={26} color="#FFF" />
+      </TouchableOpacity>
 
       {/* Light Theme Bottom Sheet for New Split */}
       <BottomSheet
         visible={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
-        theme="light"
       >
-        <Text style={styles.sheetTitle}>Create Split Bill</Text>
+        <Text style={[styles.sheetTitle, { color: textPrimary }]}>Create Split Bill</Text>
 
         <TextInput
-          style={styles.sheetInput}
+          style={[styles.sheetInput, { backgroundColor: cardBg, borderColor, color: textPrimary }]}
           placeholder="What is this for? (e.g. Dinner, Wi-Fi)"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={textSecondary}
           value={newTitle}
           onChangeText={setNewTitle}
         />
 
         <TextInput
-          style={styles.sheetInput}
+          style={[styles.sheetInput, { backgroundColor: cardBg, borderColor, color: textPrimary }]}
           placeholder="Total Bill Amount (₹)"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={textSecondary}
           keyboardType="decimal-pad"
           value={newAmount}
           onChangeText={setNewAmount}
         />
 
         <TextInput
-          style={styles.sheetInput}
+          style={[styles.sheetInput, { backgroundColor: cardBg, borderColor, color: textPrimary }]}
           placeholder="Number of People (including you)"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={textSecondary}
           keyboardType="number-pad"
           value={peopleCount}
           onChangeText={setPeopleCount}
         />
 
         {previewPerPerson > 0 && (
-          <View style={styles.previewBox}>
-            <Text style={styles.previewText}>
-              Each person owes: <Text style={{ fontWeight: '800', color: '#14B8A6' }}>₹{previewPerPerson.toFixed(2)}</Text>
+          <View style={[styles.previewBox, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.2)' }]}>
+            <Text style={[styles.previewText, { color: textSecondary }]}>
+              Each person owes: <Text style={{ fontWeight: '800', color: colors.primary }}>₹{previewPerPerson.toFixed(2)}</Text>
             </Text>
           </View>
         )}
@@ -375,17 +375,17 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
             style={styles.sheetCancelBtn}
             onPress={() => setIsSheetOpen(false)}
           >
-            <Text style={styles.sheetCancelText}>Cancel</Text>
+            <Text style={[styles.sheetCancelText, { color: textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.sheetSaveBtn}
+            style={[styles.sheetSaveBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.85}
             onPress={handleSaveSplit}
             disabled={submitting}
           >
             {submitting ? (
-              <ActivityIndicator color="#0F172A" size="small" />
+              <ActivityIndicator color="#FFF" size="small" />
             ) : (
               <Text style={styles.sheetSaveText}>Create Split</Text>
             )}
@@ -399,24 +399,14 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-  ambientGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -20,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
   },
   container: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   listContent: {
     paddingTop: 12,
-    paddingBottom: 110, // clear floating tab bar
+    paddingBottom: 110,
   },
   headerBlock: {
     marginBottom: 16,
@@ -425,298 +415,227 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   pageTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
     letterSpacing: -0.5,
   },
-  pageSubtitle: {
-    fontSize: 12.5,
-    color: '#94A3B8',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  newSplitPill: {
+  
+  // Hero Grid
+  heroGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#3B82F6',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 0,
+    gap: 12,
+    marginBottom: 24,
   },
-  newSplitPillText: {
-    fontSize: 12.5,
+  heroCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  heroIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  heroLabel: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#0F172A',
+    marginBottom: 4,
+  },
+  heroAmount: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 6,
+    letterSpacing: -0.5,
+  },
+  heroSub: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 
-  // Hero Glass Card
-  heroGlassCard: {
-    borderRadius: 24,
-    marginBottom: 16,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 22,
-    elevation: 0,
+  // Tabs
+  tabsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
   },
-  glassTopSpecular: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    zIndex: 2,
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderBottomWidth: 2,
   },
-  heroCardInner: {
-    padding: 20,
+  tabBtnActive: {
+    borderBottomWidth: 2,
   },
-  summaryBadgeRow: {
+  tabText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // List Header
+  listHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
-  activeDotPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderRadius: 10,
-  },
-  greenPulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#34D399',
-  },
-  activeDotText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#14B8A6',
-    letterSpacing: 0.6,
-  },
-  activeFriendsCount: {
+  listHeaderTitle: {
     fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-  dualTilesRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  settlementTileGreen: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(167, 243, 208, 0.8)',
-  },
-  tileIconCircleGreen: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settlementTileRed: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(254, 205, 211, 0.8)',
-  },
-  tileIconCircleRed: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileMicroLabel: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    color: '#94A3B8',
-    marginBottom: 1,
-  },
-  tileAmountGreen: {
-    fontSize: 15.5,
     fontWeight: '800',
-    color: '#34D399',
+    letterSpacing: 1,
   },
-  tileAmountRed: {
-    fontSize: 15.5,
-    fontWeight: '800',
-    color: '#E11D48',
-  },
-  tileSubNote: {
-    fontSize: 9.5,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-
-  // Segmented Tabs
-  segmentedTabRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    padding: 4,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    marginBottom: 14,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  segmentBtnActive: {
-    backgroundColor: '#3B82F6',
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 0,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  segmentTextActive: {
-    color: '#0F172A',
-  },
-
-  // Transaction Cards
-  splitCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 0,
-  },
-  splitIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  splitInfoCol: {
-    flex: 1,
-    marginRight: 10,
-  },
-  splitTitleText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 2,
-  },
-  splitMetaText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  splitRightCol: {
-    alignItems: 'flex-end',
-  },
-  splitTotalAmount: {
-    fontSize: 14.5,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  settledBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 6,
-  },
-  settledBadgeText: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#34D399',
-  },
-  settleActionBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+  settleUpBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 8,
   },
-  settleActionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0F172A',
+  settleUpText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  groupBalanceText: {
+
+  // Cards
+  splitCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  expenseIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archivePill: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  archiveText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  cardTitle: {
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  cardAmount: {
+    fontWeight: '800',
+  },
+  settledPill: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  settledText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  actionGetBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  actionGetText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  settleBtn: {
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  settleBtnText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 100, // Above bottom tabs
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+    zIndex: 10,
   },
 
   // Bottom Sheet
   sheetTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
     marginBottom: 16,
   },
   sheetInput: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
     borderRadius: 12,
     paddingHorizontal: 14,
-    height: 48,
-    color: '#0F172A',
+    height: 52,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 12,
   },
   previewBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(37, 99, 235, 0.15)',
     marginBottom: 16,
   },
   previewText: {
     fontSize: 12.5,
-    color: '#64748B',
     fontWeight: '600',
   },
   sheetActionsRow: {
@@ -724,29 +643,23 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 12,
+    marginTop: 10,
   },
   sheetCancelBtn: {
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
   sheetCancelText: {
-    color: '#94A3B8',
     fontSize: 13,
     fontWeight: '600',
   },
   sheetSaveBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 11,
-    paddingHorizontal: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 12,
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 0,
   },
   sheetSaveText: {
-    color: '#0F172A',
+    color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
   },

@@ -15,6 +15,7 @@ import { colors } from '../theme/colors';
 import { formatters } from '../utils/formatters';
 import type { ExpenseItem, ExpenseCategory, AccountType, SplitItem } from '../types';
 import { useFinance } from '../hooks/FinanceContext';
+import { useTheme } from '../theme/ThemeContext';
 
 interface TransactionSheetProps {
   visible: boolean;
@@ -26,6 +27,13 @@ const AVAILABLE_FRIENDS = ['Pranav', 'Ananya', 'Rahul'];
 
 export function TransactionSheet({ visible, onClose, existingTransaction }: TransactionSheetProps) {
   const { state, addTransaction, deleteTransaction, addSplit, deleteSplit } = useFinance();
+  const { isDark } = useTheme();
+  
+  const textPrimary = isDark ? '#FFFFFF' : '#1C1C1E';
+  const textSecondary = isDark ? '#A1A1AA' : '#8E8E93';
+  const borderColor = isDark ? '#27272A' : '#EBE6DE';
+  const inputBg = isDark ? '#1E1E1E' : '#F6F3EE';
+  const chipBg = isDark ? '#1E1E1E' : '#FFFFFF';
   
   // Existing split logic if we're editing
   const existingSplit = existingTransaction 
@@ -42,7 +50,7 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
 
   // Split specific state
   const [isSplit, setIsSplit] = useState(false);
-  const [paidBy, setPaidBy] = useState<'YOU' | string>('YOU');
+  const [paidBy, setPaidBy] = useState<'Apeksha' | string>('Apeksha');
   const [participants, setParticipants] = useState<string[]>([]);
   const [strategy, setStrategy] = useState<'equally' | 'custom'>('equally');
   const [customShares, setCustomShares] = useState<Record<string, string>>({});
@@ -75,7 +83,7 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
           setCustomShares(sharesObj);
         } else {
           setIsSplit(false);
-          setPaidBy('YOU');
+          setPaidBy('Apeksha');
           setParticipants([]);
           setStrategy('equally');
           setCustomShares({});
@@ -89,7 +97,7 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
         setMethod('UPI');
         setTxDate(new Date());
         setIsSplit(false);
-        setPaidBy('YOU');
+        setPaidBy('Apeksha');
         setParticipants([]);
         setStrategy('equally');
         setCustomShares({});
@@ -203,18 +211,15 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
       addTransaction(newTx);
 
       if (isSplit && participants.length > 0) {
-        // Calculate youGet / youOwe based on payer and shares
         let youGet = 0;
         let youOwe = 0;
 
-        if (paidBy === 'YOU') {
-          // You paid, so you recover everyone else's share
+        if (paidBy === 'Apeksha') {
           participants.forEach(p => {
             youGet += calculatedShares[p] || 0;
           });
         } else {
-          // Someone else paid, you owe your share to them
-          youOwe = calculatedShares['YOU'] || 0;
+          youOwe = calculatedShares['Apeksha'] || 0;
         }
 
         const newSplit: SplitItem = {
@@ -268,9 +273,9 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} theme="dark">
+    <BottomSheet visible={visible} onClose={onClose}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <Text style={[styles.sheetTitle, { marginBottom: 0 }]}>{existingTransaction ? (isSplit ? 'Edit Split' : 'Edit Expense') : 'New Expense'}</Text>
+        <Text style={[styles.sheetTitle, { color: textPrimary, marginBottom: 0 }]}>{existingTransaction ? (isSplit ? 'Edit Split' : 'Edit Expense') : 'New Expense'}</Text>
         {existingTransaction && (
           <TouchableOpacity onPress={handleDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Feather name="trash-2" size={20} color="#E11D48" />
@@ -281,31 +286,31 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
       {/* Type Selection */}
       <View style={styles.segmentedRow}>
         <TouchableOpacity
-          style={[styles.segmentBtn, type === 'expense' && styles.segmentBtnExpense]}
+          style={[styles.segmentBtn, { backgroundColor: inputBg, borderColor }, type === 'expense' && styles.segmentBtnExpense]}
           onPress={() => { haptics.selection(); setType('expense'); }}
         >
-          <Text style={[styles.segmentText, type === 'expense' && styles.segmentTextActive]}>EXPENSE</Text>
+          <Text style={[styles.segmentText, { color: textSecondary }, type === 'expense' && { color: '#0F172A' }]}>EXPENSE</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.segmentBtn, type === 'income' && styles.segmentBtnIncome]}
+          style={[styles.segmentBtn, { backgroundColor: inputBg, borderColor }, type === 'income' && styles.segmentBtnIncome]}
           onPress={() => { haptics.selection(); setType('income'); setIsSplit(false); }}
         >
-          <Text style={[styles.segmentText, type === 'income' && styles.segmentTextActive]}>INCOME</Text>
+          <Text style={[styles.segmentText, { color: textSecondary }, type === 'income' && { color: '#0F172A' }]}>INCOME</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>WHAT WAS THE EXPENSE?</Text>
+      <Text style={[styles.label, { color: textSecondary }]}>WHAT WAS THE EXPENSE?</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: inputBg, borderColor, color: textPrimary }]}
         placeholder="e.g. Dinner, Netflix"
         placeholderTextColor="#64748B"
         value={title}
         onChangeText={setTitle}
       />
 
-      <Text style={styles.label}>HOW MUCH?</Text>
+      <Text style={[styles.label, { color: textSecondary }]}>HOW MUCH?</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: inputBg, borderColor, color: textPrimary }]}
         placeholder="Amount (₹)"
         placeholderTextColor="#64748B"
         keyboardType="decimal-pad"
@@ -315,118 +320,105 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
 
       {type === 'expense' && (
         <>
-          <Text style={styles.label}>PAID VIA</Text>
+          <Text style={[styles.label, { color: textSecondary }]}>PAID VIA</Text>
           <View style={styles.chipsRow}>
             {(['UPI', 'Card', 'Cash', 'NetBanking'] as const).map((m) => (
               <TouchableOpacity
                 key={m}
-                style={[styles.chip, method === m && styles.chipActive]}
+                style={[styles.chip, { backgroundColor: chipBg, borderColor }, method === m && styles.chipActive]}
                 onPress={() => { haptics.selection(); setMethod(m); }}
               >
-                <Text style={[styles.chipText, method === m && styles.chipTextActive]}>{m}</Text>
+                <Text style={[styles.chipText, { color: textSecondary }, method === m && styles.chipTextActive]}>{m}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.label}>ACCOUNT</Text>
-          <View style={styles.chipsRow}>
-            {(['salary', 'cash', 'savings'] as AccountType[]).map((acc) => (
-              <TouchableOpacity
-                key={acc}
-                style={[styles.chip, account === acc && styles.chipActive]}
-                onPress={() => { haptics.selection(); setAccount(acc); }}
-              >
-                <Text style={[styles.chipText, account === acc && styles.chipTextActive]}>{acc.toUpperCase()}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.label}>CATEGORY</Text>
+          <Text style={[styles.label, { color: textSecondary }]}>CATEGORY</Text>
           <View style={[styles.chipsRow, { flexWrap: 'wrap' }]}>
-            {(['food', 'travel', 'shopping', 'bills', 'general'] as ExpenseCategory[]).map((cat) => (
+            {(['bills', 'entertainment', 'food', 'gifts', 'general'] as ExpenseCategory[]).map((cat) => (
               <TouchableOpacity
                 key={cat}
-                style={[styles.chip, category === cat && styles.chipActive]}
+                style={[styles.chip, { backgroundColor: chipBg, borderColor }, category === cat && styles.chipActive]}
                 onPress={() => { haptics.selection(); setCategory(cat); }}
               >
-                <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>{cat.toUpperCase()}</Text>
+                <Text style={[styles.chipText, { color: textSecondary }, category === cat && styles.chipTextActive]}>{cat.toUpperCase()}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <View style={[styles.chipsRow, { justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }]}>
-            <Text style={[styles.label, { marginTop: 0 }]}>SPLIT EXPENSE?</Text>
+            <Text style={[styles.label, { color: textSecondary, marginTop: 0 }]}>SPLIT EXPENSE?</Text>
             <TouchableOpacity 
-              style={[styles.chip, isSplit ? styles.chipActive : { backgroundColor: '#1E293B', borderColor: '#334155' }]}
+              style={[styles.chip, { backgroundColor: chipBg, borderColor }, isSplit && styles.chipActive]}
               onPress={() => { haptics.selection(); setIsSplit(!isSplit); }}
             >
-              <Text style={isSplit ? styles.chipTextActive : styles.chipText}>{isSplit ? 'YES' : 'NO'}</Text>
+              <Text style={[styles.chipText, { color: textSecondary }, isSplit && styles.chipTextActive]}>{isSplit ? 'YES' : 'NO'}</Text>
             </TouchableOpacity>
           </View>
 
           {isSplit && (
-            <View style={styles.splitContainer}>
-              <Text style={styles.label}>PAID BY</Text>
+            <View style={[styles.splitContainer, { borderColor }]}>
+              <Text style={[styles.label, { color: textSecondary }]}>PAID BY</Text>
               <View style={styles.chipsRow}>
                 <TouchableOpacity
-                  style={[styles.chip, paidBy === 'YOU' && styles.chipActive]}
-                  onPress={() => { haptics.selection(); setPaidBy('YOU'); }}
+                  style={[styles.chip, { backgroundColor: chipBg, borderColor }, paidBy === 'Apeksha' && styles.chipActive]}
+                  onPress={() => { haptics.selection(); setPaidBy('Apeksha'); }}
                 >
-                  <Text style={[styles.chipText, paidBy === 'YOU' && styles.chipTextActive]}>YOU</Text>
+                  <Text style={[styles.chipText, { color: textSecondary }, paidBy === 'Apeksha' && styles.chipTextActive]}>APEKSHA</Text>
                 </TouchableOpacity>
                 {AVAILABLE_FRIENDS.map(friend => (
                   <TouchableOpacity
                     key={`payer_${friend}`}
-                    style={[styles.chip, paidBy === friend && styles.chipActive]}
+                    style={[styles.chip, { backgroundColor: chipBg, borderColor }, paidBy === friend && styles.chipActive]}
                     onPress={() => { haptics.selection(); setPaidBy(friend); }}
                   >
-                    <Text style={[styles.chipText, paidBy === friend && styles.chipTextActive]}>{friend.toUpperCase()}</Text>
+                    <Text style={[styles.chipText, { color: textSecondary }, paidBy === friend && styles.chipTextActive]}>{friend.toUpperCase()}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={styles.label}>SPLIT WITH</Text>
+              <Text style={[styles.label, { color: textSecondary }]}>SPLIT WITH</Text>
               <View style={styles.chipsRow}>
                 {AVAILABLE_FRIENDS.filter(f => f !== paidBy).map(friend => (
                   <TouchableOpacity
                     key={`with_${friend}`}
-                    style={[styles.chip, participants.includes(friend) && styles.chipActive]}
+                    style={[styles.chip, { backgroundColor: chipBg, borderColor }, participants.includes(friend) && styles.chipActive]}
                     onPress={() => handleToggleParticipant(friend)}
                   >
-                    <Text style={[styles.chipText, participants.includes(friend) && styles.chipTextActive]}>{friend.toUpperCase()}</Text>
+                    <Text style={[styles.chipText, { color: textSecondary }, participants.includes(friend) && styles.chipTextActive]}>{friend.toUpperCase()}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {participants.length > 0 && (
                 <>
-                  <Text style={styles.label}>SPLIT STRATEGY</Text>
+                  <Text style={[styles.label, { color: textSecondary }]}>SPLIT STRATEGY</Text>
                   <View style={styles.segmentedRow}>
                     <TouchableOpacity
-                      style={[styles.segmentBtn, strategy === 'equally' && { backgroundColor: '#3B82F6', borderColor: '#60A5FA' }]}
+                      style={[styles.segmentBtn, { backgroundColor: inputBg, borderColor }, strategy === 'equally' && { backgroundColor: '#3B82F6', borderColor: '#60A5FA' }]}
                       onPress={() => { haptics.selection(); setStrategy('equally'); }}
                     >
-                      <Text style={[styles.segmentText, strategy === 'equally' && styles.segmentTextActive]}>EQUALLY</Text>
+                      <Text style={[styles.segmentText, { color: textSecondary }, strategy === 'equally' && styles.segmentTextActive]}>EQUALLY</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.segmentBtn, strategy === 'custom' && { backgroundColor: '#8B5CF6', borderColor: '#A78BFA' }]}
+                      style={[styles.segmentBtn, { backgroundColor: inputBg, borderColor }, strategy === 'custom' && { backgroundColor: '#8B5CF6', borderColor: '#A78BFA' }]}
                       onPress={() => { haptics.selection(); setStrategy('custom'); }}
                     >
-                      <Text style={[styles.segmentText, strategy === 'custom' && styles.segmentTextActive]}>CUSTOM</Text>
+                      <Text style={[styles.segmentText, { color: textSecondary }, strategy === 'custom' && styles.segmentTextActive]}>CUSTOM</Text>
                     </TouchableOpacity>
                   </View>
 
                   <View style={styles.sharesContainer}>
                     {allInvolved.map((p) => (
-                      <View key={`share_${p}`} style={styles.shareRow}>
-                        <Text style={styles.shareName}>{p === 'YOU' ? 'You' : p}</Text>
+                      <View key={`share_${p}`} style={[styles.shareRow, { backgroundColor: inputBg }]}>
+                        <Text style={[styles.shareName, { color: textPrimary }]}>{p === 'Apeksha' ? 'Apeksha' : p}</Text>
                         {strategy === 'equally' ? (
-                          <Text style={styles.shareValueText}>
+                          <Text style={[styles.shareValueText, { color: textPrimary }]}>
                             {formatters.currency(calculatedShares[p] || 0)}
                           </Text>
                         ) : (
                           <TextInput
-                            style={styles.shareInput}
+                            style={[styles.shareInput, { backgroundColor: chipBg, borderColor, color: textPrimary }]}
                             keyboardType="decimal-pad"
                             placeholder="0.00"
                             placeholderTextColor="#64748B"
@@ -453,14 +445,14 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
             </View>
           )}
 
-          <Text style={styles.label}>DATE</Text>
+          <Text style={[styles.label, { color: textSecondary }]}>DATE</Text>
           <TouchableOpacity 
-            style={styles.dateBtn}
+            style={[styles.dateBtn, { backgroundColor: inputBg, borderColor }]}
             onPress={() => { haptics.selection(); setShowDatePicker(true); }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Feather name="calendar" size={16} color="#94A3B8" />
-              <Text style={styles.dateBtnText}>{formatters.timestamp(txDate).split(',')[0]}</Text>
+              <Text style={[styles.dateBtnText, { color: textPrimary }]}>{formatters.timestamp(txDate).split(',')[0]}</Text>
             </View>
             <Feather name="chevron-right" size={16} color="#94A3B8" />
           </TouchableOpacity>
@@ -469,23 +461,23 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
 
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelBtnText}>Cancel</Text>
+          <Text style={[styles.cancelBtnText, { color: textSecondary }]}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.saveBtn, (isSplit && !isBalanced) && styles.saveBtnDisabled]} 
+          style={[styles.saveBtn, (isSplit && !isBalanced) && { backgroundColor: borderColor }]} 
           onPress={handleSave} 
           disabled={submitting || (isSplit && !isBalanced)}
         >
           {submitting ? (
             <ActivityIndicator color="#022C22" size="small" />
           ) : (
-            <Text style={styles.saveBtnText}>{existingTransaction ? 'Update' : 'Save'}</Text>
+            <Text style={[styles.saveBtnText, (isSplit && !isBalanced) && { color: textSecondary }]}>{existingTransaction ? (isSplit ? 'Update Split' : 'Update Expense') : 'Save'}</Text>
           )}
         </TouchableOpacity>
       </View>
 
-      <BottomSheet visible={showDatePicker} onClose={() => setShowDatePicker(false)} theme="dark">
-        <Text style={styles.sheetTitle}>Select Date</Text>
+      <BottomSheet visible={showDatePicker} onClose={() => setShowDatePicker(false)}>
+        <Text style={[styles.sheetTitle, { color: textPrimary }]}>Select Date</Text>
         <View style={{ maxHeight: 300 }}>
           {[...Array(30)].map((_, i) => {
             const d = new Date();
@@ -494,14 +486,14 @@ export function TransactionSheet({ visible, onClose, existingTransaction }: Tran
             return (
               <TouchableOpacity
                 key={i}
-                style={[styles.dateOptionBtn, isSelected && styles.dateOptionBtnSelected]}
+                style={[styles.dateOptionBtn, { borderBottomColor: borderColor }, isSelected && styles.dateOptionBtnSelected]}
                 onPress={() => {
                   haptics.selection();
                   setTxDate(d);
                   setShowDatePicker(false);
                 }}
               >
-                <Text style={[styles.dateOptionText, isSelected && styles.dateOptionTextSelected]}>
+                <Text style={[styles.dateOptionText, { color: textSecondary }, isSelected && styles.dateOptionTextSelected]}>
                   {i === 0 ? 'Today' : i === 1 ? 'Yesterday' : formatters.timestamp(d).split(',')[0]}
                 </Text>
                 {isSelected && <Feather name="check" size={16} color={colors.primary} />}
@@ -518,7 +510,6 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
     marginBottom: 20,
   },
   segmentedRow: {
@@ -530,10 +521,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
   },
   segmentBtnExpense: {
     backgroundColor: 'rgba(244, 63, 94, 0.2)',
@@ -546,19 +535,15 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#94A3B8',
   },
   segmentTextActive: {
     color: '#0F172A',
   },
   input: {
-    backgroundColor: '#1E293B',
     borderWidth: 1,
-    borderColor: '#334155',
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 52,
-    color: '#0F172A',
     fontSize: 15,
     fontWeight: '600',
     marginBottom: 16,
@@ -566,7 +551,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#94A3B8',
     marginBottom: 8,
     marginTop: 4,
     letterSpacing: 0.8,
@@ -580,9 +564,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
-    backgroundColor: '#1E293B',
     borderWidth: 1,
-    borderColor: '#334155',
   },
   chipActive: {
     backgroundColor: colors.primary,
@@ -591,16 +573,13 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#94A3B8',
   },
   chipTextActive: {
-    color: '#022C22',
+    color: '#FFFFFF',
     fontWeight: '800',
   },
   splitContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 16,
     padding: 16,
     marginTop: 10,
@@ -614,7 +593,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -622,22 +600,17 @@ const styles = StyleSheet.create({
   shareName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F172A',
   },
   shareValueText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
   },
   shareInput: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#334155',
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 38,
     width: 100,
-    color: '#0F172A',
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'right',
@@ -677,7 +650,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   cancelBtnText: {
-    color: '#94A3B8',
     fontWeight: '600',
     fontSize: 15,
   },
@@ -689,11 +661,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveBtnDisabled: {
-    backgroundColor: '#334155',
-  },
   saveBtnText: {
-    color: '#022C22',
+    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 15,
   },
@@ -701,16 +670,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
     borderWidth: 1,
-    borderColor: '#334155',
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 52,
     marginBottom: 16,
   },
   dateBtnText: {
-    color: '#0F172A',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -721,14 +687,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
   },
   dateOptionBtnSelected: {
     backgroundColor: 'rgba(20, 184, 166, 0.1)',
   },
   dateOptionText: {
     fontSize: 15,
-    color: '#94A3B8',
     fontWeight: '500',
   },
   dateOptionTextSelected: {

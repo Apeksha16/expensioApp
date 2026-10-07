@@ -241,10 +241,122 @@ export const api = {
       success: true,
       totalMonthly: 180,
       subscriptions: [
-        { id: 'sub_1', name: 'YouTube Premium', amount: 50, dueDate: 'Sep 15', status: 'OVERDUE', daysLeft: -3 },
-        { id: 'sub_2', name: 'Netflix 4K', amount: 130, dueDate: 'Sep 27', status: 'UPCOMING', daysLeft: 2 },
+        { id: 'sub_1', name: 'YouTube Premium', amount: 50, dueDate: '4th', status: 'OVERDUE', daysLeft: -3, monthGroup: 'this' },
+        { id: 'sub_2', name: 'Netflix', amount: 130, dueDate: '4th', status: 'UPCOMING', daysLeft: 2, monthGroup: 'this' },
       ],
     });
     return cached;
+  },
+  
+  addSubscription: async (data: any) => {
+    const cached = await api.getSubscriptions();
+    const newSub = { id: `sub_${Date.now()}`, status: 'UPCOMING', monthGroup: 'this', ...data };
+    const updated = {
+      ...cached,
+      totalMonthly: cached.totalMonthly + Number(data.amount),
+      subscriptions: [newSub, ...cached.subscriptions]
+    };
+    await storage.set(STORAGE_KEYS.SUBSCRIPTIONS, updated);
+    return { success: true, subscription: newSub };
+  },
+
+  updateSubscription: async (id: string, data: any) => {
+    const cached = await api.getSubscriptions();
+    const updatedSubs = cached.subscriptions.map((s: any) => s.id === id ? { ...s, ...data } : s);
+    const newTotal = updatedSubs.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0);
+    const updated = { ...cached, totalMonthly: newTotal, subscriptions: updatedSubs };
+    await storage.set(STORAGE_KEYS.SUBSCRIPTIONS, updated);
+    return { success: true };
+  },
+
+  deleteSubscription: async (id: string) => {
+    const cached = await api.getSubscriptions();
+    const updatedSubs = cached.subscriptions.filter((s: any) => s.id !== id);
+    const newTotal = updatedSubs.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0);
+    const updated = { ...cached, totalMonthly: newTotal, subscriptions: updatedSubs };
+    await storage.set(STORAGE_KEYS.SUBSCRIPTIONS, updated);
+    return { success: true };
+  },
+
+  // EMIs
+  getEmis: async () => {
+    const cached = await storage.get('STORAGE_EMIS', {
+      success: true,
+      totalMonthly: 2000,
+      emis: [
+        { id: 'emi_1', name: 'Home Loan', amount: 1500, totalAmount: 150000, monthsPaid: 10, totalMonths: 100, dueDate: '5th', status: 'UPCOMING' },
+        { id: 'emi_2', name: 'Car Loan', amount: 500, totalAmount: 25000, monthsPaid: 5, totalMonths: 50, dueDate: '10th', status: 'PAID' },
+      ],
+    });
+    return cached;
+  },
+
+  addEmi: async (data: any) => {
+    const cached = await api.getEmis();
+    const newEmi = { id: `emi_${Date.now()}`, status: 'UPCOMING', ...data };
+    const updated = {
+      ...cached,
+      totalMonthly: cached.totalMonthly + Number(data.amount),
+      emis: [newEmi, ...cached.emis]
+    };
+    await storage.set('STORAGE_EMIS', updated);
+    return { success: true, emi: newEmi };
+  },
+
+  updateEmi: async (id: string, data: any) => {
+    const cached = await api.getEmis();
+    const updatedEmis = cached.emis.map((s: any) => s.id === id ? { ...s, ...data } : s);
+    const newTotal = updatedEmis.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0);
+    const updated = { ...cached, totalMonthly: newTotal, emis: updatedEmis };
+    await storage.set('STORAGE_EMIS', updated);
+    return { success: true };
+  },
+
+  deleteEmi: async (id: string) => {
+    const cached = await api.getEmis();
+    const updatedEmis = cached.emis.filter((s: any) => s.id !== id);
+    const newTotal = updatedEmis.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0);
+    const updated = { ...cached, totalMonthly: newTotal, emis: updatedEmis };
+    await storage.set('STORAGE_EMIS', updated);
+    return { success: true };
+  },
+
+  // Goals
+  getGoals: async () => {
+    const cached = await storage.get('STORAGE_GOALS', {
+      success: true,
+      goals: [
+        { id: 'goal_1', name: 'PS5', targetAmount: 50000, savedAmount: 15000, targetDate: 'Jul 16, 2027', monthlyContribution: 2000 },
+        { id: 'goal_2', name: 'Emergency Fund', targetAmount: 100000, savedAmount: 85000, targetDate: 'Dec 31, 2026', monthlyContribution: 5000 },
+      ],
+    });
+    return cached;
+  },
+
+  addGoal: async (data: any) => {
+    const cached = await api.getGoals();
+    const newGoal = { id: `goal_${Date.now()}`, savedAmount: 0, ...data };
+    const updated = {
+      ...cached,
+      goals: [newGoal, ...cached.goals]
+    };
+    await storage.set('STORAGE_GOALS', updated);
+    return { success: true, goal: newGoal };
+  },
+
+  updateGoal: async (id: string, data: any) => {
+    const cached = await api.getGoals();
+    const updatedGoals = cached.goals.map((s: any) => s.id === id ? { ...s, ...data } : s);
+    const updated = { ...cached, goals: updatedGoals };
+    await storage.set('STORAGE_GOALS', updated);
+    return { success: true };
+  },
+
+  deleteGoal: async (id: string) => {
+    const cached = await api.getGoals();
+    const updatedGoals = cached.goals.filter((s: any) => s.id !== id);
+    const updated = { ...cached, goals: updatedGoals };
+    await storage.set('STORAGE_GOALS', updated);
+    return { success: true };
   },
 };

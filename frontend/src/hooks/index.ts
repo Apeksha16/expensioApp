@@ -4,3 +4,5 @@ export { useSplits } from './useSplits';
 export type { NewSplitPayload } from './useSplits';
 export { useSubscriptions } from './useSubscriptions';
 export { useAuth } from './useAuth';
+export { useEmis } from './useEmis';
+export { useGoals } from './useGoals';

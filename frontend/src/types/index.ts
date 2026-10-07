@@ -24,7 +24,8 @@ export type ExpenseCategory =
   | 'bills'
   | 'entertainment'
   | 'health'
-  | 'general';
+  | 'general'
+  | 'gifts';
 
 export interface ExpenseItem {
   id: string;
@@ -56,7 +57,7 @@ export interface SplitItem {
   title: string;
   amount: number;
   date: string;
-  paidBy: 'YOU' | string;
+  paidBy: 'Apeksha' | string;
   status: 'PENDING' | 'SETTLED';
   youGet?: number;
   youOwe?: number;
@@ -90,6 +91,27 @@ export interface SubscriptionItem {
   dueDate: string;
   status: 'UPCOMING' | 'PAID' | 'OVERDUE';
   daysLeft?: number;
+  monthGroup?: 'this' | 'next';
+}
+
+export interface EmiItem {
+  id: string;
+  name: string;
+  amount: number;
+  totalAmount: number;
+  monthsPaid: number;
+  totalMonths: number;
+  dueDate: string; // Day of the month or short date
+  status: 'UPCOMING' | 'PAID' | 'OVERDUE';
+}
+
+export interface GoalItem {
+  id: string;
+  name: string;
+  targetAmount: number;
+  savedAmount: number;
+  targetDate: string;
+  monthlyContribution: number;
 }
 
 export type NavTab = 'dashboard' | 'expenses' | 'splits' | 'subscriptions' | 'analytics' | 'ledger';

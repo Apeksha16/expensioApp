@@ -22,11 +22,19 @@ import { haptics } from '../services/haptics';
 import { formatters } from '../utils/formatters';
 import { BottomSheet } from '../components/BottomSheet';
 import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import type { ExpenseItem, ExpenseCategory } from '../types';
 
 export function ExpensesScreen({ route, navigation }: any) {
   const { openDrawer } = useDrawer();
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
+  
+  const bgColor = isDark ? '#090909' : '#F6F3EE';
+  const cardBg = isDark ? '#121212' : '#FFFFFF';
+  const textPrimary = isDark ? '#FFFFFF' : '#1C1C1E';
+  const textSecondary = isDark ? '#A1A1AA' : '#8E8E93';
+  const borderColor = isDark ? '#27272A' : '#EBE6DE';
   
   const { state, summary, deleteTransaction, loading, refresh } = useFinance();
   const refreshing = loading;
@@ -80,7 +88,6 @@ export function ExpensesScreen({ route, navigation }: any) {
   // Use dynamically calculated values from FinanceContext
   const totalSpend = salary.spentThisMonth / 100;
   const remainingBudget = salary.remaining / 100;
-  const budgetPercent = Math.min(100, Math.round((totalSpend / rawSalary) * 100));
 
   const handleDelete = (id: string) => {
     Alert.alert(
@@ -140,35 +147,37 @@ export function ExpensesScreen({ route, navigation }: any) {
           }}
           onDelete={() => handleDelete(item.id)}
         >
-          <View style={styles.txCard}>
-            <View style={[styles.txIconBox, { backgroundColor: meta.bg }]}>
-              <Feather name={meta.icon} size={18} color={meta.color} />
-            </View>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => { haptics.medium(); setEditingTx(item); setIsSheetOpen(true); }}>
+            <View style={[styles.txCard, { backgroundColor: cardBg, borderColor }]}>
+              <View style={[styles.txIconBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : meta.bg }]}>
+                <Feather name={meta.icon} size={18} color={meta.color} />
+              </View>
 
-            <View style={styles.txInfoCol}>
-              <Text style={styles.txTitleText} numberOfLines={1}>
-                {item.title}
-              </Text>
-              <Text style={styles.txMetaText}>
-                {formatters.timestamp(new Date(item.date))} • {item.method || 'UPI'}
-              </Text>
-            </View>
-
-            <View style={styles.txRightCol}>
-              <Text style={[styles.txAmountText, item.type === 'income' && { color: '#34D399' }]}>
-                {item.type === 'income' ? '+' : '-'}{formatters.currency(item.amount)}
-              </Text>
-              <View style={styles.accountTag}>
-                <Text style={styles.accountTagText}>
-                  {item.account ? item.account.toUpperCase() : 'GENERAL'}
+              <View style={styles.txInfoCol}>
+                <Text style={[styles.txTitleText, { color: textPrimary }]} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text style={[styles.txMetaText, { color: textSecondary }]}>
+                  {formatters.timestamp(new Date(item.date))} • {item.method || 'UPI'}
                 </Text>
               </View>
+
+              <View style={styles.txRightCol}>
+                <Text style={[styles.txAmountText, item.type === 'income' ? { color: '#34D399' } : { color: textPrimary }]}>
+                  {item.type === 'income' ? '+' : '-'}{formatters.currency(item.amount)}
+                </Text>
+                <View style={[styles.accountTag, { backgroundColor: isDark ? '#1E1E1E' : 'rgba(0,0,0,0.05)' }]}>
+                  <Text style={[styles.accountTagText, { color: textSecondary }]}>
+                    {item.account ? item.account.toUpperCase() : 'GENERAL'}
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
         </SwipeableRow>
       );
     },
-    [deleteTransaction]
+    [deleteTransaction, isDark, cardBg, borderColor, textPrimary, textSecondary]
   );
 
   const renderHeader = () => (
@@ -177,96 +186,45 @@ export function ExpensesScreen({ route, navigation }: any) {
       <View style={styles.screenTitleRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-            <Feather name="menu" size={24} color="#0F172A" />
+            <Feather name="menu" size={24} color={textPrimary} />
           </TouchableOpacity>
           <View>
-            <Text style={styles.screenHeading}>Expenses</Text>
-            <Text style={styles.screenSubheading}>Live UPI ledger & auto-categorization</Text>
+            <Text style={[styles.screenHeading, { color: textPrimary }]}>Expenses</Text>
+            <Text style={[styles.screenSubheading, { color: textSecondary }]}>Live UPI ledger & auto-categorization</Text>
           </View>
         </View>
 
         <TouchableOpacity 
-          style={styles.monthBadge} 
+          style={[styles.monthBadge, { backgroundColor: cardBg, borderColor }]} 
           activeOpacity={0.7}
           onPress={() => {
             haptics.selection();
             setShowMonthPicker(true);
           }}
         >
-          <Text style={styles.monthBadgeText}>
+          <Text style={[styles.monthBadgeText, { color: textPrimary }]}>
             {selectedMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} ▾
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* 1. HERO APPLE LIQUID GLASS CARD */}
-      <View style={styles.heroGlassCard}>
-        <View style={styles.glassTopSpecular} />
-
+      {/* 1. HERO CARD */}
+      <View style={[styles.heroGlassCard, { borderColor }]}>
         <LinearGradient
-          colors={['rgba(0, 0, 0, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={isDark ? ['#1A1A1A', '#121212'] : ['#FFFFFF', '#FFFFFF']}
           style={styles.heroCardInner}
         >
-          <View style={styles.heroTopStatusRow}>
-            <View style={styles.accountPill}>
-              <View style={styles.activeDot} />
-              <Text style={styles.accountPillText}>ALL ACCOUNTS</Text>
-            </View>
-          </View>
-
-          <Text style={styles.totalSpendLabel}>TOTAL SPENT THIS MONTH</Text>
-          <Text style={styles.totalSpendAmount}>{formatters.currency(totalSpend)}</Text>
-
-          {/* Salary Account Progress Track */}
+          <Text style={[styles.totalSpendLabel, { color: textSecondary }]}>TOTAL SPENT THIS MONTH</Text>
+          <Text style={[styles.totalSpendAmount, { color: textPrimary }]}>{formatters.currency(totalSpend)}</Text>
+          
           <View style={styles.progressContainer}>
             <View style={styles.progressLabelsRow}>
-              <Text style={styles.progressRemainingText}>
-                SALARY ACCOUNT <Text style={styles.leftLabelText}>₹{remainingBudget.toLocaleString('en-IN')} LEFT</Text>
+              <Text style={[styles.progressRemainingText, { color: textSecondary }]}>
+                LIMIT: {formatters.currency(rawSalary)}
               </Text>
-              <Text style={styles.progressPercentText}>TOTAL ₹{rawSalary.toLocaleString('en-IN')}</Text>
-            </View>
-            <View style={styles.progressTrackBg}>
-              <LinearGradient
-                colors={['#059669', '#34D399']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressFillGrad, { width: `${Math.max(budgetPercent, 4)}%` }]}
-              />
+              <Text style={[styles.leftLabelText, { color: textPrimary }]}>REMAINING: {formatters.currency(remainingBudget)}</Text>
             </View>
           </View>
-
-          {/* Cash Account Progress Track */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressLabelsRow}>
-              <Text style={styles.progressRemainingText}>
-                CASH ACCOUNT <Text style={styles.leftLabelText}>-₹80 LEFT</Text>
-              </Text>
-              <Text style={styles.progressPercentText}>TOTAL -₹80</Text>
-            </View>
-            <View style={[styles.progressTrackBg, { marginBottom: 16 }]}>
-              <LinearGradient
-                colors={['#F43F5E', '#FDA4AF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressFillGrad, { width: `5%` }]}
-              />
-            </View>
-          </View>
-
-          {/* Primary Action Button */}
-          <TouchableOpacity
-            style={styles.addExpenseBtn}
-            activeOpacity={0.85}
-            onPress={() => {
-              haptics.medium();
-              setIsSheetOpen(true);
-            }}
-          >
-            <Feather name="plus" size={17} color="#0F172A" />
-            <Text style={styles.addExpenseBtnText}>Record Expense</Text>
-          </TouchableOpacity>
         </LinearGradient>
       </View>
 
@@ -281,6 +239,7 @@ export function ExpensesScreen({ route, navigation }: any) {
               key={filter}
               style={[
                 styles.filterChip,
+                !isSelected && { backgroundColor: cardBg, borderColor },
                 isSelected && styles.filterChipSelected,
               ]}
               activeOpacity={0.7}
@@ -292,6 +251,7 @@ export function ExpensesScreen({ route, navigation }: any) {
               <Text
                 style={[
                   styles.filterChipText,
+                  !isSelected && { color: textSecondary },
                   isSelected && styles.filterChipTextSelected,
                 ]}
               >
@@ -304,8 +264,8 @@ export function ExpensesScreen({ route, navigation }: any) {
 
       {/* 3. LIST HEADER */}
       <View style={styles.listHeaderRow}>
-        <Text style={styles.listHeaderTitle}>TRANSACTIONS</Text>
-        <Text style={styles.listHeaderCount}>
+        <Text style={[styles.listHeaderTitle, { color: textSecondary }]}>TRANSACTIONS</Text>
+        <Text style={[styles.listHeaderCount, { color: textSecondary }]}>
           {filteredExpenses.length} items • Swipe left to delete
         </Text>
       </View>
@@ -313,12 +273,11 @@ export function ExpensesScreen({ route, navigation }: any) {
   );
 
   return (
-    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-
+    <View style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: bgColor }]}>
       {/* Ambient Atmospheric Light */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#F8FAFC', '#F1F5F9']}
+          colors={[bgColor, bgColor]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -348,28 +307,49 @@ export function ExpensesScreen({ route, navigation }: any) {
         )}
       </View>
 
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fabBtn}
+        activeOpacity={0.8}
+        onPress={() => {
+          haptics.medium();
+          setEditingTx(null);
+          setIsSheetOpen(true);
+        }}
+      >
+        <Feather name="plus" size={24} color="#FFF" />
+      </TouchableOpacity>
+      
       <TransactionSheet 
         visible={isSheetOpen} 
         onClose={() => setIsSheetOpen(false)} 
         existingTransaction={editingTx} 
       />
 
-      <BottomSheet visible={showMonthPicker} onClose={() => setShowMonthPicker(false)} theme="light">
-        <Text style={[styles.screenHeading, { textAlign: 'center', marginBottom: 20 }]}>Select Month</Text>
+      <BottomSheet visible={showMonthPicker} onClose={() => setShowMonthPicker(false)} theme={isDark ? "dark" : "light"}>
+        <Text style={[styles.screenHeading, { textAlign: 'center', marginBottom: 20, color: textPrimary }]}>Select Month</Text>
         <View style={styles.monthGrid}>
           {recentMonths.map((m, i) => {
             const isSelected = m.getTime() === selectedMonth.getTime();
             return (
               <TouchableOpacity
                 key={i}
-                style={[styles.monthBox, isSelected && styles.monthBoxSelected]}
+                style={[
+                  styles.monthBox, 
+                  { backgroundColor: cardBg, borderColor },
+                  isSelected && styles.monthBoxSelected
+                ]}
                 onPress={() => {
                   haptics.selection();
                   setSelectedMonth(m);
                   setShowMonthPicker(false);
                 }}
               >
-                <Text style={[styles.monthBoxText, isSelected && styles.monthBoxTextSelected]}>
+                <Text style={[
+                  styles.monthBoxText, 
+                  { color: textPrimary },
+                  isSelected && styles.monthBoxTextSelected
+                ]}>
                   {m.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </Text>
               </TouchableOpacity>
@@ -382,9 +362,25 @@ export function ExpensesScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  fabBtn: {
+    position: 'absolute',
+    bottom: 100, // Just above the bottom tab bar
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 10,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   ambientGlow: {
     position: 'absolute',
@@ -393,7 +389,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
+    backgroundColor: 'rgba(20, 184, 166, 0.05)',
   },
   container: {
     flex: 1,
@@ -406,8 +402,6 @@ const styles = StyleSheet.create({
   headerBlock: {
     marginBottom: 16,
   },
-
-  // Title Bar
   screenTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -417,121 +411,46 @@ const styles = StyleSheet.create({
   screenHeading: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
     letterSpacing: -0.5,
   },
   screenSubheading: {
     fontSize: 12.5,
-    color: '#94A3B8',
     fontWeight: '500',
     marginTop: 2,
   },
   monthBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 0,
   },
   monthBadgeText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#0F172A',
   },
-
-  // Hero Glass Card
   heroGlassCard: {
     borderRadius: 24,
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1.2,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 22,
-    elevation: 0,
-  },
-  glassTopSpecular: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    zIndex: 2,
   },
   heroCardInner: {
     padding: 20,
   },
-  heroTopStatusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  accountPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderRadius: 10,
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#3B82F6',
-  },
-  accountPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#14B8A6',
-    letterSpacing: 0.6,
-  },
-  salaryBudgetTotal: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
   totalSpendLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#94A3B8',
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   totalSpendAmount: {
     fontSize: 34,
     fontWeight: '800',
-    color: '#0F172A',
     letterSpacing: -1,
     marginBottom: 14,
   },
-
-  // Progress Bar
   progressContainer: {
-    marginBottom: 18,
-  },
-  progressTrackBg: {
-    height: 8,
-    width: '100%',
-    backgroundColor: '#E2E8F0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginTop: 6,
-  },
-  progressFillGrad: {
-    height: '100%',
-    borderRadius: 4,
+    marginBottom: 10,
   },
   progressLabelsRow: {
     flexDirection: 'row',
@@ -541,44 +460,13 @@ const styles = StyleSheet.create({
   progressRemainingText: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: '#94A3B8',
     letterSpacing: 0.8,
   },
   leftLabelText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#0F172A',
     letterSpacing: 0,
   },
-  progressPercentText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#94A3B8',
-    letterSpacing: 0.5,
-  },
-
-  // Button
-  addExpenseBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#3B82F6',
-    paddingVertical: 12,
-    borderRadius: 14,
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 0,
-  },
-  addExpenseBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-
-  // Filter Chips
   filterChipsRow: {
     flexDirection: 'row',
     gap: 8,
@@ -588,24 +476,19 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   filterChipSelected: {
     backgroundColor: '#3B82F6',
-    borderColor: '#14B8A6',
+    borderColor: '#3B82F6',
   },
   filterChipText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#94A3B8',
   },
   filterChipTextSelected: {
-    color: '#0F172A',
+    color: '#FFF',
   },
-
-  // List Header
   listHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -616,29 +499,18 @@ const styles = StyleSheet.create({
   listHeaderTitle: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: '#94A3B8',
     letterSpacing: 0.8,
   },
   listHeaderCount: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#94A3B8',
   },
-
-  // Transaction Cards
   txCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 0,
   },
   txIconBox: {
     width: 42,
@@ -655,12 +527,10 @@ const styles = StyleSheet.create({
   txTitleText: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: '#0F172A',
     marginBottom: 2,
   },
   txMetaText: {
     fontSize: 11,
-    color: '#94A3B8',
     fontWeight: '500',
   },
   txRightCol: {
@@ -669,11 +539,9 @@ const styles = StyleSheet.create({
   txAmountText: {
     fontSize: 14.5,
     fontWeight: '800',
-    color: '#0F172A',
     marginBottom: 3,
   },
   accountTag: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 6,
@@ -681,7 +549,6 @@ const styles = StyleSheet.create({
   accountTagText: {
     fontSize: 9.5,
     fontWeight: '600',
-    color: '#94A3B8',
   },
   monthGrid: {
     flexDirection: 'row',
@@ -691,18 +558,11 @@ const styles = StyleSheet.create({
   },
   monthBox: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 0,
   },
   monthBoxSelected: {
     backgroundColor: colors.primary,
@@ -711,10 +571,8 @@ const styles = StyleSheet.create({
   monthBoxText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
   },
   monthBoxTextSelected: {
     color: '#FFFFFF',
   },
-
 });

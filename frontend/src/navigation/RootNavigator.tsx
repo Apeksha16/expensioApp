@@ -38,6 +38,7 @@ import {
   PaymentsScreen,
   SavingsScreen,
   CashScreen,
+  ExpensesScreen,
 } from '../screens';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -190,7 +191,7 @@ function MainTabs({ navigation }: any) {
           </View>
         )}
       </Tab.Screen>
-      <Tab.Screen name="Expenses" component={LedgerScreen} />
+      <Tab.Screen name="Expenses" component={ExpensesScreen} />
       <Tab.Screen name="Budgets" component={BudgetsScreen} />
       <Tab.Screen name="Splits" component={FriendsScreen} />
     </Tab.Navigator>

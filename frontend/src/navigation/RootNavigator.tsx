@@ -13,6 +13,7 @@ import {
   ScrollView,
   Image,
   Pressable,
+  Switch,
 } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -70,9 +71,9 @@ export const useDrawer = () => useContext(DrawerContext);
 
 export type MainTabParamList = {
   Dashboard: undefined;
-  Transactions: undefined;
-  Analytics: undefined;
+  Expenses: undefined;
   Budgets: undefined;
+  Splits: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -90,25 +91,25 @@ const TAB_CONFIG: Record<string, TabItemConfig> = {
     activeIcon: 'grid',
     inactiveIcon: 'grid',
   },
-  Transactions: {
-    label: 'Transactions',
-    activeIcon: 'repeat',
-    inactiveIcon: 'repeat',
-  },
-  Analytics: {
-    label: 'Analytics',
-    activeIcon: 'bar-chart-2',
-    inactiveIcon: 'bar-chart-2',
+  Expenses: {
+    label: 'Expenses',
+    activeIcon: 'credit-card',
+    inactiveIcon: 'credit-card',
   },
   Budgets: {
     label: 'Budgets',
     activeIcon: 'pie-chart',
     inactiveIcon: 'pie-chart',
   },
+  Splits: {
+    label: 'Splits',
+    activeIcon: 'users',
+    inactiveIcon: 'users',
+  },
 };
 
 function LiquidGlassTabBar({ state, navigation, insets }: any) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const renderTab = (routeName: string, routeIndex: number) => {
     const isFocused = state.index === routeIndex;
@@ -137,11 +138,11 @@ function LiquidGlassTabBar({ state, navigation, insets }: any) {
         <Feather
           name={isFocused ? config.activeIcon : config.inactiveIcon}
           size={20}
-          color={isFocused ? colors.primary : '#687383'}
+          color={isFocused ? (isDark ? '#C6A584' : '#332014') : (isDark ? '#71717A' : '#A1A1AA')}
         />
         <Text
           numberOfLines={1}
-          style={[styles.tabLabel, isFocused && { color: colors.primary }]}
+          style={[styles.tabLabel, { color: isDark ? '#71717A' : '#A1A1AA' }, isFocused && { color: isDark ? '#C6A584' : '#332014' }]}
         >
           {config.label}
         </Text>
@@ -156,11 +157,17 @@ function LiquidGlassTabBar({ state, navigation, insets }: any) {
         { bottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16 },
       ]}
     >
-      <BlurView tint="light" intensity={80} style={styles.glassBar}>
+      <BlurView tint={isDark ? "dark" : "light"} intensity={80} style={[
+        styles.glassBar,
+        isDark && {
+          backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 30, 30, 0.4)' : 'rgba(18, 18, 18, 0.95)',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+        }
+      ]}>
         {renderTab('Dashboard', 0)}
-        {renderTab('Transactions', 1)}
-        {renderTab('Analytics', 2)}
-        {renderTab('Budgets', 3)}
+        {renderTab('Expenses', 1)}
+        {renderTab('Budgets', 2)}
+        {renderTab('Splits', 3)}
       </BlurView>
     </View>
   );
@@ -183,9 +190,9 @@ function MainTabs({ navigation }: any) {
           </View>
         )}
       </Tab.Screen>
-      <Tab.Screen name="Transactions" component={LedgerScreen} />
-      <Tab.Screen name="Analytics" component={ReportsScreen} />
+      <Tab.Screen name="Expenses" component={LedgerScreen} />
       <Tab.Screen name="Budgets" component={BudgetsScreen} />
+      <Tab.Screen name="Splits" component={FriendsScreen} />
     </Tab.Navigator>
   );
 }
@@ -201,7 +208,7 @@ export function RootNavigator({
   onAuthenticated,
   onLogout,
 }: RootNavigatorProps) {
-  const { colors } = useTheme();
+  const { colors, toggleTheme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
@@ -226,19 +233,24 @@ export function RootNavigator({
       <Modal visible={drawerVisible} transparent animationType="fade" onRequestClose={() => setDrawerVisible(false)}>
         <View style={{ flex: 1, flexDirection: 'row' }}>
           <Pressable 
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]} 
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]} 
             onPress={() => setDrawerVisible(false)} 
           />
+          
           <View style={styles.drawerWrapper}>
-            <View style={[styles.drawerContainer, { backgroundColor: colors.surface, paddingTop: insets.top + 20 }]}>
-              <View style={styles.drawerProfileSection}>
-                <Image 
-                  source={{ uri: 'https://i.pravatar.cc/100?img=11' }} 
-                  style={styles.drawerAvatar} 
-                />
+            <View style={[styles.drawerContainer, { 
+              backgroundColor: isDark ? '#121212' : '#FFFFFF', 
+              paddingTop: insets.top + 20,
+              borderRightWidth: 1,
+              borderRightColor: isDark ? '#27272A' : '#EBE6DE',
+            }]}>
+              <View style={[styles.drawerProfileSection, { borderBottomColor: isDark ? '#27272A' : '#EBE6DE' }]}>
+                <View style={[styles.drawerAvatarFallback, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#EBE6DE' }]}>
+                   <Text style={[styles.drawerAvatarText, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>AP</Text>
+                </View>
                 <View>
-                  <Text style={styles.drawerName}>Apeksha</Text>
-                  <Text style={styles.drawerHandle}>@apeksha</Text>
+                  <Text style={[styles.drawerName, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Apeksha</Text>
+                  <Text style={[styles.drawerHandle, { color: isDark ? '#A1A1AA' : '#8E8E93' }]}>@apeksha</Text>
                 </View>
               </View>
 
@@ -275,20 +287,35 @@ export function RootNavigator({
                     }
                   }}
                 >
-                  <View style={styles.drawerItemIconBox}>
-                    <Feather name={item.icon} size={16} color={colors.primary} />
+                  <View style={[styles.drawerItemIconBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F6F3EE' }]}>
+                    <Feather name={item.icon} size={16} color={isDark ? '#C6A584' : '#332014'} />
                   </View>
-                  <Text style={styles.drawerItemText}>{item.name}</Text>
-                  <Feather name="chevron-right" size={16} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
+                  <Text style={[styles.drawerItemText, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>{item.name}</Text>
+                  <Feather name="chevron-right" size={16} color={isDark ? '#3F3F46' : '#D1CDCB'} style={{ marginLeft: 'auto' }} />
                 </TouchableOpacity>
               ))}
+
+                <View style={[styles.drawerItem, { marginTop: 8, borderTopWidth: 1, borderTopColor: isDark ? '#27272A' : '#EBE6DE', paddingTop: 16 }]}>
+                  <View style={[styles.drawerItemIconBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F6F3EE' }]}>
+                    <Feather name={isDark ? "moon" : "sun"} size={16} color={isDark ? '#C6A584' : '#332014'} />
+                  </View>
+                  <Text style={[styles.drawerItemText, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Dark Theme</Text>
+                  <View style={{ marginLeft: 'auto' }}>
+                    <Switch
+                      value={isDark}
+                      onValueChange={toggleTheme}
+                      trackColor={{ false: '#EBE6DE', true: '#C6A584' }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+                </View>
               </ScrollView>
 
-            <View style={styles.drawerFooter}>
-              <Text style={styles.drawerVersion}>v1.0.27</Text>
+              <View style={[styles.drawerFooter, { borderTopColor: isDark ? '#27272A' : '#EBE6DE' }]}>
+              <Text style={styles.drawerVersion}>v-0.1</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity 
-                  style={styles.drawerFooterIcon}
+                  style={[styles.drawerFooterIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F6F3EE', borderColor: isDark ? '#27272A' : '#EBE6DE' }]}
                   onPress={async () => {
                     haptics.selection();
                     if (__DEV__) {
@@ -303,10 +330,10 @@ export function RootNavigator({
                     }
                   }}
                 >
-                  <Feather name="refresh-cw" size={16} color={colors.primary} />
+                  <Feather name="refresh-cw" size={16} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={styles.drawerFooterIcon}
+                  style={[styles.drawerFooterIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F6F3EE', borderColor: isDark ? '#27272A' : '#EBE6DE' }]}
                   onPress={async () => {
                     haptics.selection();
                     try {
@@ -318,10 +345,10 @@ export function RootNavigator({
                     }
                   }}
                 >
-                  <Feather name="share" size={16} color={colors.secondary} />
+                  <Feather name="share" size={16} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={styles.drawerFooterIcon}
+                  style={[styles.drawerFooterIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F6F3EE', borderColor: isDark ? '#27272A' : '#EBE6DE' }]}
                   onPress={() => {
                     haptics.medium();
                     Alert.alert("Log Out", "Are you sure you want to log out of Expensio?", [
@@ -339,7 +366,7 @@ export function RootNavigator({
                     ]);
                   }}
                 >
-                  <Feather name="power" size={16} color={colors.accent} />
+                  <Feather name="power" size={16} color="#EF4444" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -606,7 +633,7 @@ const styles = StyleSheet.create({
     height: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 10, height: 0 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.15,
     shadowRadius: 30,
     elevation: 0,
   },
@@ -615,12 +642,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     borderBottomRightRadius: 32,
     overflow: 'hidden',
-    borderRightWidth: 1,
-    borderRightColor: '#E2E8F0',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   drawerProfileSection: {
     flexDirection: 'row',
@@ -628,24 +649,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
     marginBottom: 16,
   },
-  drawerAvatar: {
+  drawerAvatarFallback: {
     width: 56,
     height: 56,
     borderRadius: 28,
     marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerAvatarText: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   drawerName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontSize: 20,
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     marginBottom: 2,
   },
   drawerHandle: {
     fontSize: 13,
-    color: '#94A3B8',
     fontWeight: '500',
   },
   drawerItem: {
@@ -679,22 +704,19 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
   },
   drawerVersion: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#8E8E93',
     fontWeight: '500',
   },
   drawerFooterIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
 });
 

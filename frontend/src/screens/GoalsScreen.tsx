@@ -13,57 +13,46 @@ export function GoalsScreen({ navigation, route, onSuccess, onResetAuth, ...prop
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       
-      {/* Ambient Glow */}
+      {/* Background Gradient */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#022C22', '#064E3B', '#0F766E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={['#F8FAFC', '#F1F5F9']}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.ambientGlow} />
       </View>
 
       <View style={styles.container}>
         {/* Title Bar */}
         <View style={styles.screenTitleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
+            <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={styles.menuBtn}>
               <Feather name="menu" size={24} color="#0F172A" />
             </TouchableOpacity>
             <View>
               <Text style={styles.screenHeading}>Goals</Text>
-              <Text style={styles.screenSubheading}>Save up for your next big dream</Text>
+              <Text style={styles.screenSubheading}>Set and track financial goals</Text>
             </View>
           </View>
         </View>
 
-        {/* Liquid Glass Empty State */}
-        <View style={styles.glassCard}>
-          <View style={styles.glassTopSpecular} />
-          <LinearGradient
-            colors={['rgba(0, 0, 0, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardInner}
-          >
-            <View style={styles.iconCircle}>
-              <Feather name="target" size={32} color="#14B8A6" />
-            </View>
-            <Text style={styles.titleText}>Goals Coming Soon</Text>
-            <Text style={styles.subtitleText}>
-              We are working hard to bring you the best goals experience. 
-              Stay tuned for the next update!
-            </Text>
+        {/* Empty State Card */}
+        <View style={styles.card}>
+          <View style={styles.iconCircle}>
+            <Feather name="target" size={32} color="#10B981" />
+          </View>
+          <Text style={styles.titleText}>Goals Coming Soon</Text>
+          <Text style={styles.subtitleText}>
+            We are working hard to bring you the best goals experience. 
+            Stay tuned for the next update!
+          </Text>
 
-            <TouchableOpacity
-              style={styles.actionBtn}
-              activeOpacity={0.85}
-              onPress={() => haptics.light()}
-            >
-              <Text style={styles.actionBtnText}>Notify Me</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            activeOpacity={0.85}
+            onPress={() => haptics.light()}
+          >
+            <Text style={styles.actionBtnText}>Notify Me</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -71,17 +60,8 @@ export function GoalsScreen({ navigation, route, onSuccess, onResetAuth, ...prop
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: 'transparent' },
-  ambientGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -20,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
-  },
-  container: { flex: 1, paddingHorizontal: 20 },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, paddingHorizontal: 24 },
   screenTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -89,38 +69,50 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === 'android' ? 44 : 20,
     marginBottom: 24,
   },
+  menuBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    marginRight: 16,
+  },
   screenHeading: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  screenSubheading: { fontSize: 12.5, color: '#94A3B8', fontWeight: '500', marginTop: 2 },
+  screenSubheading: { fontSize: 12.5, color: '#64748B', fontWeight: '500', marginTop: 2 },
   
-  glassCard: {
+  card: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 22,
-    elevation: 0,
+    padding: 32,
+    alignItems: 'center',
     marginTop: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  glassTopSpecular: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', zIndex: 2,
-  },
-  cardInner: { padding: 32, alignItems: 'center' },
   iconCircle: {
     width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: '#D1FAE5',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
-    borderWidth: 1, borderColor: 'rgba(37, 99, 235, 0.15)',
   },
   titleText: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
-  subtitleText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  subtitleText: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   actionBtn: {
-    backgroundColor: '#3B82F6', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
-    shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 0,
+    backgroundColor: '#10B981', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
+    shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 2,
   },
-  actionBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  actionBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 });

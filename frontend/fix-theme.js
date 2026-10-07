@@ -1,16 +1,15 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { haptics } from '../services/haptics';
-import { useDrawer } from '../navigation/RootNavigator';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+const fs = require('fs');
+const path = require('path');
 
-export function EmisScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
-  const insets = useSafeAreaInsets();
-  const { openDrawer } = useDrawer();
+const screensDir = path.join(__dirname, 'src', 'screens');
 
-  return (
+// The new components logic for the "Coming Soon" screens
+const getReplacementContent = (screenName, title, subtitle, iconName, oldContent) => {
+  // Regex to extract parts or just do string replacement
+  const oldReturnBlock = oldContent.match(/return \([\s\S]*?\);\n}/)[0];
+  const oldStylesBlock = oldContent.match(/const styles = StyleSheet\.create\(\{[\s\S]*\}\);/)[0];
+
+  const newReturnBlock = `return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       
       {/* Background Gradient */}
@@ -29,8 +28,8 @@ export function EmisScreen({ navigation, route, onSuccess, onResetAuth, ...props
               <Feather name="menu" size={24} color="#0F172A" />
             </TouchableOpacity>
             <View>
-              <Text style={styles.screenHeading}>EMIs</Text>
-              <Text style={styles.screenSubheading}>Track your loans and installments</Text>
+              <Text style={styles.screenHeading}>${title}</Text>
+              <Text style={styles.screenSubheading}>${subtitle}</Text>
             </View>
           </View>
         </View>
@@ -38,11 +37,11 @@ export function EmisScreen({ navigation, route, onSuccess, onResetAuth, ...props
         {/* Empty State Card */}
         <View style={styles.card}>
           <View style={styles.iconCircle}>
-            <Feather name="dollar-sign" size={32} color="#10B981" />
+            <Feather name="${iconName}" size={32} color="#10B981" />
           </View>
-          <Text style={styles.titleText}>EMIs Coming Soon</Text>
+          <Text style={styles.titleText}>${title} Coming Soon</Text>
           <Text style={styles.subtitleText}>
-            We are working hard to bring you the best emis experience. 
+            We are working hard to bring you the best ${title.toLowerCase()} experience. 
             Stay tuned for the next update!
           </Text>
 
@@ -57,9 +56,9 @@ export function EmisScreen({ navigation, route, onSuccess, onResetAuth, ...props
       </View>
     </View>
   );
-}
+}`;
 
-const styles = StyleSheet.create({
+  const newStylesBlock = `const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1, paddingHorizontal: 24 },
   screenTitleRow: {
@@ -115,4 +114,48 @@ const styles = StyleSheet.create({
     shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 2,
   },
   actionBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+});`;
+
+  let newContent = oldContent.replace(oldReturnBlock, newReturnBlock);
+  newContent = newContent.replace(oldStylesBlock, newStylesBlock);
+  
+  return newContent;
+};
+
+const screensToUpdate = [
+  { file: 'EmisScreen.tsx', title: 'EMIs', subtitle: 'Track your loans and installments', icon: 'dollar-sign' },
+  { file: 'FriendsScreen.tsx', title: 'Friends', subtitle: 'Manage your splits and friends', icon: 'users' },
+  { file: 'GoalsScreen.tsx', title: 'Goals', subtitle: 'Set and track financial goals', icon: 'target' },
+];
+
+screensToUpdate.forEach(screen => {
+  const filePath = path.join(screensDir, screen.file);
+  if (fs.existsSync(filePath)) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    if (content.includes("Budgets Coming Soon") || content.includes("Coming Soon")) {
+      const newContent = getReplacementContent(screen.file.replace('.tsx', ''), screen.title, screen.subtitle, screen.icon, content);
+      fs.writeFileSync(filePath, newContent, 'utf8');
+      console.log("Updated " + screen.file);
+    } else {
+        console.log("Skipped " + screen.file + ", didn't match coming soon pattern");
+    }
+  }
+});
+
+// Also fix some screens that might just be using the wrong gradient colors
+const otherScreensToFix = [
+  'AuthScreen.tsx', 'ExpensesScreen.tsx', 'OnboardingProfileScreen.tsx', 
+  'ProfileScreen.tsx', 'SplitsScreen.tsx', 'SubscriptionsScreen.tsx'
+];
+
+otherScreensToFix.forEach(file => {
+  const filePath = path.join(screensDir, file);
+  if (fs.existsSync(filePath)) {
+    let content = fs.readFileSync(filePath, 'utf8');
+    if (content.includes("['#022C22', '#064E3B', '#0F766E']")) {
+       content = content.replace(/colors=\{\['#022C22', '#064E3B', '#0F766E'\]\}/g, "colors={['#F8FAFC', '#F1F5F9']}");
+       fs.writeFileSync(filePath, content, 'utf8');
+       console.log("Fixed gradient in " + file);
+    }
+  }
 });

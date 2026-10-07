@@ -302,7 +302,7 @@ export function SplitsScreen({ navigation, route, onSuccess, onResetAuth, ...pro
       {/* Atmospheric Ambient Glow */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <LinearGradient
-          colors={['#022C22', '#064E3B', '#0F766E']}
+          colors={['#F8FAFC', '#F1F5F9']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}

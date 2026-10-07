@@ -1,69 +1,58 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { haptics } from '../services/haptics';
 import { useDrawer } from '../navigation/RootNavigator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../theme/ThemeContext';
 
-export function FriendsScreen({ navigation, route, onSuccess, onResetAuth, ...props }: any) {
+export function FriendsScreen({ navigation, route, ...props }: any) {
   const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
+  const { isDark } = useTheme();
+
+  const bgColor = isDark ? '#090909' : '#F6F3EE';
+  const cardBg = isDark ? '#121212' : '#FFFFFF';
+  const textPrimary = isDark ? '#FFFFFF' : '#1C1C1E';
+  const textSecondary = isDark ? '#A1A1AA' : '#8E8E93';
+  const borderColor = isDark ? '#27272A' : '#EBE6DE';
+  const accentColor = isDark ? '#C6A584' : '#332014';
+  const accentText = isDark ? '#121212' : '#FFFFFF';
 
   return (
-    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      
-      {/* Ambient Glow */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <LinearGradient
-          colors={['#022C22', '#064E3B', '#0F766E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.ambientGlow} />
-      </View>
-
+    <View style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: bgColor }]}>
       <View style={styles.container}>
         {/* Title Bar */}
         <View style={styles.screenTitleRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 12 }}>
-              <Feather name="menu" size={24} color="#0F172A" />
+            <TouchableOpacity onPress={() => { haptics.selection(); openDrawer(); }} style={{ marginRight: 16 }}>
+              <Feather name="menu" size={24} color={textPrimary} />
             </TouchableOpacity>
             <View>
-              <Text style={styles.screenHeading}>Friends</Text>
-              <Text style={styles.screenSubheading}>Connect and split bills with friends</Text>
+              <Text style={[styles.screenHeading, { color: textPrimary }]}>Splits</Text>
+              <Text style={[styles.screenSubheading, { color: textSecondary }]}>Manage your shared expenses</Text>
             </View>
           </View>
         </View>
 
-        {/* Liquid Glass Empty State */}
-        <View style={styles.glassCard}>
-          <View style={styles.glassTopSpecular} />
-          <LinearGradient
-            colors={['rgba(0, 0, 0, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardInner}
-          >
-            <View style={styles.iconCircle}>
-              <Feather name="user" size={32} color="#14B8A6" />
-            </View>
-            <Text style={styles.titleText}>Friends Coming Soon</Text>
-            <Text style={styles.subtitleText}>
-              We are working hard to bring you the best friends experience. 
-              Stay tuned for the next update!
-            </Text>
+        {/* Empty State Card */}
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor, shadowOpacity: isDark ? 0 : 0.05 }]}>
+          <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#EBE6DE' }]}>
+            <Feather name="users" size={32} color={accentColor} />
+          </View>
+          <Text style={[styles.titleText, { color: textPrimary }]}>Splits Coming Soon</Text>
+          <Text style={[styles.subtitleText, { color: textSecondary }]}>
+            We are working hard to bring you the best bill splitting experience. 
+            Stay tuned for the next update!
+          </Text>
 
-            <TouchableOpacity
-              style={styles.actionBtn}
-              activeOpacity={0.85}
-              onPress={() => haptics.light()}
-            >
-              <Text style={styles.actionBtnText}>Notify Me</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: accentColor }]}
+            activeOpacity={0.85}
+            onPress={() => haptics.light()}
+          >
+            <Text style={[styles.actionBtnText, { color: accentText }]}>Notify Me</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -71,56 +60,67 @@ export function FriendsScreen({ navigation, route, onSuccess, onResetAuth, ...pr
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: 'transparent' },
-  ambientGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -20,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
+  safeArea: { 
+    flex: 1, 
   },
-  container: { flex: 1, paddingHorizontal: 20 },
+  container: { 
+    flex: 1, 
+    paddingHorizontal: 20 
+  },
   screenTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: Platform.OS === 'android' ? 44 : 20,
+    marginTop: Platform.OS === 'android' ? 24 : 10,
     marginBottom: 24,
   },
-  screenHeading: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  screenSubheading: { fontSize: 12.5, color: '#94A3B8', fontWeight: '500', marginTop: 2 },
-  
-  glassCard: {
+  screenHeading: { 
+    fontSize: 28, 
+    fontWeight: '500', 
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  screenSubheading: { 
+    fontSize: 14, 
+    marginTop: 4 
+  },
+  card: {
     borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 22,
-    elevation: 0,
+    padding: 32,
+    alignItems: 'center',
     marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 16,
+    elevation: 2,
+    borderWidth: 1,
   },
-  glassTopSpecular: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', zIndex: 2,
-  },
-  cardInner: { padding: 32, alignItems: 'center' },
   iconCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    alignItems: 'center', justifyContent: 'center',
+    width: 72, 
+    height: 72, 
+    borderRadius: 36,
+    alignItems: 'center', 
+    justifyContent: 'center',
     marginBottom: 20,
-    borderWidth: 1, borderColor: 'rgba(37, 99, 235, 0.15)',
   },
-  titleText: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
-  subtitleText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  titleText: { 
+    fontSize: 22, 
+    fontWeight: '500', 
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    marginBottom: 12 
+  },
+  subtitleText: { 
+    fontSize: 14, 
+    textAlign: 'center', 
+    lineHeight: 22, 
+    marginBottom: 32 
+  },
   actionBtn: {
-    backgroundColor: '#3B82F6', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 16,
-    shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 0,
+    paddingVertical: 14, 
+    paddingHorizontal: 32, 
+    borderRadius: 20,
   },
-  actionBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  actionBtnText: { 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
 });

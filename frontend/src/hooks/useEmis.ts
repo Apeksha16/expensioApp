@@ -12,7 +12,7 @@ export function useEmis() {
     try {
       const res = await api.getEmis();
       if (res && res.emis) {
-        setEmis(res.emis);
+        setEmis(res.emis as EmiItem[]);
         setTotalMonthly(res.totalMonthly || 0);
       }
     } finally {

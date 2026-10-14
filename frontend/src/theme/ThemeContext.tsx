@@ -40,18 +40,18 @@ export const lightColors: ThemeColors = {
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textInverse: '#FFFFFF',
-  primary: '#3B82F6',
-  primaryDark: '#2563EB',
-  primaryMuted: 'rgba(59, 130, 246, 0.12)',
+  primary: '#1864FF',
+  primaryDark: '#0D47D9',
+  primaryMuted: 'rgba(24, 100, 255, 0.12)',
   secondary: '#10B981',
   accent: '#E11D48',
   purple: '#8B5CF6',
   cardShadow: {
-    shadowColor: '#1E293B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+    shadowColor: '#1864FF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
   },
   inputBg: '#F8FAFC',
   buttonOAuth: '#FFFFFF',
@@ -61,32 +61,32 @@ export const lightColors: ThemeColors = {
 
 export const darkColors: ThemeColors = {
   isDark: true,
-  background: '#0B0F14',
-  backgroundSecondary: '#11171E',
-  surface: '#141922',
-  surfaceElevated: '#1A212D',
-  border: '#242D3D',
-  borderLight: '#1A212D',
+  background: '#070C18',
+  backgroundSecondary: '#0E1626',
+  surface: '#121C30',
+  surfaceElevated: '#1A2742',
+  border: '#1F2F4E',
+  borderLight: '#18243C',
   textPrimary: '#FFFFFF',
-  textSecondary: '#A1A8B3',
-  textMuted: '#687383',
-  textInverse: '#0B0F14',
-  primary: '#3B82F6',
-  primaryDark: '#2563EB',
-  primaryMuted: 'rgba(59, 130, 246, 0.12)',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
+  textInverse: '#070C18',
+  primary: '#1864FF',
+  primaryDark: '#0D47D9',
+  primaryMuted: 'rgba(24, 100, 255, 0.15)',
   secondary: '#10B981',
   accent: '#E11D48',
   purple: '#8B5CF6',
   cardShadow: {
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  inputBg: '#11171E',
-  buttonOAuth: '#141922',
-  buttonOAuthBorder: '#242D3D',
+  inputBg: '#0E1626',
+  buttonOAuth: '#121C30',
+  buttonOAuthBorder: '#1F2F4E',
   buttonOAuthText: '#FFFFFF',
 };
 
@@ -113,7 +113,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function loadSavedTheme() {
-      setMode('dark'); // Force dark mode for high-end fintech theme
+      try {
+        const saved = await storage.get(THEME_STORAGE_KEY, 'dark');
+        if (saved === 'light' || saved === 'dark') {
+          setMode(saved);
+        }
+      } catch (e) {
+        // Fallback to dark
+      }
     }
     loadSavedTheme();
   }, []);

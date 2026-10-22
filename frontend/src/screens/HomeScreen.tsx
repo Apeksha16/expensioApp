@@ -130,17 +130,32 @@ export function HomeScreen({ user, onLogout, onReplayOnboarding }: HomeScreenPro
   ]);
 
   useEffect(() => {
-    async function loadPreferences() {
+    async function loadUserDataAndAccounts() {
       try {
-        const curr = await storage.get('@expensio_preferred_currency', 'USD');
-        if (curr === 'INR' || curr === '₹') setCurrencySymbol('₹');
+        const curr = await storage.get('@expensio_preferred_currency', 'INR');
+        if (curr === 'USD') setCurrencySymbol('$');
         else if (curr === 'EUR') setCurrencySymbol('€');
         else if (curr === 'GBP') setCurrencySymbol('£');
-        else setCurrencySymbol('$');
+        else setCurrencySymbol('₹');
+
+        const savedAccounts = await storage.get<any>('expensio_accounts', null);
+        if (savedAccounts) {
+          const sal = savedAccounts.salary?.salaryLimit || user?.salary || 31627;
+          const cash = savedAccounts.cash?.remaining || user?.cashBalance || 2500;
+          const sav = savedAccounts.savings?.remaining || user?.savings || 0;
+          setCardLimit(sal);
+          setTotalBalance(sal + cash + sav);
+        } else if (user?.salary) {
+          const sal = Number(user.salary);
+          const cash = Number(user.cashBalance || 0);
+          const sav = Number(user.savings || 0);
+          setCardLimit(sal);
+          setTotalBalance(sal + cash + sav);
+        }
       } catch {}
     }
-    loadPreferences();
-  }, []);
+    loadUserDataAndAccounts();
+  }, [user]);
 
   const handleToggleFreeze = () => {
     try { haptics.heavy(); } catch {}

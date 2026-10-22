@@ -1,13 +1,35 @@
-export const db = {
-  user: {
-    id: 'usr_001',
-    name: 'Apeksha',
-    username: '@apeksha',
-    phone: '+919876543210',
-    avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=apeksha',
-  },
+export const initialUser = {
+  id: 'usr_001',
+  name: 'Apeksha Verma',
+  firstName: 'Apeksha',
+  lastName: 'Verma',
+  username: '@apeksha',
+  phone: '9876543210',
+  email: 'apeksha@expensio.app',
+  recoveryEmail: 'apeksha@expensio.app',
+  avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=apeksha',
+  mpin: '1234',
+  customerType: 'Salaried',
+  salary: 31627,
+  cashBalance: 2500,
+  savings: 0,
+  failedMpinAttempts: 0,
+  lockoutUntil: null,
+};
 
+export const db = {
+  // Primary default user for backwards compatibility
+  user: { ...initialUser },
+
+  // User directory keyed by ID
+  users: new Map([
+    [initialUser.id, { ...initialUser }],
+  ]),
+
+  // OTP stores
   otps: new Map(), // phone -> { otp, expiresAt }
+  emailOtps: new Map(), // email -> { otp, expiresAt, attempts }
+  recoveryOtps: new Map(), // userId -> { otp, expiresAt, attempts, resetToken }
 
   pushTokens: new Set(),
 
@@ -74,3 +96,52 @@ export const db = {
     { id: 'sub_4', title: 'Netflix', amount: 130, dueStatus: 'DUE ON 27 OCT', isOverdue: false, period: 'next_month', isPaid: false },
   ],
 };
+
+// Helper function to find a user by identifier
+export function findUserByIdentifier(identifier, type) {
+  if (!identifier) return null;
+
+  for (const user of db.users.values()) {
+    if (type === 'phone') {
+      const cleanTarget = identifier.replace(/\D/g, '').slice(-10);
+      const cleanUser = (user.phone || '').replace(/\D/g, '').slice(-10);
+      if (cleanTarget && cleanUser && cleanTarget === cleanUser) {
+        return user;
+      }
+    } else if (type === 'username') {
+      const cleanTarget = identifier.replace(/^@/, '').trim().toLowerCase();
+      const cleanUser = (user.username || '').replace(/^@/, '').trim().toLowerCase();
+      if (cleanTarget && cleanUser && cleanTarget === cleanUser) {
+        return user;
+      }
+    } else if (type === 'google') {
+      const targetEmail = identifier.trim().toLowerCase();
+      const userEmail = (user.email || '').trim().toLowerCase();
+      if (targetEmail && userEmail && targetEmail === userEmail) {
+        return user;
+      }
+    }
+  }
+
+  // Fallback to primary db.user if it matches
+  if (type === 'phone') {
+    const cleanTarget = identifier.replace(/\D/g, '').slice(-10);
+    const cleanUser = (db.user.phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanTarget === cleanUser) return db.user;
+  } else if (type === 'username') {
+    const cleanTarget = identifier.replace(/^@/, '').trim().toLowerCase();
+    const cleanUser = (db.user.username || '').replace(/^@/, '').trim().toLowerCase();
+    if (cleanTarget === cleanUser) return db.user;
+  } else if (type === 'google') {
+    if (identifier.toLowerCase() === (db.user.email || '').toLowerCase()) return db.user;
+  }
+
+  return null;
+}
+
+// Return safe user object omitting secrets
+export function safeUser(user) {
+  if (!user) return null;
+  const { mpin, lockoutUntil, failedMpinAttempts, ...safe } = user;
+  return safe;
+}

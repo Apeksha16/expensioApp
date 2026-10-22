@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -65,45 +66,64 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
   const [canResend, setCanResend] = useState(false);
 
   // Animation values
-  const floatAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const satelliteSway1 = useRef(new Animated.Value(0)).current;
+  const satelliteSway2 = useRef(new Animated.Value(0)).current;
 
   // Refs for OTP input boxes
   const otpInputs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
-    // Gentle floating loop
+    // Pulse loop for phone vault emblem (breathing scale, NO translateY float)
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: -6,
-          duration: 1800,
+        Animated.timing(pulseAnim, {
+          toValue: 1.07,
+          duration: 1500,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: Platform.OS !== 'web',
         }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 1800,
+        Animated.timing(pulseAnim, {
+          toValue: 0.98,
+          duration: 1500,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     ).start();
 
-    // Pulse loop for lock shield
+    // Satellite 1 gentle orbital float
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.12,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
+        Animated.timing(satelliteSway1, {
+          toValue: 5,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: Platform.OS !== 'web',
         }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
+        Animated.timing(satelliteSway1, {
+          toValue: -5,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Satellite 2 counter orbital float
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(satelliteSway2, {
+          toValue: -5,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(satelliteSway2, {
+          toValue: 5,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: Platform.OS !== 'web',
         }),
       ])
@@ -359,16 +379,16 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
             <View style={{ width: 36 }} />
           )}
 
-          <View style={styles.brandBadge}>
-            <View style={styles.brandDot} />
-            <Text style={styles.brandName}>EXPENSIO</Text>
+          <View style={styles.brandLogoWrapper}>
+            <Image
+              source={require('../../assets/expensio-logo-app.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
           </View>
         </View>
 
-        <View style={styles.securityPill}>
-          <Feather name="shield" size={12} color="#10B981" />
-          <Text style={styles.securityPillText}>256-Bit SSL</Text>
-        </View>
+        <View style={{ width: 36 }} />
       </SafeAreaView>
 
       <KeyboardAvoidingView
@@ -402,11 +422,11 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
               <Circle cx={110} cy={100} r={72} fill="url(#loginBlobGrad)" />
             </Svg>
 
-            {/* Floating 3D Frosted Vault Emblem */}
+            {/* Floating 3D Frosted Vault Emblem (Scale Breathing, NO translateY) */}
             <Animated.View
               style={[
                 styles.vaultEmblem,
-                { transform: [{ translateY: floatAnim }] },
+                { transform: [{ scale: pulseAnim }] },
               ]}
             >
               <LinearGradient
@@ -424,17 +444,27 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
               </View>
             </Animated.View>
 
-            {/* Orbiting Satellite 1: SMS Pulse */}
-            <View style={styles.satelliteTag1}>
-              <Feather name="zap" size={11} color="#1864FF" />
-              <Text style={styles.satelliteText}>Instant OTP</Text>
-            </View>
+            {/* Orbiting Satellite 1 */}
+            <Animated.View
+              style={[
+                styles.satelliteTag1,
+                { transform: [{ translateX: satelliteSway1 }] },
+              ]}
+            >
+              <Feather name={step === 'PHONE' ? 'zap' : 'shield'} size={11} color="#1864FF" />
+              <Text style={styles.satelliteText}>{step === 'PHONE' ? 'Fast Sign-In' : '100% Private'}</Text>
+            </Animated.View>
 
-            {/* Orbiting Satellite 2: Encrypted */}
-            <View style={styles.satelliteTag2}>
-              <Feather name="check-circle" size={11} color="#10B981" />
-              <Text style={styles.satelliteText}>Zero Spam</Text>
-            </View>
+            {/* Orbiting Satellite 2 */}
+            <Animated.View
+              style={[
+                styles.satelliteTag2,
+                { transform: [{ translateX: satelliteSway2 }] },
+              ]}
+            >
+              <Feather name={step === 'PHONE' ? 'shield' : 'lock'} size={11} color="#10B981" />
+              <Text style={styles.satelliteText}>{step === 'PHONE' ? '100% Secure' : 'End-to-End'}</Text>
+            </Animated.View>
           </View>
 
           {/* Error Banner */}
@@ -448,11 +478,6 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
           {/* STEP 1: PHONE NUMBER INPUT */}
           {step === 'PHONE' ? (
             <View style={styles.formContainer}>
-              <View style={styles.tagBadge}>
-                <Feather name="lock" size={11} color="#1864FF" />
-                <Text style={styles.tagBadgeText}>PHONE AUTHENTICATION</Text>
-              </View>
-
               <Text style={styles.title}>Enter Your Mobile Number</Text>
               <Text style={styles.subtitle}>
                 We will send an encrypted 6-digit verification code to sign you in securely.
@@ -493,20 +518,6 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
                 )}
               </View>
 
-              {/* Dev Shortcut Helper */}
-              <TouchableOpacity
-                style={styles.devPill}
-                onPress={() => {
-                  setPhone('9876543210');
-                  setErrorMsg(null);
-                  try { haptics.selection(); } catch {}
-                }}
-                activeOpacity={0.8}
-              >
-                <Feather name="terminal" size={11} color="#1864FF" />
-                <Text style={styles.devPillText}>Dev Shortcut: Tap to fill demo number</Text>
-              </TouchableOpacity>
-
               {/* Submit Button */}
               <TouchableOpacity
                 style={[styles.primaryButton, !isPhoneValid && styles.buttonDisabled]}
@@ -530,21 +541,21 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
                 )}
               </TouchableOpacity>
 
-              {/* Trust Indicators */}
+              {/* Trust Indicators (Updated points) */}
               <View style={styles.trustFooter}>
                 <View style={styles.trustItem}>
-                  <Feather name="check" size={12} color="#10B981" />
-                  <Text style={styles.trustText}>100% Offline</Text>
+                  <Feather name="shield" size={12} color="#10B981" />
+                  <Text style={styles.trustText}>100% Private</Text>
                 </View>
                 <View style={styles.trustDot} />
                 <View style={styles.trustItem}>
-                  <Feather name="check" size={12} color="#10B981" />
-                  <Text style={styles.trustText}>Hardware Keyring</Text>
+                  <Feather name="hard-drive" size={12} color="#10B981" />
+                  <Text style={styles.trustText}>Local Storage</Text>
                 </View>
                 <View style={styles.trustDot} />
                 <View style={styles.trustItem}>
-                  <Feather name="check" size={12} color="#10B981" />
-                  <Text style={styles.trustText}>Zero Spam</Text>
+                  <Feather name="lock" size={12} color="#10B981" />
+                  <Text style={styles.trustText}>End-to-End Secure</Text>
                 </View>
               </View>
 
@@ -555,61 +566,19 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Quick Login Dual Buttons */}
+              {/* Quick Login Button (Biometric PIN removed) */}
               <View style={styles.socialRow}>
                 <TouchableOpacity
-                  style={styles.socialBtn}
+                  style={[styles.socialBtn, { flex: 1 }]}
                   onPress={handleGoogleLogin}
                   activeOpacity={0.8}
                 >
                   <GoogleIcon />
-                  <Text style={styles.socialBtnText}>Google</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={handleBiometricLogin}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="shield" size={16} color="#1864FF" />
-                  <Text style={styles.socialBtnText}>Biometric PIN</Text>
+                  <Text style={styles.socialBtnText}>Continue with Google</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Bank-Grade Security & Privacy Guarantee Card */}
-              <View style={styles.securityCard}>
-                <View style={styles.secCardHeader}>
-                  <View style={styles.secShieldIconBox}>
-                    <Feather name="shield" size={16} color="#10B981" />
-                  </View>
-                  <View style={styles.secCardHeaderTextCol}>
-                    <Text style={styles.secCardTitle}>Bank-Grade 256-Bit Protection</Text>
-                    <Text style={styles.secCardSub}>Zero-knowledge encryption for all accounts</Text>
-                  </View>
-                  <View style={styles.isoBadge}>
-                    <Text style={styles.isoBadgeText}>ENCRYPTED</Text>
-                  </View>
-                </View>
-
-                <View style={styles.secFeaturesRow}>
-                  <View style={styles.secFeature}>
-                    <Feather name="check-circle" size={11} color="#10B981" />
-                    <Text style={styles.secFeatureText}>Zero Spam SMS</Text>
-                  </View>
-                  <View style={styles.secFeatureDot} />
-                  <View style={styles.secFeature}>
-                    <Feather name="check-circle" size={11} color="#10B981" />
-                    <Text style={styles.secFeatureText}>No Ad Tracking</Text>
-                  </View>
-                  <View style={styles.secFeatureDot} />
-                  <View style={styles.secFeature}>
-                    <Feather name="check-circle" size={11} color="#10B981" />
-                    <Text style={styles.secFeatureText}>Instant Cloud Sync</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Social Proof Badges */}
+              {/* Social Proof Badges (Made by Indian) */}
               <View style={styles.socialProofRow}>
                 <View style={styles.proofPill}>
                   <Feather name="star" size={10} color="#F59E0B" />
@@ -621,7 +590,7 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
                 </View>
                 <View style={styles.proofPill}>
                   <Text style={styles.proofPillFlag}>🇮🇳</Text>
-                  <Text style={styles.proofPillText}>Made for India</Text>
+                  <Text style={styles.proofPillText}>Made by Indian</Text>
                 </View>
               </View>
 
@@ -633,24 +602,39 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
           ) : (
             /* STEP 2: 6-DIGIT OTP VERIFICATION */
             <View style={styles.formContainer}>
-              <View style={styles.tagBadge}>
-                <Feather name="key" size={11} color="#1864FF" />
-                <Text style={styles.tagBadgeText}>6-DIGIT VERIFICATION</Text>
-              </View>
-
               <Text style={styles.title}>Enter OTP Code</Text>
-              <View style={styles.subtitleRow}>
-                <Text style={styles.subtitle}>Sent to +91 {cleanPhone} </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setStep('PHONE');
-                    setErrorMsg(null);
-                    try { haptics.selection(); } catch {}
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.editLink}>Edit</Text>
-                </TouchableOpacity>
+              <Text style={styles.subtitle}>
+                We sent a 6-digit verification code to
+              </Text>
+              {/* Sleek Unified Phone Capsule with Dedicated Change Button */}
+              <View style={styles.phoneUnifiedWrapper}>
+                <View style={styles.phoneUnifiedCapsule}>
+                  <View style={styles.phoneCapsuleLeft}>
+                    <View style={styles.phoneIconCircle}>
+                      <Feather name="smartphone" size={13} color="#1864FF" />
+                    </View>
+                    <Text style={styles.phoneCapsuleFlag}>🇮🇳</Text>
+                    <Text style={styles.phoneCapsuleNumber}>
+                      +91 {cleanPhone.length === 10 ? `${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)}` : (cleanPhone || '98765 43210')}
+                    </Text>
+                  </View>
+
+                  <View style={styles.phoneCapsuleDivider} />
+
+                  <TouchableOpacity
+                    style={styles.phoneCapsuleEditBtn}
+                    onPress={() => {
+                      setStep('PHONE');
+                      setErrorMsg(null);
+                      try { haptics.selection(); } catch {}
+                    }}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Feather name="edit-3" size={12} color="#1864FF" />
+                    <Text style={styles.phoneCapsuleEditText}>Change</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* 6 OTP Input Boxes */}
@@ -681,15 +665,7 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
                 })}
               </View>
 
-              {/* Dev Instant Test Helper */}
-              <TouchableOpacity
-                style={styles.devPill}
-                onPress={handleDevAutoFill}
-                activeOpacity={0.8}
-              >
-                <Feather name="zap" size={12} color="#1864FF" />
-                <Text style={styles.devPillText}>⚡ Dev Master Code: Tap to fill 123456</Text>
-              </TouchableOpacity>
+
 
               {/* Verify & Login Button */}
               <TouchableOpacity
@@ -735,36 +711,83 @@ export function LoginScreen({ onLoginSuccess, onBackToOnboarding }: LoginScreenP
                 )}
               </View>
 
-              {/* Security Assurance Card in OTP Step */}
-              <View style={styles.securityCard}>
-                <View style={styles.secCardHeader}>
-                  <View style={styles.secShieldIconBox}>
-                    <Feather name="lock" size={16} color="#1864FF" />
+              {/* Redesigned Bottom Security Card */}
+              <View style={styles.securityShieldCard}>
+                <LinearGradient
+                  colors={['#FFFFFF', '#F8FAFF', '#F1F6FF']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+                <View style={styles.shieldCardTop}>
+                  <View style={styles.shieldIconSquircle}>
+                    <Feather name="shield" size={18} color="#1864FF" />
                   </View>
-                  <View style={styles.secCardHeaderTextCol}>
-                    <Text style={styles.secCardTitle}>Secure SMS Verification</Text>
-                    <Text style={styles.secCardSub}>Single-use authentication code expires in 5 minutes</Text>
-                  </View>
-                  <View style={styles.isoBadge}>
-                    <Text style={styles.isoBadgeText}>SECURE</Text>
+                  <View style={styles.shieldCardMeta}>
+                    <View style={styles.shieldTitleRow}>
+                      <Text style={styles.shieldCardTitle}>Protected Verification</Text>
+                      <View style={styles.shieldActiveBadge}>
+                        <View style={styles.shieldActiveDot} />
+                        <Text style={styles.shieldActiveText}>Active</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.shieldCardSubtitle}>
+                      Single-use encrypted code • Auto-expires in 5m
+                    </Text>
                   </View>
                 </View>
 
-                <View style={styles.secFeaturesRow}>
-                  <View style={styles.secFeature}>
-                    <Feather name="smartphone" size={11} color="#1864FF" />
-                    <Text style={styles.secFeatureText}>Instant SMS</Text>
+                <View style={styles.shieldCardDivider} />
+
+                <View style={styles.shieldFeaturesRow}>
+                  <View style={styles.shieldFeatureItem}>
+                    <Feather name="lock" size={11} color="#10B981" />
+                    <Text style={styles.shieldFeatureText}>100% Private</Text>
                   </View>
-                  <View style={styles.secFeatureDot} />
-                  <View style={styles.secFeature}>
-                    <Feather name="clock" size={11} color="#64748B" />
-                    <Text style={styles.secFeatureText}>5m Expiry</Text>
+                  <View style={styles.shieldFeatureDot} />
+                  <View style={styles.shieldFeatureItem}>
+                    <Feather name="clock" size={11} color="#1864FF" />
+                    <Text style={styles.shieldFeatureText}>5m Expiry</Text>
                   </View>
-                  <View style={styles.secFeatureDot} />
-                  <View style={styles.secFeature}>
+                  <View style={styles.shieldFeatureDot} />
+                  <View style={styles.shieldFeatureItem}>
                     <Feather name="check-circle" size={11} color="#10B981" />
-                    <Text style={styles.secFeatureText}>Auto-Verified</Text>
+                    <Text style={styles.shieldFeatureText}>Anti-Fraud</Text>
                   </View>
+                </View>
+              </View>
+
+              {/* Trust Indicators (Points from last screen) */}
+              <View style={styles.trustFooter}>
+                <View style={styles.trustItem}>
+                  <Feather name="shield" size={12} color="#10B981" />
+                  <Text style={styles.trustText}>100% Private</Text>
+                </View>
+                <View style={styles.trustDot} />
+                <View style={styles.trustItem}>
+                  <Feather name="hard-drive" size={12} color="#10B981" />
+                  <Text style={styles.trustText}>Local Storage</Text>
+                </View>
+                <View style={styles.trustDot} />
+                <View style={styles.trustItem}>
+                  <Feather name="lock" size={12} color="#10B981" />
+                  <Text style={styles.trustText}>End-to-End Secure</Text>
+                </View>
+              </View>
+
+              {/* Social Proof Badges with Made by Indian (Points from last screen) */}
+              <View style={styles.socialProofRow}>
+                <View style={styles.proofPill}>
+                  <Feather name="star" size={10} color="#F59E0B" />
+                  <Text style={styles.proofPillText}>4.9 ★ Rating</Text>
+                </View>
+                <View style={styles.proofPill}>
+                  <Feather name="lock" size={10} color="#10B981" />
+                  <Text style={styles.proofPillText}>100% Offline Vault</Text>
+                </View>
+                <View style={styles.proofPill}>
+                  <Text style={styles.proofPillFlag}>🇮🇳</Text>
+                  <Text style={styles.proofPillText}>Made by Indian</Text>
                 </View>
               </View>
 
@@ -839,55 +862,27 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  brandBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
+  brandLogoWrapper: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  brandDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#1864FF',
-  },
-  brandName: {
-    fontSize: 11.5,
-    fontWeight: '900',
-    color: '#0F172A',
-    letterSpacing: 1.8,
-  },
-  securityPill: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 6,
-    paddingHorizontal: 11,
-    borderRadius: 16,
+    justifyContent: 'center',
+    shadowColor: '#1864FF',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
-  securityPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#10B981',
+  brandLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
   },
+
   scrollContent: {
     paddingHorizontal: 26,
     paddingTop: 8,
@@ -1031,16 +1026,166 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 18,
   },
-  subtitleRow: {
+  phoneUnifiedWrapper: {
+    alignItems: 'flex-start',
+    marginTop: -8,
+    marginBottom: 20,
+  },
+  phoneUnifiedCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingLeft: 6,
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    shadowColor: '#1864FF',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    gap: 8,
   },
-  editLink: {
-    fontSize: 14,
+  phoneCapsuleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingRight: 2,
+  },
+  phoneIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneCapsuleFlag: {
+    fontSize: 13,
+  },
+  phoneCapsuleNumber: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: 0.4,
+  },
+  phoneCapsuleDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#E2E8F0',
+  },
+  phoneCapsuleEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  phoneCapsuleEditText: {
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#1864FF',
-    textDecorationLine: 'underline',
+  },
+  securityShieldCard: {
+    borderRadius: 18,
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    marginTop: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
+    shadowColor: '#1864FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+    padding: 14,
+  },
+  shieldCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shieldIconSquircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  shieldCardMeta: {
+    flex: 1,
+  },
+  shieldTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  shieldCardTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  shieldActiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  shieldActiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  shieldActiveText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#10B981',
+  },
+  shieldCardSubtitle: {
+    fontSize: 11.5,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  shieldCardDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 10,
+  },
+  shieldFeaturesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  shieldFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  shieldFeatureDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#CBD5E1',
+  },
+  shieldFeatureText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
   },
   phoneInputCard: {
     flexDirection: 'row',

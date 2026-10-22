@@ -11,6 +11,7 @@ import {
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,8 +29,6 @@ interface OnboardingJourneyProps {
 const CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee', flag: '🇮🇳' },
   { code: 'USD', symbol: '$', name: 'US Dollar', flag: '🇺🇸' },
-  { code: 'EUR', symbol: '€', name: 'Euro', flag: '🇪🇺' },
-  { code: 'GBP', symbol: '£', name: 'British Pound', flag: '🇬🇧' },
 ];
 
 // =========================================================================
@@ -197,9 +196,19 @@ function Slide1BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
 }
 
 // =========================================================================
-// SLIDE 2: ORGANIC FLUID BLOB + MULTI-RING BUDGET GAUGES
+// SLIDE 2: ORGANIC FLUID BLOB + MULTI-RING BUDGET GAUGES (RADAR ANIMATION)
 // =========================================================================
-function Slide2BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
+function Slide2BlobIllustration({
+  radarScale,
+  radarRotation,
+  shieldHeartbeat,
+  satelliteSway,
+}: {
+  radarScale: Animated.Value;
+  radarRotation: Animated.Value;
+  shieldHeartbeat: Animated.Value;
+  satelliteSway: Animated.Value;
+}) {
   const size = 170;
   const strokeWidth = 9;
   const center = size / 2;
@@ -211,8 +220,19 @@ function Slide2BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
   const circ2 = 2 * Math.PI * r2;
   const circ3 = 2 * Math.PI * r3;
 
+  const spin = radarRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const tag2Sway = satelliteSway.interpolate({
+    inputRange: [-6, 6],
+    outputRange: [6, -6],
+  });
+
   return (
     <View style={blobStyles.container}>
+      {/* Background Emerald/Teal Aura Blob */}
       <Svg width={280} height={260} viewBox="0 0 280 260" style={blobStyles.svgBlob}>
         <Defs>
           <SvgGradient id="blobGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -238,10 +258,37 @@ function Slide2BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
         />
       </Svg>
 
+      {/* Rotating High-Tech Radar Orbit Ring */}
+      <Animated.View
+        style={[
+          blobStyles.radarRingContainer,
+          { transform: [{ rotate: spin }] },
+        ]}
+      >
+        <Svg width={210} height={210} viewBox="0 0 210 210">
+          <Circle
+            cx={105}
+            cy={105}
+            r={96}
+            stroke="rgba(255, 255, 255, 0.45)"
+            strokeWidth={1.5}
+            strokeDasharray="8, 12"
+            fill="none"
+          />
+          <Circle
+            cx={105}
+            cy={9}
+            r={4.5}
+            fill="#FFFFFF"
+          />
+        </Svg>
+      </Animated.View>
+
+      {/* Breathing Scale Gauge Container (Living Radar Scale, NO translateY!) */}
       <Animated.View
         style={[
           blobStyles.ringWrapper,
-          { transform: [{ translateY: floatAnim }] },
+          { transform: [{ scale: radarScale }] },
         ]}
       >
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -290,21 +337,39 @@ function Slide2BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
           />
         </Svg>
 
-        <View style={blobStyles.ringCenterIcon}>
+        {/* Center Shield with Heartbeat Pulse Scale */}
+        <Animated.View
+          style={[
+            blobStyles.ringCenterIcon,
+            { transform: [{ scale: shieldHeartbeat }] },
+          ]}
+        >
           <Feather name="shield" size={24} color="#FFFFFF" />
           <Text style={blobStyles.ringPercent}>75%</Text>
-        </View>
+        </Animated.View>
       </Animated.View>
 
-      <View style={blobStyles.orbitTag1}>
+      {/* Orbit Tag 1: Food 80% (Smooth horizontal sway) */}
+      <Animated.View
+        style={[
+          blobStyles.orbitTag1,
+          { transform: [{ translateX: satelliteSway }] },
+        ]}
+      >
         <View style={[blobStyles.orbitDot, { backgroundColor: '#10B981' }]} />
         <Text style={blobStyles.orbitTagText}>Food 80%</Text>
-      </View>
+      </Animated.View>
 
-      <View style={blobStyles.orbitTag2}>
+      {/* Orbit Tag 2: Shop 58% (Smooth counter sway) */}
+      <Animated.View
+        style={[
+          blobStyles.orbitTag2,
+          { transform: [{ translateX: tag2Sway }] },
+        ]}
+      >
         <View style={[blobStyles.orbitDot, { backgroundColor: '#38BDF8' }]} />
         <Text style={blobStyles.orbitTagText}>Shop 58%</Text>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -312,7 +377,20 @@ function Slide2BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
 // =========================================================================
 // SLIDE 3: REDESIGNED BILL SPLIT CARD OVER ORGANIC VIOLET/INDIGO BLOB
 // =========================================================================
-function Slide3BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
+function Slide3BlobIllustration({
+  cardTilt,
+  settledPulse,
+  bistroDrift,
+}: {
+  cardTilt: Animated.Value;
+  settledPulse: Animated.Value;
+  bistroDrift: Animated.Value;
+}) {
+  const tiltDeg = cardTilt.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-2.4deg', '2.4deg'],
+  });
+
   return (
     <View style={blobStyles.container}>
       <Svg width={280} height={260} viewBox="0 0 280 260" style={blobStyles.svgBlob}>
@@ -340,10 +418,11 @@ function Slide3BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
         />
       </Svg>
 
+      {/* Tactile Card Tilt Swing (Paper restaurant bill floating dynamic tilt) */}
       <Animated.View
         style={[
           splitCardStyles.card,
-          { transform: [{ translateY: floatAnim }] },
+          { transform: [{ rotateZ: tiltDeg }] },
         ]}
       >
         <View style={splitCardStyles.headerRow}>
@@ -407,15 +486,27 @@ function Slide3BlobIllustration({ floatAnim }: { floatAnim: Animated.Value }) {
         </View>
       </Animated.View>
 
-      <View style={splitCardStyles.floatTag1}>
+      {/* Floating Italian Bistro Tag (Smooth horizontal sway drift) */}
+      <Animated.View
+        style={[
+          splitCardStyles.floatTag1,
+          { transform: [{ translateX: bistroDrift }] },
+        ]}
+      >
         <Text style={splitCardStyles.floatTagEmoji}>🍕</Text>
         <Text style={splitCardStyles.floatTagText}>Italian Bistro</Text>
-      </View>
+      </Animated.View>
 
-      <View style={splitCardStyles.floatTag2}>
+      {/* All Settled Up Tag with Celebratory Pulse Ping */}
+      <Animated.View
+        style={[
+          splitCardStyles.floatTag2,
+          { transform: [{ scale: settledPulse }] },
+        ]}
+      >
         <Feather name="check-circle" size={12} color="#10B981" />
         <Text style={splitCardStyles.floatTagText}>All Settled Up</Text>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -428,15 +519,17 @@ function Slide4SetupScreen({
   setSelectedCurrency,
   onFinish,
   onPrevious,
-  floatAnim,
-  radarPulse,
+  vaultScale,
+  checkPing,
+  vaultWave,
 }: {
   selectedCurrency: string;
   setSelectedCurrency: (c: string) => void;
   onFinish: () => void;
   onPrevious: () => void;
-  floatAnim: Animated.Value;
-  radarPulse: Animated.Value;
+  vaultScale: Animated.Value;
+  checkPing: Animated.Value;
+  vaultWave: Animated.Value;
 }) {
   return (
     <View style={slide4Styles.container}>
@@ -469,28 +562,29 @@ function Slide4SetupScreen({
         <Animated.View
           style={[
             slide4Styles.pulseRing,
-            { transform: [{ scale: radarPulse }] },
+            { transform: [{ scale: vaultWave }] },
           ]}
         />
 
         <Animated.View
           style={[
             slide4Styles.vaultEmblem,
-            { transform: [{ translateY: floatAnim }] },
+            { transform: [{ scale: vaultScale }] },
           ]}
         >
           <Feather name="shield" size={34} color="#FFFFFF" />
-          <View style={slide4Styles.checkBadge}>
+          <Animated.View
+            style={[
+              slide4Styles.checkBadge,
+              { transform: [{ scale: checkPing }] },
+            ]}
+          >
             <Feather name="check" size={13} color="#1864FF" />
-          </View>
+          </Animated.View>
         </Animated.View>
       </View>
 
       <View style={slide4Styles.textSection}>
-        <View style={slide4Styles.tagBadge}>
-          <Feather name="lock" size={12} color="#1864FF" />
-          <Text style={slide4Styles.tagText}>256-BIT ENCRYPTED VAULT</Text>
-        </View>
         <Text style={slide4Styles.title}>Personalize Your Vault</Text>
         <Text style={slide4Styles.subtitle}>
           Select your primary currency to initialize your encrypted, offline-first financial workspace.
@@ -553,18 +647,18 @@ function Slide4SetupScreen({
 
       <View style={slide4Styles.securityRow}>
         <View style={slide4Styles.secItem}>
-          <Feather name="check-circle" size={12} color="#10B981" />
-          <Text style={slide4Styles.secText}>100% Offline</Text>
+          <Feather name="shield" size={12} color="#10B981" />
+          <Text style={slide4Styles.secText}>100% Private</Text>
         </View>
         <View style={slide4Styles.secDivider} />
         <View style={slide4Styles.secItem}>
-          <Feather name="check-circle" size={12} color="#10B981" />
-          <Text style={slide4Styles.secText}>Zero Tracking</Text>
+          <Feather name="hard-drive" size={12} color="#10B981" />
+          <Text style={slide4Styles.secText}>Local Storage</Text>
         </View>
         <View style={slide4Styles.secDivider} />
         <View style={slide4Styles.secItem}>
-          <Feather name="check-circle" size={12} color="#10B981" />
-          <Text style={slide4Styles.secText}>Face ID Ready</Text>
+          <Feather name="lock" size={12} color="#10B981" />
+          <Text style={slide4Styles.secText}>Biometric Lock</Text>
         </View>
       </View>
 
@@ -580,7 +674,7 @@ function Slide4SetupScreen({
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           />
-          <Text style={slide4Styles.launchButtonText}>Launch Expensio Vault</Text>
+          <Text style={slide4Styles.launchButtonText}>Get Started</Text>
           <Feather name="arrow-right" size={18} color="#FFFFFF" />
         </TouchableOpacity>
 
@@ -729,11 +823,28 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedCurrency, setSelectedCurrency] = useState('INR');
 
-  // Pulse & Float Animations
+  // Pulse & Float Animations (Slide 1 & Slide 3)
   const radarPulse = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
+  // Slide 2 Custom Radar & Guardian Shield Animations (distinct from Slide 1 vertical float)
+  const radarScale = useRef(new Animated.Value(1)).current;
+  const radarRotation = useRef(new Animated.Value(0)).current;
+  const shieldHeartbeat = useRef(new Animated.Value(1)).current;
+  const satelliteSway = useRef(new Animated.Value(0)).current;
+
+  // Slide 3 Custom Bill Split Animations (Tactile Card Tilt, Settled Ping, Bistro Drift)
+  const cardTilt = useRef(new Animated.Value(0)).current;
+  const settledPulse = useRef(new Animated.Value(1)).current;
+  const bistroDrift = useRef(new Animated.Value(0)).current;
+
+  // Slide 4 Custom Vault Seal Animations (Breathing Scale, Check Ping, Concentric Wave)
+  const vaultScale = useRef(new Animated.Value(1)).current;
+  const checkPing = useRef(new Animated.Value(1)).current;
+  const vaultWave = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
+    // Slide 1 & 3: Gentle vertical float
     Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
@@ -751,6 +862,7 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
       ])
     ).start();
 
+    // Ambient radar pulse
     Animated.loop(
       Animated.sequence([
         Animated.timing(radarPulse, {
@@ -762,6 +874,178 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
         Animated.timing(radarPulse, {
           toValue: 1,
           duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 2: Living Radar Scale Breathing (distinct from translateY float)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(radarScale, {
+          toValue: 1.05,
+          duration: 1700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(radarScale, {
+          toValue: 0.96,
+          duration: 1700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 2: Continuous 360-degree Radar Scanner Rotation
+    Animated.loop(
+      Animated.timing(radarRotation, {
+        toValue: 1,
+        duration: 8500,
+        easing: Easing.linear,
+        useNativeDriver: Platform.OS !== 'web',
+      })
+    ).start();
+
+    // Slide 2: Guardian Shield Heartbeat Pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shieldHeartbeat, {
+          toValue: 1.14,
+          duration: 1000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(shieldHeartbeat, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 2: Satellite Orbit Sway
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(satelliteSway, {
+          toValue: 6,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(satelliteSway, {
+          toValue: -6,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 3: Tactile Bill Split Card Tilt Swing (NO vertical translateY)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(cardTilt, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(cardTilt, {
+          toValue: -1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 3: All Settled Up Dopamine Ping
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(settledPulse, {
+          toValue: 1.12,
+          duration: 1100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(settledPulse, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 3: Italian Bistro Floating Tag Drift
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bistroDrift, {
+          toValue: 5,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(bistroDrift, {
+          toValue: -5,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 4: Vault Shield Breathing Scale Pulse (NO vertical translateY)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(vaultScale, {
+          toValue: 1.07,
+          duration: 1500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(vaultScale, {
+          toValue: 0.98,
+          duration: 1500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 4: Checkmark Badge Ping Pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(checkPing, {
+          toValue: 1.22,
+          duration: 900,
+          easing: Easing.out(Easing.back(2)),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(checkPing, {
+          toValue: 1.0,
+          duration: 1100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    ).start();
+
+    // Slide 4: Concentric Security Wave Expand
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(vaultWave, {
+          toValue: 1.30,
+          duration: 1900,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(vaultWave, {
+          toValue: 1.0,
+          duration: 1900,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: Platform.OS !== 'web',
         }),
@@ -849,9 +1133,12 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
 
       {/* Top Header Bar on Seamless Background */}
       <SafeAreaView edges={['top']} style={styles.topBar}>
-        <View style={styles.brandBadge}>
-          <View style={styles.brandDot} />
-          <Text style={styles.brandName}>EXPENSIO</Text>
+        <View style={styles.brandLogoWrapper}>
+          <Image
+            source={require('../../assets/expensio-logo-app.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
         </View>
 
         {currentPage < 3 ? (
@@ -883,10 +1170,6 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
             <Slide1BlobIllustration floatAnim={floatAnim} />
           </View>
           <View style={styles.textContainer}>
-            <View style={styles.tagPill}>
-              <Feather name="zap" size={11} color="#1864FF" />
-              <Text style={styles.tagPillText}>{slides[0].tag}</Text>
-            </View>
             <Text style={styles.slideTitle}>{slides[0].title}</Text>
             <Text style={styles.slideSubtitle}>{slides[0].subtitle}</Text>
           </View>
@@ -895,12 +1178,14 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
         {/* SLIDE 2 */}
         <View style={[styles.slidePage, { width: SCREEN_WIDTH }]}>
           <View style={styles.blobStageWrapper}>
-            <Slide2BlobIllustration floatAnim={floatAnim} />
+            <Slide2BlobIllustration
+              radarScale={radarScale}
+              radarRotation={radarRotation}
+              shieldHeartbeat={shieldHeartbeat}
+              satelliteSway={satelliteSway}
+            />
           </View>
           <View style={styles.textContainer}>
-            <View style={styles.tagPill}>
-              <Text style={styles.tagPillText}>{slides[1].tag}</Text>
-            </View>
             <Text style={styles.slideTitle}>{slides[1].title}</Text>
             <Text style={styles.slideSubtitle}>{slides[1].subtitle}</Text>
           </View>
@@ -909,12 +1194,13 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
         {/* SLIDE 3 */}
         <View style={[styles.slidePage, { width: SCREEN_WIDTH }]}>
           <View style={styles.blobStageWrapper}>
-            <Slide3BlobIllustration floatAnim={floatAnim} />
+            <Slide3BlobIllustration
+              cardTilt={cardTilt}
+              settledPulse={settledPulse}
+              bistroDrift={bistroDrift}
+            />
           </View>
           <View style={styles.textContainer}>
-            <View style={styles.tagPill}>
-              <Text style={styles.tagPillText}>{slides[2].tag}</Text>
-            </View>
             <Text style={styles.slideTitle}>{slides[2].title}</Text>
             <Text style={styles.slideSubtitle}>{slides[2].subtitle}</Text>
           </View>
@@ -927,8 +1213,9 @@ export function OnboardingJourneyScreen({ onComplete }: OnboardingJourneyProps) 
             setSelectedCurrency={setSelectedCurrency}
             onFinish={handleFinish}
             onPrevious={handlePrevious}
-            floatAnim={floatAnim}
-            radarPulse={radarPulse}
+            vaultScale={vaultScale}
+            checkPing={checkPing}
+            vaultWave={vaultWave}
           />
         </View>
       </ScrollView>
@@ -1531,7 +1818,9 @@ const slide4Styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
     borderRadius: 18,
-    padding: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    minHeight: 115,
     justifyContent: 'space-between',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 3 },
@@ -1679,10 +1968,19 @@ const blobStyles = StyleSheet.create({
     top: 0,
     left: 0,
   },
+  radarRingContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 220,
+    height: 220,
+    zIndex: 1,
+  },
   ringWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    zIndex: 2,
   },
   ringCenterIcon: {
     position: 'absolute',
@@ -1778,33 +2076,25 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? 14 : 8,
     zIndex: 10,
   },
-  brandBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  brandLogoWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1864FF',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
-  brandDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#1864FF',
-  },
-  brandName: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#0F172A',
-    letterSpacing: 2,
+  brandLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
   },
   skipBtn: {
     paddingVertical: 7,

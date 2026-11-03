@@ -6,61 +6,27 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F3F4F6"
+    },
     "ios": {
       "supportsTablet": true,
-      "requireFullScreen": true,
-      "bundleIdentifier": "com.aptech.expensio.app",
-      "appleTeamId": "JS58863CSG"
+      "bundleIdentifier": "com.expensio.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#070A12"
+        "backgroundColor": "#0F766E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.aptech.expensio.app",
-      "predictiveBackGestureEnabled": true
+      "package": "com.expensio.app",
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-web-browser",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow Expensio to access your camera to scan receipts."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow Expensio to access your photos to attach receipts."
-        }
-      ],
-      [
-        "expo-local-authentication",
-        {
-          "faceIDPermission": "Allow Expensio to use Face ID for secure login."
-        }
-      ],
-      "expo-font",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#070A12"
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "enableSceneSupport": true
-          }
-        }
-      ],
-      "./plugins/withReleaseScheme"
-    ]
+    }
   }
 }

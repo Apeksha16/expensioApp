@@ -21,9 +21,10 @@ export function SubscriptionCard({ items, upcomingTotal }: Props) {
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>Subscriptions</Text>
-        <Text style={styles.upcoming}>
-          Upcoming {formatINR(upcomingTotal)}
-        </Text>
+        <View style={styles.upcomingBadge}>
+          <Text style={styles.upcomingLabel}>Due soon</Text>
+          <Text style={styles.upcoming}>{formatINR(upcomingTotal)}</Text>
+        </View>
       </View>
       {items.map((item, index) => (
         <View
@@ -33,15 +34,15 @@ export function SubscriptionCard({ items, upcomingTotal }: Props) {
           <View style={[styles.icon, { backgroundColor: `${item.color}18` }]}>
             <Ionicons
               name={iconMap[item.icon] ?? 'ellipse'}
-              size={16}
+              size={17}
               color={item.color}
             />
           </View>
           <View style={styles.meta}>
             <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.date}>{item.nextDate}</Text>
+            <Text style={styles.date}>Renews {item.nextDate}</Text>
           </View>
-          <Text style={styles.amount}>{formatINR(item.amount)}</Text>
+          <Text style={styles.amount}>{formatINR(item.amount)}<Text style={styles.mo}>/mo</Text></Text>
         </View>
       ))}
     </View>
@@ -58,16 +59,23 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.sm,
   },
   title: {
     ...typography.h3,
     color: colors.textPrimary,
   },
+  upcomingBadge: {
+    alignItems: 'flex-end',
+  },
+  upcomingLabel: {
+    ...typography.micro,
+    color: colors.textTertiary,
+  },
   upcoming: {
     ...typography.captionMedium,
-    color: colors.textSecondary,
+    color: colors.warning,
   },
   row: {
     flexDirection: 'row',
@@ -80,14 +88,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   icon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   meta: {
     flex: 1,
+    gap: 2,
   },
   name: {
     ...typography.bodyMedium,
@@ -100,5 +109,10 @@ const styles = StyleSheet.create({
   amount: {
     ...typography.bodySemibold,
     color: colors.textPrimary,
+  },
+  mo: {
+    ...typography.micro,
+    color: colors.textTertiary,
+    fontWeight: '400',
   },
 });

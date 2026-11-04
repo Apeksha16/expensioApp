@@ -9,13 +9,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OnboardingVisual } from '../../components/OnboardingVisual';
 import { PageIndicator } from '../../components/PageIndicator';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useApp } from '../../context/AppContext';
 import { onboardingSlides } from '../../data/mock';
-import { colors, spacing, typography } from '../../theme';
+import { colors, radius, spacing, typography } from '../../theme';
 import type { OnboardingSlide } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -42,11 +43,25 @@ export function OnboardingScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
+    <LinearGradient
+      colors={['#F8FCFB', colors.background, '#EEF7F5']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.container, { paddingTop: insets.top + spacing.sm }]}
+    >
       <View style={styles.topBar}>
-        <Text style={styles.brand}>Expensio</Text>
+        <View style={styles.brandLockup}>
+          <View style={styles.brandMark}>
+            <Text style={styles.brandMarkText}>e</Text>
+          </View>
+          <Text style={styles.brand}>expensio</Text>
+        </View>
         {!isLast ? (
-          <Pressable onPress={() => setAuthPhase('login')} hitSlop={8}>
+          <Pressable
+            onPress={() => setAuthPhase('login')}
+            hitSlop={8}
+            style={styles.skipBtn}
+          >
             <Text style={styles.skip}>Skip</Text>
           </Pressable>
         ) : (
@@ -62,9 +77,12 @@ export function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onScrollEnd}
-        renderItem={({ item }) => (
+        renderItem={({ item, index: slideIndex }) => (
           <View style={[styles.slide, { width }]}>
             <OnboardingVisual visual={item.visual} />
+            <Text style={styles.slideNumber}>
+              {String(slideIndex + 1).padStart(2, '0')} / {String(onboardingSlides.length).padStart(2, '0')}
+            </Text>
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.subtitle}>{item.subtitle}</Text>
           </View>
@@ -72,35 +90,70 @@ export function OnboardingScreen() {
       />
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <PageIndicator count={onboardingSlides.length} activeIndex={index} />
+        <View style={styles.progressRow}>
+          <PageIndicator count={onboardingSlides.length} activeIndex={index} />
+          <Text style={styles.progressLabel}>{isLast ? 'Ready when you are' : 'Swipe or tap to continue'}</Text>
+        </View>
         <PrimaryButton
           title={isLast ? 'Get Started' : 'Next'}
           onPress={goNext}
           style={styles.cta}
         />
+        {!isLast && (
+          <Text style={styles.slideCount}>
+            {index + 1} of {onboardingSlides.length}
+          </Text>
+        )}
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   topBar: {
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingBottom: spacing.sm,
   },
   brand: {
-    ...typography.h3,
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.accent,
-    letterSpacing: -0.3,
+    letterSpacing: -0.8,
+  },
+  brandLockup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  brandMark: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandMarkText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  skipBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   skip: {
-    ...typography.bodyMedium,
+    ...typography.captionMedium,
     color: colors.textSecondary,
   },
   skipPlaceholder: {
@@ -108,7 +161,12 @@ const styles = StyleSheet.create({
   },
   slide: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.sm,
+  },
+  slideNumber: {
+    ...typography.label,
+    color: colors.accent,
+    marginTop: spacing.lg,
   },
   title: {
     ...typography.h1,
@@ -119,13 +177,29 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    lineHeight: 24,
+    lineHeight: 25,
   },
   footer: {
     paddingHorizontal: spacing.lg,
-    gap: spacing.lg,
+    gap: spacing.sm,
+    paddingTop: spacing.md,
+  },
+  progressRow: {
+    minHeight: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  progressLabel: {
+    ...typography.micro,
+    color: colors.textTertiary,
   },
   cta: {
     width: '100%',
+  },
+  slideCount: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
   },
 });

@@ -53,7 +53,7 @@ export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
                   pressed && styles.pressed,
                 ]}
               >
-                <Ionicons name="add" size={28} color={colors.white} />
+                <Ionicons name="add" size={30} color={colors.white} />
               </Pressable>
             );
           }
@@ -64,11 +64,13 @@ export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
               onPress={() => navigation.navigate(tab.name)}
               style={styles.tab}
             >
-              <Ionicons
-                name={focused ? tab.iconActive : tab.icon}
-                size={22}
-                color={focused ? colors.accent : colors.textTertiary}
-              />
+              <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+                <Ionicons
+                  name={focused ? tab.iconActive : tab.icon}
+                  size={22}
+                  color={focused ? colors.accent : colors.textTertiary}
+                />
+              </View>
               <Text style={[styles.label, focused && styles.labelActive]}>
                 {tab.label}
               </Text>
@@ -96,8 +98,18 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     paddingVertical: spacing.xs,
+  },
+  iconWrap: {
+    width: 44,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.full,
+  },
+  iconWrapActive: {
+    backgroundColor: colors.accentSoft,
   },
   label: {
     ...typography.micro,
@@ -108,17 +120,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   addButton: {
-    width: 56,
-    height: 56,
+    width: 58,
+    height: 58,
     borderRadius: radius.full,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -22,
+    marginTop: -24,
     ...shadows.button,
   },
   pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.96 }],
+    opacity: 0.88,
+    transform: [{ scale: 0.94 }],
   },
 });

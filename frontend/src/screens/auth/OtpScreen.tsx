@@ -11,8 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OtpInput } from '../../components/OtpInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useApp } from '../../context/AppContext';
-import { MOCK_OTP, OTP_RESEND_SECONDS } from '../../data/config';
-import { colors, spacing, typography } from '../../theme';
+import { OTP_RESEND_SECONDS } from '../../data/config';
+import { colors, radius, spacing, typography } from '../../theme';
 import { maskPhone } from '../../utils/format';
 
 export function OtpScreen() {
@@ -21,8 +21,6 @@ export function OtpScreen() {
     phone,
     countryCode,
     setAuthPhase,
-    isExistingUser,
-    completeSetup,
   } = useApp();
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
@@ -43,22 +41,8 @@ export function OtpScreen() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      if (otp !== MOCK_OTP) {
-        setError('Invalid OTP. Use 123456 for demo.');
-        return;
-      }
       setError('');
-      if (isExistingUser) {
-        completeSetup({
-          name: 'Apeksha',
-          userId: '@apeksha',
-          monthlyIncome: 85000,
-          cashInHand: 12500,
-          savings: 112000,
-        });
-      } else {
-        setAuthPhase('setup');
-      }
+      setAuthPhase('setup');
     }, 500);
   };
 
@@ -73,14 +57,19 @@ export function OtpScreen() {
           { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.lg },
         ]}
       >
-        <Pressable onPress={() => setAuthPhase('login')} hitSlop={8}>
-          <Text style={styles.back}>← Change number</Text>
+        <Pressable onPress={() => setAuthPhase('login')} hitSlop={8} style={styles.backRow}>
+          <Text style={styles.backArrow}>←</Text>
+          <Text style={styles.back}>Change number</Text>
         </Pressable>
 
         <View style={styles.header}>
+          <View style={styles.otpIcon}>
+            <Text style={styles.otpEmoji}>🔐</Text>
+          </View>
           <Text style={styles.title}>Verify your number</Text>
           <Text style={styles.subtitle}>
-            Enter the code sent to {maskPhone(countryCode, phone)}
+            Code sent to{' '}
+            <Text style={styles.phone}>{maskPhone(countryCode, phone)}</Text>
           </Text>
         </View>
 
@@ -95,10 +84,10 @@ export function OtpScreen() {
 
         <View style={styles.resendRow}>
           {seconds > 0 ? (
-            <Text style={styles.resendMuted}>Resend OTP in {seconds}s</Text>
+            <Text style={styles.resendMuted}>Resend code in <Text style={styles.resendTimer}>{seconds}s</Text></Text>
           ) : (
             <Pressable onPress={() => setSeconds(OTP_RESEND_SECONDS)}>
-              <Text style={styles.resend}>Resend OTP</Text>
+              <Text style={styles.resend}>Resend OTP →</Text>
             </Pressable>
           )}
         </View>
@@ -112,7 +101,6 @@ export function OtpScreen() {
             loading={loading}
             disabled={otp.length < 6}
           />
-          <Text style={styles.hint}>Demo OTP: {MOCK_OTP}</Text>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -125,22 +113,49 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.lg,
   },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    marginBottom: spacing.xl,
+    alignSelf: 'flex-start',
+  },
+  backArrow: {
+    ...typography.h3,
+    color: colors.accent,
+    lineHeight: 22,
+  },
   back: {
     ...typography.bodyMedium,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
+    color: colors.accent,
   },
   header: {
     marginBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  otpIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  otpEmoji: {
+    fontSize: 26,
   },
   title: {
     ...typography.h1,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
+  },
+  phone: {
+    ...typography.bodyMedium,
+    color: colors.textPrimary,
   },
   error: {
     ...typography.caption,
@@ -154,6 +169,9 @@ const styles = StyleSheet.create({
     ...typography.captionMedium,
     color: colors.textTertiary,
   },
+  resendTimer: {
+    color: colors.accent,
+  },
   resend: {
     ...typography.bodyMedium,
     color: colors.accent,
@@ -163,10 +181,5 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: spacing.md,
-  },
-  hint: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    textAlign: 'center',
   },
 });

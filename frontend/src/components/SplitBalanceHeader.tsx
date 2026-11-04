@@ -27,11 +27,14 @@ export function SplitBalanceHeader({ balances }: Props) {
         </View>
       </View>
       <View style={styles.metaRow}>
-        <Text style={styles.meta}>
-          {balances.pendingCount} pending
-        </Text>
-        <Text style={styles.dot}>·</Text>
-        <Text style={styles.meta}>{balances.settledCount} settled</Text>
+        <View style={styles.metaChip}>
+          <View style={[styles.metaDot, { backgroundColor: colors.warning }]} />
+          <Text style={styles.meta}>{balances.pendingCount} pending</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <View style={[styles.metaDot, { backgroundColor: colors.income }]} />
+          <Text style={styles.meta}>{balances.settledCount} settled</Text>
+        </View>
       </View>
     </View>
   );
@@ -74,17 +77,28 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    backgroundColor: colors.background,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  metaDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
   meta: {
     ...typography.captionMedium,
-    color: colors.textTertiary,
-  },
-  dot: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
   },
 });

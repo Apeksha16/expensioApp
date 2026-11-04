@@ -32,7 +32,7 @@ export const onboardingSlides: OnboardingSlide[] = [
   {
     id: '4',
     title: 'Everything money. One place.',
-    subtitle: 'Expenses, subscriptions, goals and savings — together.',
+    subtitle: 'Expenses, subscriptions, goals and savings, together.',
     visual: 'allinone',
   },
 ];

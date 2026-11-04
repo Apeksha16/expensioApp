@@ -135,8 +135,10 @@ export function CreateSplitScreen({ navigation }: Props) {
         <Pressable
           onPress={() => (step === 1 ? navigation.goBack() : setStep((s) => s - 1))}
           hitSlop={8}
+          style={styles.backRow}
         >
-          <Text style={styles.back}>{step === 1 ? '← Cancel' : '← Back'}</Text>
+          <Text style={styles.backArrow}>{step === 1 ? '←' : '←'}</Text>
+          <Text style={styles.back}>{step === 1 ? 'Cancel' : 'Back'}</Text>
         </Pressable>
 
         <Text style={styles.stepLabel}>
@@ -358,8 +360,20 @@ const styles = StyleSheet.create({
   },
   back: {
     ...typography.bodyMedium,
-    color: colors.textSecondary,
+    color: colors.accent,
     marginBottom: spacing.md,
+  },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    marginBottom: spacing.md,
+    alignSelf: 'flex-start',
+  },
+  backArrow: {
+    ...typography.h3,
+    color: colors.accent,
+    lineHeight: 22,
   },
   stepLabel: {
     ...typography.captionMedium,

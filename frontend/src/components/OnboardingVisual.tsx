@@ -10,9 +10,21 @@ interface Props {
 }
 
 export function OnboardingVisual({ visual }: Props) {
+  const labels = {
+    overview: 'A clearer starting point',
+    split: 'Simple shared spending',
+    budget: 'Plans that feel possible',
+    allinone: 'Your complete money view',
+  };
+
   if (visual === 'overview') {
     return (
       <View style={styles.stage}>
+        <View style={styles.stageTopline}>
+          <View style={styles.liveDot} />
+          <Text style={styles.stageLabel}>{labels[visual]}</Text>
+          <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
+        </View>
         <LinearGradient
           colors={[colors.balanceStart, colors.balanceEnd]}
           style={styles.heroCard}
@@ -35,6 +47,11 @@ export function OnboardingVisual({ visual }: Props) {
   if (visual === 'split') {
     return (
       <View style={styles.stage}>
+        <View style={styles.stageTopline}>
+          <View style={styles.liveDot} />
+          <Text style={styles.stageLabel}>{labels[visual]}</Text>
+          <Ionicons name="people-outline" size={16} color={colors.accent} />
+        </View>
         <View style={styles.softCard}>
           <View style={styles.avatarRow}>
             {['R', 'A', 'N'].map((letter, i) => (
@@ -62,6 +79,11 @@ export function OnboardingVisual({ visual }: Props) {
   if (visual === 'budget') {
     return (
       <View style={styles.stage}>
+        <View style={styles.stageTopline}>
+          <View style={styles.liveDot} />
+          <Text style={styles.stageLabel}>{labels[visual]}</Text>
+          <Ionicons name="flag-outline" size={16} color={colors.accent} />
+        </View>
         <View style={styles.softCard}>
           <Text style={styles.cardTitle}>Monthly Budget</Text>
           <Text style={styles.budgetAmount}>₹28,400 / ₹50,000</Text>
@@ -79,6 +101,11 @@ export function OnboardingVisual({ visual }: Props) {
 
   return (
     <View style={styles.stage}>
+      <View style={styles.stageTopline}>
+        <View style={styles.liveDot} />
+        <Text style={styles.stageLabel}>{labels[visual]}</Text>
+        <Ionicons name="grid-outline" size={16} color={colors.accent} />
+      </View>
       <View style={styles.grid}>
         {[
           { icon: 'wallet' as const, label: 'Expenses' },
@@ -99,7 +126,33 @@ export function OnboardingVisual({ visual }: Props) {
 const styles = StyleSheet.create({
   stage: {
     height: 260,
+    borderRadius: radius.xxl,
+    backgroundColor: 'rgba(230, 244, 241, 0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 118, 110, 0.10)',
+    padding: spacing.md,
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  stageTopline: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: radius.full,
+    backgroundColor: colors.success,
+  },
+  stageLabel: {
+    ...typography.micro,
+    color: colors.textSecondary,
+    flex: 1,
   },
   heroCard: {
     borderRadius: radius.xl,

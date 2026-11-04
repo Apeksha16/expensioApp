@@ -19,8 +19,7 @@ import { isValidIndianMobile } from '../../utils/validation';
 
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
-  const { setAuthPhase, setPhoneCredentials, isExistingUser, setIsExistingUser } =
-    useApp();
+  const { setAuthPhase, setPhoneCredentials } = useApp();
   const [dial, setDial] = useState(DEFAULT_COUNTRY_DIAL);
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
@@ -53,13 +52,15 @@ export function MobileLoginScreen() {
           { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.lg },
         ]}
       >
-        <Pressable onPress={() => setAuthPhase('onboarding')} hitSlop={8}>
-          <Text style={styles.back}>← Back</Text>
+        <Pressable onPress={() => setAuthPhase('onboarding')} hitSlop={8} style={styles.backRow}>
+          <Text style={styles.backArrow}>←</Text>
+          <Text style={styles.back}>Back</Text>
         </Pressable>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome to Expensio</Text>
-          <Text style={styles.subtitle}>Let's get you signed in.</Text>
+          <Text style={styles.brandTag}>expensio</Text>
+          <Text style={styles.title}>Welcome back 👋</Text>
+          <Text style={styles.subtitle}>Enter your mobile number to continue.</Text>
         </View>
 
         <View style={styles.form}>
@@ -87,14 +88,6 @@ export function MobileLoginScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Pressable
-            style={styles.mockToggle}
-            onPress={() => setIsExistingUser(!isExistingUser)}
-          >
-            <Text style={styles.mockToggleText}>
-              Demo flow: {isExistingUser ? 'Existing user → Dashboard' : 'New user → Setup'}
-            </Text>
-          </Pressable>
           <PrimaryButton title="Continue" onPress={onContinue} />
           <Text style={styles.legal}>
             By continuing, you agree to our Terms & Privacy Policy.
@@ -102,14 +95,15 @@ export function MobileLoginScreen() {
         </View>
       </View>
 
-      <Modal visible={pickerOpen} transparent animationType="fade">
+      <Modal visible={pickerOpen} transparent animationType="slide">
         <Pressable style={styles.overlay} onPress={() => setPickerOpen(false)}>
           <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Select country</Text>
             {countryCodes.map((item) => (
               <Pressable
                 key={item.code}
-                style={styles.sheetRow}
+                style={({ pressed }) => [styles.sheetRow, pressed && styles.sheetRowPressed]}
                 onPress={() => {
                   setDial(item.dial);
                   setPickerOpen(false);
@@ -133,18 +127,36 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.lg,
   },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    marginBottom: spacing.xl,
+    alignSelf: 'flex-start',
+  },
+  backArrow: {
+    ...typography.h3,
+    color: colors.accent,
+    lineHeight: 22,
+  },
   back: {
     ...typography.bodyMedium,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
+    color: colors.accent,
   },
   header: {
     marginBottom: spacing.xxl,
+    gap: spacing.xs,
+  },
+  brandTag: {
+    ...typography.captionMedium,
+    color: colors.accent,
+    letterSpacing: 0.5,
+    textTransform: 'lowercase',
+    marginBottom: spacing.xs,
   },
   title: {
     ...typography.h1,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
   },
   subtitle: {
     ...typography.body,
@@ -189,17 +201,6 @@ const styles = StyleSheet.create({
   footer: {
     gap: spacing.md,
   },
-  mockToggle: {
-    alignSelf: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.full,
-    backgroundColor: colors.accentSoft,
-  },
-  mockToggleText: {
-    ...typography.captionMedium,
-    color: colors.accentDark,
-  },
   legal: {
     ...typography.caption,
     color: colors.textTertiary,
@@ -213,10 +214,18 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
   },
   sheetTitle: {
     ...typography.h3,
@@ -230,6 +239,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  sheetRowPressed: {
+    backgroundColor: colors.background,
   },
   sheetName: {
     ...typography.body,

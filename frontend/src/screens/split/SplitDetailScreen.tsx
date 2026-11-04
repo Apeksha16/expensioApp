@@ -44,8 +44,9 @@ export function SplitDetailScreen({ navigation, route }: Props) {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.navigate('SplitHome')} hitSlop={8}>
-          <Text style={styles.back}>← Splits</Text>
+        <Pressable onPress={() => navigation.navigate('SplitHome')} hitSlop={8} style={styles.backRow}>
+          <Text style={styles.backArrow}>←</Text>
+          <Text style={styles.back}>Splits</Text>
         </Pressable>
         <Text style={styles.title}>{split.title}</Text>
         <Text style={styles.amount}>{formatINR(split.amount)}</Text>
@@ -53,7 +54,7 @@ export function SplitDetailScreen({ navigation, route }: Props) {
           {split.date} · Paid by {payer.name} ·{' '}
           {split.method === 'equal' ? 'Equal split' : 'Custom split'}
         </Text>
-        {split.note ? <Text style={styles.note}>{split.note}</Text> : null}
+        {split.note ? <Text style={styles.note}>"{split.note}"</Text> : null}
       </View>
 
       <ScrollView
@@ -146,10 +147,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    marginBottom: spacing.md,
+    alignSelf: 'flex-start',
+  },
+  backArrow: {
+    ...typography.h3,
+    color: colors.accent,
+    lineHeight: 22,
+  },
   back: {
     ...typography.bodyMedium,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
+    color: colors.accent,
   },
   title: {
     ...typography.h1,
@@ -159,6 +171,8 @@ const styles = StyleSheet.create({
     ...typography.hero,
     color: colors.accent,
     marginTop: spacing.xs,
+    fontSize: 34,
+    letterSpacing: -0.5,
   },
   meta: {
     ...typography.caption,
@@ -169,6 +183,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textTertiary,
     marginTop: spacing.xs,
+    fontStyle: 'italic',
   },
   scroll: {
     paddingHorizontal: spacing.lg,

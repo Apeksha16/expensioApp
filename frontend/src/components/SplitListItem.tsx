@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CURRENT_USER_ID } from '../data/splits';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, radius, shadows, spacing, typography } from '../theme';
 import type { Friend, SplitExpense } from '../types';
 import { formatINR } from '../utils/format';
 import {
@@ -40,20 +40,24 @@ export function SplitListItem({ split, friends, onPress }: Props) {
           <Text style={styles.title}>{split.title}</Text>
           <Text style={styles.sub}>
             {split.date} · {formatINR(split.amount)}
-            {isSplitSettled(split) ? ' · Settled' : ''}
           </Text>
         </View>
         <View style={styles.right}>
-          <Text
-            style={[
+          <View style={[
+            styles.statusPill,
+            status.tone === 'owe' && styles.pillOwe,
+            status.tone === 'owed' && styles.pillOwed,
+            status.tone === 'settled' && styles.pillSettled,
+          ]}>
+            <Text style={[
               styles.statusLabel,
               status.tone === 'owe' && styles.owe,
               status.tone === 'owed' && styles.owed,
               status.tone === 'settled' && styles.settled,
-            ]}
-          >
-            {status.label}
-          </Text>
+            ]}>
+              {status.tone === 'owe' ? '↑ ' : status.tone === 'owed' ? '↓ ' : ''}{status.label}
+            </Text>
+          </View>
           {status.amount > 0 ? (
             <Text
               style={[
@@ -67,7 +71,7 @@ export function SplitListItem({ split, friends, onPress }: Props) {
           ) : null}
         </View>
       </View>
-      <AvatarGroup avatars={avatars} size={28} />
+      <AvatarGroup avatars={avatars} size={26} />
     </Pressable>
   );
 }
@@ -78,9 +82,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.md,
     gap: spacing.sm,
+    ...shadows.soft,
   },
   pressed: {
-    opacity: 0.92,
+    opacity: 0.90,
+    transform: [{ scale: 0.99 }],
   },
   top: {
     flexDirection: 'row',
@@ -89,7 +95,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   title: {
     ...typography.bodySemibold,
@@ -101,14 +107,23 @@ const styles = StyleSheet.create({
   },
   right: {
     alignItems: 'flex-end',
+    gap: 4,
   },
+  statusPill: {
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+  },
+  pillOwe: { backgroundColor: '#FEE2E2' },
+  pillOwed: { backgroundColor: '#D1FAE5' },
+  pillSettled: { backgroundColor: colors.borderLight },
   statusLabel: {
     ...typography.micro,
     color: colors.textSecondary,
   },
   amount: {
-    ...typography.bodySemibold,
-    marginTop: 2,
+    ...typography.captionMedium,
+    fontSize: 14,
   },
   owe: {
     color: colors.expense,

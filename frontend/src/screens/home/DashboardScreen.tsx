@@ -51,19 +51,16 @@ export function DashboardScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>
-            {getGreeting()}, {firstName(profile.name)}
-          </Text>
-          <Text style={styles.userId}>{profile.userId}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.eyebrow}>PERSONAL FINANCE</Text>
+          <Text style={styles.greeting}>{getGreeting()},</Text>
+          <Text style={styles.name}>{firstName(profile.name)}</Text>
+          <Text style={styles.userId}>Your money, at a glance</Text>
         </View>
         <View style={styles.headerActions}>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons
-              name="notifications-outline"
-              size={20}
-              color={colors.textPrimary}
-            />
+          <Pressable style={styles.iconBtn} accessibilityLabel="Notifications">
+            <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+            <View style={styles.notificationDot} />
           </Pressable>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -77,6 +74,17 @@ export function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
+        <View style={styles.overviewRow}>
+          <View>
+            <Text style={styles.overviewTitle}>Your overview</Text>
+            <Text style={styles.overviewSubtitle}>A calm view of your finances</Text>
+          </View>
+          <View style={styles.monthPill}>
+            <Ionicons name="calendar-outline" size={14} color={colors.accent} />
+            <Text style={styles.monthText}>November</Text>
+          </View>
+        </View>
+
         <BalanceCard balance={balance} />
 
         <MonthlyOverviewCard overview={monthly} />
@@ -117,24 +125,39 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+  },
+  headerLeft: {
+    gap: 1,
+  },
+  eyebrow: {
+    ...typography.micro,
+    color: colors.accent,
+    letterSpacing: 1.4,
+    marginBottom: spacing.xxs,
   },
   greeting: {
-    ...typography.h3,
+    ...typography.captionMedium,
+    color: colors.textSecondary,
+  },
+  name: {
+    ...typography.h2,
     color: colors.textPrimary,
+    letterSpacing: -0.3,
   },
   userId: {
     ...typography.caption,
     color: colors.textTertiary,
-    marginTop: 2,
+    marginTop: 1,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginTop: 2,
   },
   iconBtn: {
     width: 40,
@@ -145,22 +168,64 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadows.soft,
   },
+  notificationDot: {
+    position: 'absolute',
+    top: 9,
+    right: 9,
+    width: 7,
+    height: 7,
+    borderRadius: radius.full,
+    backgroundColor: colors.expense,
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: radius.full,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.accentMuted,
   },
   avatarText: {
     ...typography.bodySemibold,
     color: colors.white,
+    fontSize: 17,
   },
   scroll: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
     gap: spacing.md,
+  },
+  overviewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: spacing.xs,
+  },
+  overviewTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  overviewSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  monthPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  monthText: {
+    ...typography.micro,
+    color: colors.accentDark,
   },
   listCard: {
     backgroundColor: colors.surface,

@@ -28,10 +28,13 @@ export function TransactionItem({ item }: Props) {
       <View style={styles.meta}>
         <Text style={styles.merchant}>{item.merchant}</Text>
         <Text style={styles.sub}>
-          {item.date} · {item.time}
+          {item.category} · {item.date}
         </Text>
       </View>
-      <Text style={styles.amount}>-{formatINR(item.amount)}</Text>
+      <View style={styles.right}>
+        <Text style={styles.amount}>-{formatINR(item.amount)}</Text>
+        <Text style={styles.time}>{item.time}</Text>
+      </View>
     </View>
   );
 }
@@ -44,9 +47,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.sm,
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -62,8 +65,16 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textTertiary,
   },
+  right: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
   amount: {
     ...typography.bodySemibold,
-    color: colors.textPrimary,
+    color: colors.expense,
+  },
+  time: {
+    ...typography.micro,
+    color: colors.textTertiary,
   },
 });

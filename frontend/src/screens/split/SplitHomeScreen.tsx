@@ -33,12 +33,15 @@ export function SplitHomeScreen({ navigation }: Props) {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Splits</Text>
+        <View>
+          <Text style={styles.title}>Splits</Text>
+          <Text style={styles.subtitle}>Track who owes who</Text>
+        </View>
         <Pressable
           style={styles.iconBtn}
           onPress={() => navigation.navigate('Friends')}
         >
-          <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
+          <Ionicons name="people-outline" size={20} color={colors.accent} />
         </Pressable>
       </View>
 
@@ -49,7 +52,7 @@ export function SplitHomeScreen({ navigation }: Props) {
         <SplitBalanceHeader balances={balances} />
 
         <PrimaryButton
-          title="Create Split"
+          title="+ Create Split"
           onPress={() => navigation.navigate('CreateSplit')}
         />
 
@@ -82,7 +85,7 @@ export function SplitHomeScreen({ navigation }: Props) {
         <View>
           <SectionHeader
             title="All splits"
-            actionLabel="Friends"
+            actionLabel="Friends →"
             onAction={() => navigation.navigate('Friends')}
           />
           <View style={styles.list}>
@@ -110,23 +113,28 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   title: {
     ...typography.h1,
     color: colors.textPrimary,
   },
+  subtitle: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
   iconBtn: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: radius.full,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.soft,
+    marginTop: 2,
   },
   scroll: {
     paddingHorizontal: spacing.lg,

@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
-import { MOCK_EXISTING_USER } from '../data/config';
 import { CURRENT_USER_ID, mockFriends, mockSplits } from '../data/splits';
 import type {
   AuthPhase,
@@ -18,8 +17,6 @@ interface AppState {
   setPhoneCredentials: (countryCode: string, phone: string) => void;
   profile: UserProfile | null;
   completeSetup: (profile: Omit<UserProfile, 'phone' | 'countryCode'>) => void;
-  isExistingUser: boolean;
-  setIsExistingUser: (value: boolean) => void;
   logout: () => void;
   friends: Friend[];
   splits: SplitExpense[];
@@ -48,7 +45,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isExistingUser, setIsExistingUser] = useState(MOCK_EXISTING_USER);
   const [friends] = useState<Friend[]>(mockFriends);
   const [splits, setSplits] = useState<SplitExpense[]>(mockSplits);
 
@@ -67,8 +63,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setProfile({ ...data, phone, countryCode });
         setAuthPhase('main');
       },
-      isExistingUser,
-      setIsExistingUser,
       logout: () => {
         setProfile(null);
         setPhone('');
@@ -112,7 +106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
       },
     }),
-    [authPhase, phone, countryCode, profile, isExistingUser, friends, splits],
+    [authPhase, phone, countryCode, profile, friends, splits],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

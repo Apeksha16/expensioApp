@@ -21,21 +21,28 @@ const actions = [
 export function BalanceCard({ balance, onAction }: Props) {
   return (
     <LinearGradient
-      colors={[colors.balanceStart, colors.balanceEnd]}
+      colors={['#0D4F4A', '#0F766E', '#14897F']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.card}
     >
-      <Text style={styles.label}>Total Balance</Text>
+      <View style={styles.topRow}>
+        <Text style={styles.label}>Total Balance</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>Nov 2026</Text>
+        </View>
+      </View>
       <Text style={styles.total}>{formatINR(balance.total)}</Text>
 
       <View style={styles.subRow}>
         <View style={styles.subItem}>
+          <Ionicons name="wallet-outline" size={13} color="rgba(255,255,255,0.6)" />
           <Text style={styles.subLabel}>Cash</Text>
           <Text style={styles.subValue}>{formatINR(balance.cash)}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.subItem}>
+          <Ionicons name="save-outline" size={13} color="rgba(255,255,255,0.6)" />
           <Text style={styles.subLabel}>Savings</Text>
           <Text style={styles.subValue}>{formatINR(balance.savings)}</Text>
         </View>
@@ -49,7 +56,7 @@ export function BalanceCard({ balance, onAction }: Props) {
             onPress={() => onAction?.(action.key)}
           >
             <View style={styles.actionIcon}>
-              <Ionicons name={action.icon} size={18} color={colors.white} />
+              <Ionicons name={action.icon} size={19} color={colors.white} />
             </View>
             <Text style={styles.actionLabel}>{action.label}</Text>
           </Pressable>
@@ -65,20 +72,38 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadows.card,
   },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xxs,
+  },
   label: {
     ...typography.captionMedium,
     color: 'rgba(255,255,255,0.72)',
   },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    ...typography.micro,
+    color: 'rgba(255,255,255,0.8)',
+  },
   total: {
     ...typography.hero,
     color: colors.white,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
     marginBottom: spacing.md,
+    fontSize: 36,
+    letterSpacing: -1,
   },
   subRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -86,11 +111,11 @@ const styles = StyleSheet.create({
   },
   subItem: {
     flex: 1,
+    gap: 3,
   },
   subLabel: {
     ...typography.micro,
-    color: 'rgba(255,255,255,0.65)',
-    marginBottom: 2,
+    color: 'rgba(255,255,255,0.6)',
   },
   subValue: {
     ...typography.bodySemibold,
@@ -98,8 +123,8 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: 1,
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     marginHorizontal: spacing.md,
   },
   actions: {
@@ -109,16 +134,16 @@ const styles = StyleSheet.create({
   action: {
     alignItems: 'center',
     gap: spacing.xs,
-    width: '22%',
+    flex: 1,
   },
   actionPressed: {
-    opacity: 0.75,
+    opacity: 0.72,
   },
   actionIcon: {
-    width: 42,
-    height: 42,
+    width: 46,
+    height: 46,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },

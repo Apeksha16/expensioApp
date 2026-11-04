@@ -15,11 +15,16 @@ export function GoalCard({ goal }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.iconWrap}>
+          <Text style={styles.icon}>🎯</Text>
+        </View>
+        <View style={styles.titleGroup}>
           <Text style={styles.label}>Savings Goal</Text>
           <Text style={styles.title}>{goal.title}</Text>
         </View>
-        <Text style={styles.pct}>{pct}%</Text>
+        <View style={styles.pctBadge}>
+          <Text style={styles.pct}>{pct}%</Text>
+        </View>
       </View>
       <Text style={styles.amount}>
         {formatINR(goal.current)}
@@ -29,8 +34,10 @@ export function GoalCard({ goal }: Props) {
         current={goal.current}
         total={goal.target}
         color={colors.warning}
+        height={8}
         style={styles.bar}
       />
+      <Text style={styles.hint}>{formatINR(goal.target - goal.current)} left to go</Text>
     </View>
   );
 }
@@ -44,33 +51,58 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  icon: {
+    fontSize: 18,
+  },
+  titleGroup: {
+    flex: 1,
+  },
   label: {
-    ...typography.captionMedium,
-    color: colors.textSecondary,
-    marginBottom: 2,
+    ...typography.micro,
+    color: colors.textTertiary,
+    marginBottom: 1,
   },
   title: {
-    ...typography.h3,
+    ...typography.bodySemibold,
     color: colors.textPrimary,
   },
+  pctBadge: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
   pct: {
-    ...typography.bodySemibold,
+    ...typography.captionMedium,
     color: colors.warning,
   },
   amount: {
-    ...typography.bodySemibold,
+    ...typography.h3,
     color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   target: {
-    ...typography.caption,
+    ...typography.body,
     color: colors.textTertiary,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   bar: {
-    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  hint: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 });

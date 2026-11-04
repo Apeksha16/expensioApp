@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, radius, shadows, spacing, typography } from '../theme';
 import type { OnboardingSlide } from '../types';
 
 interface Props {
@@ -157,6 +157,7 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: radius.xl,
     padding: spacing.lg,
+    ...shadows.card,
   },
   heroLabel: {
     ...typography.captionMedium,
@@ -187,6 +188,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.soft,
   },
   avatarRow: {
     flexDirection: 'row',
@@ -249,6 +251,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.xs,
+    ...shadows.soft,
   },
   gridLabel: {
     ...typography.captionMedium,

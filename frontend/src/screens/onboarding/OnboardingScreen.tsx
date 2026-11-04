@@ -92,18 +92,13 @@ export function OnboardingScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
         <View style={styles.progressRow}>
           <PageIndicator count={onboardingSlides.length} activeIndex={index} />
-          <Text style={styles.progressLabel}>{isLast ? 'Ready when you are' : 'Swipe or tap to continue'}</Text>
+          <Text style={styles.progressLabel}>{isLast ? 'Ready when you are' : 'Make money feel simpler'}</Text>
         </View>
         <PrimaryButton
           title={isLast ? 'Get Started' : 'Next'}
           onPress={goNext}
           style={styles.cta}
         />
-        {!isLast && (
-          <Text style={styles.slideCount}>
-            {index + 1} of {onboardingSlides.length}
-          </Text>
-        )}
       </View>
     </LinearGradient>
   );
@@ -196,10 +191,5 @@ const styles = StyleSheet.create({
   },
   cta: {
     width: '100%',
-  },
-  slideCount: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    textAlign: 'center',
   },
 });

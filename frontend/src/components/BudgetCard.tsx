@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { BudgetSummary } from '../types';
 import { formatINR } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
@@ -44,10 +44,8 @@ export function BudgetCard({ budget }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     padding: spacing.lg,
-    ...shadows.soft,
   },
   header: {
     flexDirection: 'row',
@@ -77,7 +75,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   pctBadgeOver: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerSoft,
   },
   pctText: {
     ...typography.captionMedium,

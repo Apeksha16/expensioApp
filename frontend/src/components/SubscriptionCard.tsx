@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { Subscription } from '../types';
 import { formatINR } from '../utils/format';
 
@@ -51,10 +51,8 @@ export function SubscriptionCard({ items, upcomingTotal }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     padding: spacing.lg,
-    ...shadows.soft,
   },
   header: {
     flexDirection: 'row',

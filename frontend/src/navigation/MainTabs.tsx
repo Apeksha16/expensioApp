@@ -1,8 +1,11 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { BottomNavigation } from '../components/BottomNavigation';
+import { colors } from '../theme';
 import { DashboardScreen } from '../screens/home/DashboardScreen';
-import { PlaceholderScreen } from '../screens/home/PlaceholderScreen';
+import { ActivityScreen } from '../screens/home/ActivityScreen';
+import { AddTransactionScreen } from '../screens/home/AddTransactionScreen';
+import { ProfileScreen } from '../screens/home/ProfileScreen';
 import { SplitStack } from './SplitStack';
 
 export type MainTabParamList = {
@@ -19,28 +22,20 @@ export function MainTabs() {
   return (
     <Tab.Navigator
       tabBar={(props) => <BottomNavigation {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: colors.background },
+      }}
     >
       <Tab.Screen name="Home" component={DashboardScreen} />
-      <Tab.Screen name="Activity">
-        {() => <PlaceholderScreen title="Activity" />}
-      </Tab.Screen>
-      <Tab.Screen name="Add">
-        {() => (
-          <PlaceholderScreen
-            title="Add"
-            subtitle="Quick add for expenses and income arrives next."
-          />
-        )}
-      </Tab.Screen>
+      <Tab.Screen name="Activity" component={ActivityScreen} />
+      <Tab.Screen name="Add" component={AddTransactionScreen} />
       <Tab.Screen
         name="Split"
         component={SplitStack}
         options={{ headerShown: false }}
       />
-      <Tab.Screen name="Profile">
-        {() => <PlaceholderScreen title="Profile" />}
-      </Tab.Screen>
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }

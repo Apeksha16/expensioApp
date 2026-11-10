@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CURRENT_USER_ID } from '../data/splits';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { Friend, SplitExpense } from '../types';
 import { formatINR } from '../utils/format';
 import {
@@ -78,11 +78,9 @@ export function SplitListItem({ split, friends, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     padding: spacing.md,
     gap: spacing.sm,
-    ...shadows.soft,
   },
   pressed: {
     opacity: 0.90,
@@ -114,8 +112,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
   },
-  pillOwe: { backgroundColor: '#FEE2E2' },
-  pillOwed: { backgroundColor: '#D1FAE5' },
+  pillOwe: { backgroundColor: colors.dangerSoft },
+  pillOwed: { backgroundColor: colors.accentSoft },
   pillSettled: { backgroundColor: colors.borderLight },
   statusLabel: {
     ...typography.micro,

@@ -53,7 +53,7 @@ export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
                   pressed && styles.pressed,
                 ]}
               >
-                <Ionicons name="add" size={30} color={colors.white} />
+                <Ionicons name="add" size={28} color={colors.textInverse} />
               </Pressable>
             );
           }
@@ -84,9 +84,8 @@ export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },
   bar: {
@@ -94,6 +93,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
+    ...shadows.card,
   },
   tab: {
     flex: 1,
@@ -110,6 +118,8 @@ const styles = StyleSheet.create({
   },
   iconWrapActive: {
     backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accentMuted,
   },
   label: {
     ...typography.micro,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,24 +13,49 @@ interface Props extends TextInputProps {
   error?: string;
   leftElement?: React.ReactNode;
   rightElement?: React.ReactNode;
+  fieldStyle?: object;
 }
 
-export function InputField({
-  label,
-  error,
-  leftElement,
-  rightElement,
-  style,
-  ...rest
-}: Props) {
+export const InputField = forwardRef<React.ElementRef<typeof TextInput>, Props>(function InputField(
+  {
+    label,
+    error,
+    leftElement,
+    rightElement,
+    fieldStyle,
+    style,
+    onFocus,
+    onBlur,
+    ...rest
+  },
+  ref,
+) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.field, error ? styles.fieldError : null]}>
+      <View
+        style={[
+          styles.field,
+          fieldStyle,
+          focused && styles.fieldFocused,
+          error ? styles.fieldError : null,
+        ]}
+      >
         {leftElement}
         <TextInput
+          ref={ref}
           placeholderTextColor={colors.textTertiary}
           style={[styles.input, style]}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
           {...rest}
         />
         {rightElement}
@@ -38,7 +63,7 @@ export function InputField({
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap: {
@@ -49,8 +74,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   field: {
-    minHeight: 54,
-    borderRadius: radius.md,
+    minHeight: 56,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -58,6 +83,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  fieldFocused: {
+    borderColor: colors.accent,
   },
   fieldError: {
     borderColor: colors.expense,

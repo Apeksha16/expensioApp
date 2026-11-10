@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -12,24 +13,22 @@ import { OtpInput } from '../../components/OtpInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useApp } from '../../context/AppContext';
 import { OTP_RESEND_SECONDS } from '../../data/config';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { maskPhone } from '../../utils/format';
+import { sendEmailOtp, sendOtp, verifyEmailOtp, verifyOtp } from '../../services/authApi';
 
 export function OtpScreen() {
   const insets = useSafeAreaInsets();
-  const {
-    phone,
-    countryCode,
-    setAuthPhase,
-  } = useApp();
+  const { phone, countryCode, verificationChannel, verificationTarget, setAuthPhase, applyAuthSession, markVerified } = useApp();
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [seconds, setSeconds] = useState(OTP_RESEND_SECONDS);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (seconds <= 0) return;
-    const timer = setTimeout(() => setSeconds((s) => s - 1), 1000);
+    const timer = setTimeout(() => setSeconds((value) => value - 1), 1000);
     return () => clearTimeout(timer);
   }, [seconds]);
 
@@ -39,60 +38,86 @@ export function OtpScreen() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    const request = verificationChannel === 'email'
+      ? verifyEmailOtp(verificationTarget, otp)
+      : verifyOtp(phone, otp);
+    void request
+      .then((response) => {
+        markVerified(verificationChannel);
+        if (verificationChannel === 'email') setAuthPhase('setup');
+        else applyAuthSession(response);
+      })
+      .catch((requestError) => {
+        setError(requestError instanceof Error ? requestError.message : 'Unable to verify OTP');
+      })
+      .finally(() => {
       setLoading(false);
-      setError('');
-      setAuthPhase('setup');
-    }, 500);
+      });
+  };
+
+  const resend = async () => {
+    setResending(true);
+    setError('');
+    try {
+      if (verificationChannel === 'email') await sendEmailOtp(verificationTarget);
+      else await sendOtp(phone);
+      setSeconds(OTP_RESEND_SECONDS);
+      setOtp('');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to resend code');
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View
         style={[
           styles.container,
-          { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.lg },
+          { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.md },
         ]}
       >
-        <Pressable onPress={() => setAuthPhase('login')} hitSlop={8} style={styles.backRow}>
+        <Pressable onPress={() => setAuthPhase('login')} hitSlop={10} style={styles.backRow}>
           <Text style={styles.backArrow}>←</Text>
           <Text style={styles.back}>Change number</Text>
         </Pressable>
 
-        <View style={styles.header}>
-          <View style={styles.otpIcon}>
-            <Text style={styles.otpEmoji}>🔐</Text>
+        <View style={styles.content}>
+          <View style={styles.iconTile}>
+            <Ionicons name="key-outline" size={32} color={colors.accent} />
           </View>
           <Text style={styles.title}>Verify your number</Text>
           <Text style={styles.subtitle}>
-            Code sent to{' '}
-            <Text style={styles.phone}>{maskPhone(countryCode, phone)}</Text>
+            Code sent to <Text style={styles.phone}>{maskPhone(countryCode, phone)}</Text>
           </Text>
+
+          <View style={styles.codeSection}>
+            <OtpInput
+              value={otp}
+              onChange={(value) => {
+                setOtp(value);
+                if (error) setError('');
+              }}
+            />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+          </View>
+
+          <View style={styles.resendRow}>
+            {seconds > 0 ? (
+              <Text style={styles.resendMuted}>
+                Resend code in <Text style={styles.resendTimer}>{seconds}s</Text>
+              </Text>
+            ) : (
+              <Pressable onPress={() => void resend()} disabled={resending}>
+                <Text style={styles.resend}>Resend OTP →</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
-
-        <OtpInput
-          value={otp}
-          onChange={(value) => {
-            setOtp(value);
-            if (error) setError('');
-          }}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <View style={styles.resendRow}>
-          {seconds > 0 ? (
-            <Text style={styles.resendMuted}>Resend code in <Text style={styles.resendTimer}>{seconds}s</Text></Text>
-          ) : (
-            <Pressable onPress={() => setSeconds(OTP_RESEND_SECONDS)}>
-              <Text style={styles.resend}>Resend OTP →</Text>
-            </Pressable>
-          )}
-        </View>
-
-        <View style={styles.spacer} />
 
         <View style={styles.footer}>
           <PrimaryButton
@@ -100,6 +125,7 @@ export function OtpScreen() {
             onPress={verify}
             loading={loading}
             disabled={otp.length < 6}
+            style={styles.verify}
           />
         </View>
       </View>
@@ -108,54 +134,62 @@ export function OtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
     paddingHorizontal: spacing.lg,
   },
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xxs,
-    marginBottom: spacing.xl,
-    alignSelf: 'flex-start',
+    gap: spacing.xs,
   },
   backArrow: {
-    ...typography.h3,
     color: colors.accent,
-    lineHeight: 22,
+    fontSize: 28,
+    lineHeight: 28,
   },
   back: {
     ...typography.bodyMedium,
     color: colors.accent,
   },
-  header: {
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
+  content: {
+    marginTop: spacing.xxl,
   },
-  otpIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.lg,
+  iconTile: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.xl,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  otpEmoji: {
-    fontSize: 26,
+    marginBottom: spacing.xl,
   },
   title: {
     ...typography.h1,
+    fontSize: 38,
+    lineHeight: 43,
     color: colors.textPrimary,
+    letterSpacing: -1.2,
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
+    fontSize: 18,
+    marginTop: spacing.sm,
   },
   phone: {
     ...typography.bodyMedium,
     color: colors.textPrimary,
+  },
+  codeSection: {
+    marginTop: spacing.xxl,
   },
   error: {
     ...typography.caption,
@@ -166,8 +200,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   resendMuted: {
-    ...typography.captionMedium,
+    ...typography.bodyMedium,
     color: colors.textTertiary,
+    fontSize: 16,
   },
   resendTimer: {
     color: colors.accent,
@@ -176,10 +211,11 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.accent,
   },
-  spacer: {
-    flex: 1,
-  },
   footer: {
-    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  verify: {
+    height: 60,
+    borderRadius: radius.full,
   },
 });

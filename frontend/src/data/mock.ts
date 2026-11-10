@@ -13,26 +13,26 @@ import type {
 export const onboardingSlides: OnboardingSlide[] = [
   {
     id: '1',
-    title: 'Your money, finally organized.',
-    subtitle: 'See expenses, accounts and cashflow in one calm view.',
+    title: 'Take control\nof your money',
+    subtitle: 'Track spending, set goals and\nbuild better money habits.',
     visual: 'overview',
   },
   {
     id: '2',
-    title: 'Split expenses. Skip the awkward math.',
-    subtitle: 'Share bills with friends and settle up without the hassle.',
+    title: 'Split expenses\nwith ease',
+    subtitle: 'Share bills with friends and\nsettle up in seconds.',
     visual: 'split',
   },
   {
     id: '3',
-    title: 'Budget with purpose.',
-    subtitle: 'Track progress toward goals that actually matter to you.',
+    title: 'Budget with\npurpose',
+    subtitle: 'Plan, track and reach the goals\nthat matter to you.',
     visual: 'budget',
   },
   {
     id: '4',
-    title: 'Everything money. One place.',
-    subtitle: 'Expenses, subscriptions, goals and savings, together.',
+    title: 'Everything money.\nOne place.',
+    subtitle: 'Expenses, subscriptions, goals\nand savings, all in one app.',
     visual: 'allinone',
   },
 ];
@@ -78,7 +78,7 @@ export const mockTransactions: Transaction[] = [
     merchant: 'Uber',
     category: 'Travel',
     icon: 'car',
-    iconColor: '#111827',
+    iconColor: '#E7E2D6',
     amount: 186,
     date: 'Today',
     time: '9:10 AM',

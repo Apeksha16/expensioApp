@@ -117,6 +117,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   title: {
     ...typography.h1,
@@ -138,8 +141,11 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: 180,
     gap: spacing.md,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   list: {
     gap: spacing.xs,

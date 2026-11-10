@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { SplitBalances } from '../types';
 import { formatINR } from '../utils/format';
 
@@ -42,10 +42,8 @@ export function SplitBalanceHeader({ balances }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     padding: spacing.lg,
-    ...shadows.soft,
   },
   row: {
     flexDirection: 'row',

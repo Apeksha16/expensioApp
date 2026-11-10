@@ -4,10 +4,22 @@ export const db = {
     name: 'Apeksha',
     username: '@apeksha',
     phone: '+919876543210',
+    email: '',
+    passwordHash: '',
+    onboardingComplete: false,
+    employmentType: '',
+    incomeAmountMinor: '0',
+    cashBalanceMinor: '0',
+    savingsAmountMinor: '0',
     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=apeksha',
   },
 
   otps: new Map(), // phone -> { otp, expiresAt }
+  emailOtps: new Map(),
+  verifiedPhones: new Set(),
+  verifiedEmails: new Set(),
+  usernames: new Set(['apeksha']),
+  revokedRefreshTokens: new Set(),
 
   pushTokens: new Set(),
 

@@ -192,6 +192,8 @@ const styles = StyleSheet.create({
   statusCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing.lg,
     ...shadows.soft,
   },
@@ -217,6 +219,8 @@ const styles = StyleSheet.create({
   shareCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     ...shadows.soft,
   },

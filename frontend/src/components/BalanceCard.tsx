@@ -1,36 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import type { BalanceSummary } from '../types';
 import { formatINR } from '../utils/format';
 
 interface Props {
   balance: BalanceSummary;
-  onAction?: (action: string) => void;
 }
 
-const actions = [
-  { key: 'expense', label: 'Expense', icon: 'remove-circle-outline' as const },
-  { key: 'income', label: 'Income', icon: 'add-circle-outline' as const },
-  { key: 'split', label: 'Split', icon: 'people-outline' as const },
-  { key: 'transfer', label: 'Transfer', icon: 'swap-horizontal-outline' as const },
-];
-
-export function BalanceCard({ balance, onAction }: Props) {
+export function BalanceCard({ balance }: Props) {
   return (
     <LinearGradient
-      colors={['#0D4F4A', '#0F766E', '#14897F']}
+      colors={[colors.balanceStart, '#12533F', colors.balanceEnd]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.card}
     >
+      <View style={styles.glow} />
       <View style={styles.topRow}>
         <Text style={styles.label}>Total Balance</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Nov 2026</Text>
-        </View>
+        <Ionicons name="eye-outline" size={24} color={colors.white} />
       </View>
       <Text style={styles.total}>{formatINR(balance.total)}</Text>
 
@@ -48,29 +39,27 @@ export function BalanceCard({ balance, onAction }: Props) {
         </View>
       </View>
 
-      <View style={styles.actions}>
-        {actions.map((action) => (
-          <Pressable
-            key={action.key}
-            style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
-            onPress={() => onAction?.(action.key)}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name={action.icon} size={19} color={colors.white} />
-            </View>
-            <Text style={styles.actionLabel}>{action.label}</Text>
-          </Pressable>
-        ))}
-      </View>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radius.xl,
-    padding: spacing.lg,
+    borderRadius: radius.xxl,
+    padding: spacing.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     ...shadows.card,
+  },
+  glow: {
+    position: 'absolute',
+    top: -90,
+    right: -70,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   topRow: {
     flexDirection: 'row',
@@ -82,32 +71,20 @@ const styles = StyleSheet.create({
     ...typography.captionMedium,
     color: 'rgba(255,255,255,0.72)',
   },
-  badge: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    ...typography.micro,
-    color: 'rgba(255,255,255,0.8)',
-  },
   total: {
     ...typography.hero,
     color: colors.white,
     marginTop: spacing.xxs,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     fontSize: 36,
     letterSpacing: -1,
   },
   subRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    backgroundColor: 'transparent',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 0,
   },
   subItem: {
     flex: 1,
@@ -126,29 +103,5 @@ const styles = StyleSheet.create({
     height: 32,
     backgroundColor: 'rgba(255,255,255,0.18)',
     marginHorizontal: spacing.md,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  action: {
-    alignItems: 'center',
-    gap: spacing.xs,
-    flex: 1,
-  },
-  actionPressed: {
-    opacity: 0.72,
-  },
-  actionIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionLabel: {
-    ...typography.micro,
-    color: 'rgba(255,255,255,0.9)',
   },
 });

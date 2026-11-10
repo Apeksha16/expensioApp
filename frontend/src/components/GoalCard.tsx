@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { SavingsGoal } from '../types';
 import { formatINR, progressRatio } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
@@ -16,7 +17,7 @@ export function GoalCard({ goal }: Props) {
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.iconWrap}>
-          <Text style={styles.icon}>🎯</Text>
+          <Ionicons name="flag" size={18} color={colors.accent} />
         </View>
         <View style={styles.titleGroup}>
           <Text style={styles.label}>Savings Goal</Text>
@@ -33,7 +34,7 @@ export function GoalCard({ goal }: Props) {
       <ProgressBar
         current={goal.current}
         total={goal.target}
-        color={colors.warning}
+        color={colors.accent}
         height={8}
         style={styles.bar}
       />
@@ -44,10 +45,8 @@ export function GoalCard({ goal }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     padding: spacing.lg,
-    ...shadows.soft,
   },
   header: {
     flexDirection: 'row',
@@ -59,12 +58,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  icon: {
-    fontSize: 18,
   },
   titleGroup: {
     flex: 1,
@@ -79,14 +75,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   pctBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
   pct: {
     ...typography.captionMedium,
-    color: colors.warning,
+    color: colors.accent,
   },
   amount: {
     ...typography.h3,

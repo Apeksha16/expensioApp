@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { MonthlyOverview } from '../types';
 import { formatINR, progressRatio } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
@@ -59,10 +59,8 @@ export function MonthlyOverviewCard({ overview }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     padding: spacing.lg,
-    ...shadows.soft,
   },
   titleRow: {
     flexDirection: 'row',
@@ -81,7 +79,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   badgeWarning: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.warningSoft,
   },
   badgeText: {
     ...typography.micro,

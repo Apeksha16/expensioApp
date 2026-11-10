@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { SplitSummary } from '../types';
 import { formatINR } from '../utils/format';
 import { AvatarGroup } from './AvatarGroup';
@@ -33,10 +33,8 @@ export function SplitSummaryCard({ split, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     padding: spacing.lg,
-    ...shadows.soft,
   },
   label: {
     ...typography.h3,

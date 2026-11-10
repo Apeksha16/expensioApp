@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,18 +15,18 @@ export function PlaceholderScreen({
 }: Props) {
   const insets = useSafeAreaInsets();
 
-  const iconMap: Record<string, string> = {
-    Activity: '📋',
-    Add: '➕',
-    Profile: '👤',
+  const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+    Activity: 'time-outline',
+    Add: 'add',
+    Profile: 'person-outline',
   };
-  const icon = iconMap[title] ?? '🔧';
+  const icon = iconMap[title] ?? 'ellipse-outline';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.xl }]}>
       <View style={styles.content}>
         <View style={styles.iconWrap}>
-          <Text style={styles.icon}>{icon}</Text>
+          <Ionicons name={icon} size={28} color={colors.accent} />
         </View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
@@ -52,6 +53,8 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: radius.xl,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
@@ -60,9 +63,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 3,
-  },
-  icon: {
-    fontSize: 32,
   },
   title: {
     ...typography.h2,

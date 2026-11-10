@@ -69,9 +69,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   selected: {
     backgroundColor: colors.accentSoft,
+    borderColor: colors.accentMuted,
   },
   pressed: {
     opacity: 0.9,

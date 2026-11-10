@@ -81,18 +81,21 @@ export function OtpInput({
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    width: '100%',
     gap: spacing.xs,
   },
   cell: {
     flex: 1,
-    height: 56,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
+    minWidth: 0,
+    width: 0,
+    height: 72,
+    borderRadius: radius.xl,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     textAlign: 'center',
-    ...typography.h2,
+    ...typography.h1,
+    fontSize: 28,
     color: colors.textPrimary,
   },
   cellFilled: {

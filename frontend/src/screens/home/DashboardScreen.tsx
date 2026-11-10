@@ -27,8 +27,15 @@ import {
   mockTransactions,
   upcomingPaymentsTotal,
 } from '../../data/mock';
-import { colors, radius, shadows, spacing, typography } from '../../theme';
-import { firstName, getGreeting } from '../../utils/format';
+import { cardChrome, colors, radius, shadows, spacing, typography } from '../../theme';
+import { getGreeting } from '../../utils/format';
+
+const quickActions = [
+  { label: 'Expense', icon: 'remove' as const },
+  { label: 'Income', icon: 'add' as const },
+  { label: 'Split', icon: 'people-outline' as const },
+  { label: 'Transfer', icon: 'swap-horizontal' as const },
+];
 
 export function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -47,6 +54,8 @@ export function DashboardScreen() {
     remaining:
       (profile.monthlyIncome || mockMonthly.income) - mockMonthly.spent,
   };
+  const displayName = profile.name.trim() || 'there';
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
@@ -54,7 +63,7 @@ export function DashboardScreen() {
         <View style={styles.headerLeft}>
           <Text style={styles.eyebrow}>PERSONAL FINANCE</Text>
           <Text style={styles.greeting}>{getGreeting()},</Text>
-          <Text style={styles.name}>{firstName(profile.name)}</Text>
+          <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.userId}>Your money, at a glance</Text>
         </View>
         <View style={styles.headerActions}>
@@ -64,7 +73,7 @@ export function DashboardScreen() {
           </Pressable>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {firstName(profile.name).charAt(0).toUpperCase()}
+              {initial}
             </Text>
           </View>
         </View>
@@ -86,6 +95,17 @@ export function DashboardScreen() {
         </View>
 
         <BalanceCard balance={balance} />
+
+        <View style={styles.quickActions}>
+          {quickActions.map((action) => (
+            <Pressable key={action.label} style={styles.quickAction}>
+              <View style={styles.quickActionIcon}>
+                <Ionicons name={action.icon} size={22} color={colors.accentDark} />
+              </View>
+              <Text style={styles.quickActionLabel}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </View>
 
         <MonthlyOverviewCard overview={monthly} />
 
@@ -125,33 +145,40 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   headerLeft: {
-    gap: 1,
+    gap: 3,
+    flex: 1,
   },
   eyebrow: {
-    ...typography.micro,
+    ...typography.label,
     color: colors.accent,
-    letterSpacing: 1.4,
-    marginBottom: spacing.xxs,
+    letterSpacing: 1.6,
+    marginBottom: spacing.xs,
   },
   greeting: {
-    ...typography.captionMedium,
+    ...typography.bodyMedium,
     color: colors.textSecondary,
   },
   name: {
-    ...typography.h2,
+    fontSize: 30,
+    lineHeight: 34,
+    fontWeight: '800',
     color: colors.textPrimary,
-    letterSpacing: -0.3,
+    letterSpacing: -0.8,
   },
   userId: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: 1,
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xxs,
   },
   headerActions: {
     flexDirection: 'row',
@@ -191,13 +218,16 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     ...typography.bodySemibold,
-    color: colors.white,
+    color: colors.textInverse,
     fontSize: 17,
   },
   scroll: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: 180,
     gap: spacing.md,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   overviewRow: {
     flexDirection: 'row',
@@ -214,6 +244,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+  },
+  quickAction: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    flex: 1,
+  },
+  quickActionIcon: {
+    width: 62,
+    height: 62,
+    borderRadius: radius.xl,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
   monthPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -228,11 +280,9 @@ const styles = StyleSheet.create({
     color: colors.accentDark,
   },
   listCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    ...cardChrome,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    ...shadows.soft,
   },
   divider: {
     height: StyleSheet.hairlineWidth,

@@ -14,6 +14,7 @@ interface Props {
   disabled?: boolean;
   loading?: boolean;
   variant?: 'primary' | 'secondary' | 'ghost';
+  labelColor?: string;
   style?: ViewStyle;
 }
 
@@ -23,6 +24,7 @@ export function PrimaryButton({
   disabled,
   loading,
   variant = 'primary',
+  labelColor,
   style,
 }: Props) {
   const isPrimary = variant === 'primary';
@@ -37,18 +39,20 @@ export function PrimaryButton({
         isPrimary && styles.primary,
         isSecondary && styles.secondary,
         variant === 'ghost' && styles.ghost,
-        (disabled || loading) && styles.disabled,
+        disabled && !loading && styles.disabled,
         pressed && !disabled && styles.pressed,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? colors.white : colors.accent} />
+        <ActivityIndicator color={isPrimary ? colors.textInverse : colors.accent} />
       ) : (
         <Text
           style={[
             styles.label,
             isPrimary && styles.labelPrimary,
+            labelColor ? { color: labelColor } : null,
+            isPrimary && disabled && styles.labelDisabled,
             isSecondary && styles.labelSecondary,
             variant === 'ghost' && styles.labelGhost,
           ]}
@@ -62,8 +66,8 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   base: {
-    height: 54,
-    borderRadius: radius.md,
+    height: 56,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
@@ -73,13 +77,19 @@ const styles = StyleSheet.create({
     ...shadows.button,
   },
   secondary: {
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   ghost: {
     backgroundColor: 'transparent',
   },
   disabled: {
-    opacity: 0.45,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   pressed: {
     opacity: 0.9,
@@ -89,12 +99,16 @@ const styles = StyleSheet.create({
     ...typography.bodySemibold,
   },
   labelPrimary: {
-    color: colors.white,
+    color: colors.textInverse,
+    letterSpacing: -0.2,
   },
   labelSecondary: {
-    color: colors.accentDark,
+    color: colors.textPrimary,
   },
   labelGhost: {
     color: colors.textSecondary,
+  },
+  labelDisabled: {
+    color: colors.textTertiary,
   },
 });

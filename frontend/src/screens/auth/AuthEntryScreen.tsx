@@ -5,14 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { radius } from '../../theme';
 
-const welcomeData = {
-  dinnerTotal: '₹620',
-  goalPercent: '38%',
-  balance: '₹1,24,500',
-  trend: '+12% this month',
-  chartHeights: [22, 34, 28, 46, 60, 78],
-};
-
 export function AuthEntryScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -49,8 +41,8 @@ export function AuthEntryScreen() {
               <View style={styles.smallIconTile}>
                 <MaterialCommunityIcons name="silverware-fork-knife" size={15} color="#0A2A1E" />
               </View>
-              <Text style={styles.backCardTitle}>Dinner at Olive</Text>
-              <Text style={styles.backCardValue}>{welcomeData.dinnerTotal}</Text>
+              <Text style={styles.backCardTitle}>Shared expenses</Text>
+              <View style={styles.placeholderValue} />
             </View>
           </View>
 
@@ -59,23 +51,22 @@ export function AuthEntryScreen() {
               <View style={styles.smallIconTileMuted}>
                 <Ionicons name="flag-outline" size={15} color="#C8F169" />
               </View>
-              <Text style={styles.middleCardTitle}>MacBook goal</Text>
-              <Text style={styles.middleCardValue}>{welcomeData.goalPercent}</Text>
+              <Text style={styles.middleCardTitle}>Goals & plans</Text>
             </View>
-            <View style={styles.middleTrack}><View style={styles.middleFill} /></View>
+            <View style={styles.middleTrack} />
           </View>
 
           <View style={[styles.stackCard, styles.frontCard, { left: 12, right: 12 }]}>
             <View style={styles.frontCopy}>
-              <Text style={styles.balanceLabel}>Total balance</Text>
+              <Text style={styles.balanceLabel}>YOUR OVERVIEW</Text>
               <View>
-                <Text style={styles.balanceValue}>{welcomeData.balance}</Text>
-                <View style={styles.trendChip}><Text style={styles.trendText}>{welcomeData.trend}</Text></View>
+                <Text style={styles.balanceValue}>Your overview</Text>
+                <Text style={styles.trendText}>Your activity appears here as you add it.</Text>
               </View>
             </View>
             <View style={styles.chart}>
-              {welcomeData.chartHeights.map((height, index) => (
-                <View key={height} style={[styles.chartBar, { height, opacity: index < 4 ? 0.3 : 1 }]} />
+              {Array.from({ length: 6 }, (_, index) => (
+                <View key={index} style={styles.chartBar} />
               ))}
             </View>
           </View>
@@ -231,6 +222,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  placeholderValue: {
+    width: 42,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#D6D9CF',
+  },
   backCardValue: {
     color: '#0A2A1E',
     fontSize: 14,
@@ -271,8 +268,8 @@ const styles = StyleSheet.create({
   },
   balanceValue: {
     color: '#0A2A1E',
-    fontSize: 34,
-    lineHeight: 38,
+    fontSize: 30,
+    lineHeight: 34,
     fontWeight: '800',
     letterSpacing: -0.68,
   },
@@ -285,7 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A2A1E',
   },
   trendText: {
-    color: '#C8F169',
+    color: '#1F3B2D',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -298,8 +295,9 @@ const styles = StyleSheet.create({
   },
   chartBar: {
     width: 14,
+    height: 28,
     borderRadius: 5,
-    backgroundColor: '#0A2A1E',
+    backgroundColor: 'rgba(10,42,30,0.12)',
   },
   spacer: {
     flex: 1,

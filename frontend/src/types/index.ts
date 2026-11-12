@@ -8,10 +8,12 @@ export interface UserProfile {
   savings: number;
   phone: string;
   countryCode: string;
+  email?: string;
 }
 
 export interface Transaction {
   id: string;
+  type: 'expense' | 'income';
   merchant: string;
   category: string;
   icon: string;

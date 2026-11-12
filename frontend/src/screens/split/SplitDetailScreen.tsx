@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -19,7 +19,22 @@ type Props = NativeStackScreenProps<SplitStackParamList, 'SplitDetail'>;
 export function SplitDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { friends, splits, settleShare, settleMyShare } = useApp();
+  const [settlingId, setSettlingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const split = splits.find((item) => item.id === route.params.splitId);
+  const settle = async (friendId?: string) => {
+    if (!split) return;
+    setSettlingId(friendId ?? CURRENT_USER_ID);
+    setError('');
+    try {
+      if (friendId) await settleShare(split.id, friendId);
+      else await settleMyShare(split.id);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save settlement on this device');
+    } finally {
+      setSettlingId(null);
+    }
+  };
 
   const status = useMemo(
     () => (split ? yourShareLabel(split) : null),
@@ -82,6 +97,7 @@ export function SplitDetailScreen({ navigation, route }: Props) {
         </View>
 
         <Text style={styles.sectionTitle}>Shares</Text>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
         <View style={styles.shareCard}>
           {split.shares.map((share, index) => {
             const meta = getFriendMeta(share.friendId, friends);
@@ -112,7 +128,8 @@ export function SplitDetailScreen({ navigation, route }: Props) {
         {!settled && status.tone === 'owe' && myShare && !myShare.settled ? (
           <PrimaryButton
             title="Mark my share settled"
-            onPress={() => settleMyShare(split.id)}
+            onPress={() => void settle()}
+            loading={settlingId === CURRENT_USER_ID}
           />
         ) : null}
 
@@ -127,7 +144,8 @@ export function SplitDetailScreen({ navigation, route }: Props) {
                     key={share.friendId}
                     title={`Settle ${meta.name.split(' ')[0]}`}
                     variant="secondary"
-                    onPress={() => settleShare(split.id, share.friendId)}
+                    onPress={() => void settle(share.friendId)}
+                    loading={settlingId === share.friendId}
                   />
                 );
               })}
@@ -184,6 +202,10 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginTop: spacing.xs,
     fontStyle: 'italic',
+  },
+  error: {
+    ...typography.caption,
+    color: colors.expense,
   },
   scroll: {
     paddingHorizontal: spacing.lg,

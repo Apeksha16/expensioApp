@@ -41,6 +41,7 @@ export function CreateSplitScreen({ navigation }: Props) {
   const [method, setMethod] = useState<SplitMethod>('equal');
   const [customShares, setCustomShares] = useState<Record<string, number>>({});
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const participants = useMemo(
     () => [CURRENT_USER_ID, ...selectedIds],
@@ -64,7 +65,7 @@ export function CreateSplitScreen({ navigation }: Props) {
     setError('');
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (step === 1) {
       if (selectedIds.length === 0) {
         setError('Select at least one friend');
@@ -103,17 +104,24 @@ export function CreateSplitScreen({ navigation }: Props) {
       return;
     }
 
-    const created = addSplit({
-      title,
-      amount,
-      paidById,
-      date: date.trim() || 'Today',
-      method,
-      participantIds: participants,
-      customShares: method === 'custom' ? customShares : undefined,
-      note,
-    });
-    navigation.replace('SplitDetail', { splitId: created.id });
+    setSaving(true);
+    try {
+      const created = await addSplit({
+        title,
+        amount,
+        paidById,
+        date: date.trim() || 'Today',
+        method,
+        participantIds: participants,
+        customShares: method === 'custom' ? customShares : undefined,
+        note,
+      });
+      navigation.replace('SplitDetail', { splitId: created.id });
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save this split on your device');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const payerOptions = participants.map((id) => ({
@@ -345,7 +353,8 @@ export function CreateSplitScreen({ navigation }: Props) {
 
         <PrimaryButton
           title={step === STEPS ? 'Save Split' : 'Continue'}
-          onPress={goNext}
+          onPress={() => void goNext()}
+          loading={saving}
         />
       </View>
     </KeyboardAvoidingView>

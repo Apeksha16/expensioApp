@@ -11,6 +11,8 @@ const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
   tv: 'tv',
   cart: 'cart',
   flash: 'flash',
+  receipt: 'receipt-outline',
+  cash: 'cash-outline',
 };
 
 interface Props {
@@ -32,7 +34,9 @@ export function TransactionItem({ item }: Props) {
         </Text>
       </View>
       <View style={styles.right}>
-        <Text style={styles.amount}>-{formatINR(item.amount)}</Text>
+        <Text style={[styles.amount, item.type === 'income' && styles.incomeAmount]}>
+          {item.type === 'income' ? '+' : '-'}{formatINR(item.amount)}
+        </Text>
         <Text style={styles.time}>{item.time}</Text>
       </View>
     </View>
@@ -72,6 +76,9 @@ const styles = StyleSheet.create({
   amount: {
     ...typography.bodySemibold,
     color: colors.expense,
+  },
+  incomeAmount: {
+    color: colors.income,
   },
   time: {
     ...typography.micro,

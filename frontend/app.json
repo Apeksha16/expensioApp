@@ -30,7 +30,16 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Expensio to access your photos to add a profile picture.",
+          "cameraPermission": "Allow Expensio to take a profile picture.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-status-bar"
     ]
   }
 }

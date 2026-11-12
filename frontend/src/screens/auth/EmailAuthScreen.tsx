@@ -9,7 +9,7 @@ import { colors, spacing, typography } from '../../theme';
 
 export function EmailAuthScreen() {
   const insets = useSafeAreaInsets();
-  const { setAuthPhase, applyAuthSession, beginVerification, markVerified } = useApp();
+  const { setAuthPhase, applyAuthSession, beginVerification } = useApp();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,10 +27,9 @@ export function EmailAuthScreen() {
       const result = await authenticateEmail(email.trim().toLowerCase(), password, mode);
       if (mode === 'register') {
         await sendEmailOtp(email.trim().toLowerCase());
-        beginVerification(result, 'email', email.trim().toLowerCase());
+        await beginVerification(result, 'email', email.trim().toLowerCase());
       } else {
-        markVerified('email');
-        applyAuthSession(result);
+        await applyAuthSession({ ...result, verifiedChannel: 'email' });
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to authenticate');

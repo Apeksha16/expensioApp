@@ -142,6 +142,7 @@ export const sendOtp = (req, res) => {
     success: true,
     message: `OTP sent successfully to ${phone}`,
     expiresIn: 300,
+    ...(process.env.OTP_DEBUG === 'true' ? { debugOtp: otp } : {}),
   });
 };
 
@@ -150,8 +151,14 @@ export const sendEmailOtp = (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Please provide a valid email address' });
   }
-  db.emailOtps.set(email, { otp: String(randomInt(100000, 1000000)), expiresAt: Date.now() + 5 * 60 * 1000 });
-  return res.json({ success: true, message: 'Email OTP sent', expiresIn: 300 });
+  const otp = String(randomInt(100000, 1000000));
+  db.emailOtps.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+  return res.json({
+    success: true,
+    message: 'Email OTP sent',
+    expiresIn: 300,
+    ...(process.env.OTP_DEBUG === 'true' ? { debugOtp: otp } : {}),
+  });
 };
 
 // POST /api/auth/verify-otp
@@ -196,7 +203,17 @@ export const verifyEmailOtp = (req, res) => {
     }
     db.emailOtps.delete(email);
     db.verifiedEmails.add(email);
-    return res.json({ success: true, message: 'Email verified' });
+    db.user.email = email;
+    const isProfileComplete = checkProfileCompleteness(db.user);
+    return res.json({
+      success: true,
+      message: 'Email verified',
+      ...issueTokens({ userId: db.user.id, email }),
+      user: publicUser(db.user),
+      isProfileComplete,
+      verifiedChannel: 'email',
+      nextStep: isProfileComplete ? 'dashboard' : 'onboarding',
+    });
 };
 
 export const completeOnboarding = [

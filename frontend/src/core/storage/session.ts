@@ -1,6 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
-
-const SESSION_KEY = 'expensio_session';
+import { CorruptStoredDataError, readJson, removeValue, STORAGE_KEYS, writeJson } from './localPersistence';
 
 export interface StoredSession {
   accessToken: string;
@@ -14,21 +12,32 @@ export interface StoredSession {
 }
 
 export async function readSession(): Promise<StoredSession | null> {
-  const raw = await SecureStore.getItemAsync(SESSION_KEY);
-  if (!raw) return null;
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(raw) as StoredSession;
-    return parsed.accessToken ? parsed : null;
-  } catch {
+    parsed = await readJson<unknown>(STORAGE_KEYS.session);
+  } catch (error) {
+    if (!(error instanceof CorruptStoredDataError)) throw error;
+    await clearSession();
+    return null;
+  }
+  if (parsed === null) return null;
+  if (
+    typeof parsed === 'object'
+    && parsed !== null
+    && 'accessToken' in parsed
+    && typeof parsed.accessToken === 'string'
+    && parsed.accessToken
+  ) return parsed as StoredSession;
+  else {
     await clearSession();
     return null;
   }
 }
 
 export function writeSession(session: StoredSession): Promise<void> {
-  return SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
+  return writeJson(STORAGE_KEYS.session, session);
 }
 
 export function clearSession(): Promise<void> {
-  return SecureStore.deleteItemAsync(SESSION_KEY);
+  return removeValue(STORAGE_KEYS.session);
 }

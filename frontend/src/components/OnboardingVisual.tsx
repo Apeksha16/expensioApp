@@ -1,8 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
-import { mockBudget, mockGoal } from '../data/mock';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import type { OnboardingSlide } from '../types';
 
@@ -24,22 +22,14 @@ export function OnboardingVisual({ visual }: Props) {
     return (
       <View style={styles.heroStage}>
         <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Total balance</Text>
-          <Text style={styles.balanceValue}>₹1,24,500</Text>
-          <View style={styles.trendBadge}>
-            <Text style={styles.trendText}>+12% this month</Text>
-          </View>
-          <View style={styles.bars}>
-            {[34, 52, 44, 72, 96, 128].map((height, index) => (
-              <View
-                key={height}
-                style={[
-                  styles.bar,
-                  { height },
-                  index > 3 && styles.barBright,
-                ]}
-              />
-            ))}
+          <Text style={styles.balanceLabel}>YOUR MONEY SPACE</Text>
+          <Text style={styles.balanceValue}>Your overview</Text>
+          <Text style={styles.balanceLabel}>Your information appears here as you add it.</Text>
+          <View style={styles.emptyOverview}>
+            <View style={styles.emptyOverviewIcon}>
+              <Ionicons name="wallet-outline" size={23} color={colors.surprise} />
+            </View>
+            <Text style={styles.emptyOverviewText}>Ready when you are</Text>
           </View>
         </View>
       </View>
@@ -52,68 +42,38 @@ export function OnboardingVisual({ visual }: Props) {
         <View style={styles.splitCard}>
           <View style={styles.splitHeader}>
             <View style={styles.splitIcon}><MaterialCommunityIcons name="silverware-fork-knife" size={21} color="#0A2A1E" /></View>
-            <View style={styles.splitCopy}><Text style={styles.cardTitle}>Dinner at Olive</Text><Text style={styles.cardSub}>Split 3 ways</Text></View>
-            <Text style={styles.splitTotal}>₹620</Text>
+            <View style={styles.splitCopy}><Text style={styles.cardTitle}>Shared expenses</Text><Text style={styles.cardSub}>Your splits will appear here</Text></View>
           </View>
-          {[
-            ['R', '₹207', 'Paid'],
-            ['A', '₹207', 'Paid'],
-            ['N', '₹206', 'Pending'],
-          ].map(([letter, amount, status]) => (
-            <View key={letter} style={styles.shareRow}>
-              <View style={styles.shareAvatar}><Text style={styles.avatarText}>{letter}</Text></View>
-              <Text style={styles.shareAmount}>{amount}</Text>
-              <View style={[styles.statusPill, status === 'Pending' && styles.pendingPill]}>
-                <Text style={[styles.statusText, status === 'Pending' && styles.pendingPillText]}>{status}</Text>
-              </View>
-            </View>
-          ))}
+          <View style={styles.shareRow}>
+            <View style={styles.shareAvatar}><Ionicons name="person-outline" size={17} color="#F3F0E6" /></View>
+            <View style={styles.sharePlaceholder} />
+            <View style={styles.sharePlaceholderShort} />
+          </View>
+          <View style={styles.shareRow}>
+            <View style={styles.shareAvatar}><Ionicons name="person-outline" size={17} color="#F3F0E6" /></View>
+            <View style={styles.sharePlaceholder} />
+            <View style={styles.sharePlaceholderShort} />
+          </View>
         </View>
       </View>
     );
   }
 
   if (visual === 'budget') {
-    const budgetPercent = Math.min(1, Math.max(0, mockBudget.spent / mockBudget.limit));
-    const goalPercent = Math.min(1, Math.max(0, mockGoal.current / mockGoal.target));
-    const budgetPercentLabel = Math.round(budgetPercent * 100);
-    const goalPercentLabel = Math.round(goalPercent * 100);
-    const ringRadius = 76;
-    const ringCircumference = 2 * Math.PI * ringRadius;
-
     return (
       <View style={styles.referenceStage}>
         <View style={styles.budgetCard}>
-          <View style={styles.ring}>
-            <Svg width={176} height={176} viewBox="0 0 176 176">
-              <Circle cx="88" cy="88" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="14" />
-              <Circle
-                cx="88"
-                cy="88"
-                r={ringRadius}
-                fill="none"
-                stroke="#C8F169"
-                strokeWidth="14"
-                strokeLinecap="round"
-                strokeDasharray={`${ringCircumference * budgetPercent} ${ringCircumference}`}
-                rotation="-90"
-                origin="88, 88"
-              />
-            </Svg>
-            <View style={styles.ringInner}>
-              <Text style={styles.ringValue}>{budgetPercentLabel}%</Text>
-              <Text style={styles.ringLabel}>of monthly budget</Text>
-            </View>
+          <View style={styles.budgetIcon}>
+            <Ionicons name="pie-chart-outline" size={32} color="#C8F169" />
           </View>
-          <Text style={styles.budgetAmount}>₹28,400 <Text style={styles.budgetOf}>of ₹50,000</Text></Text>
+          <Text style={styles.budgetAmount}>Budgets and goals</Text>
+          <Text style={styles.ringLabel}>Set them up when you are ready.</Text>
           <View style={styles.goalBox}>
             <View style={styles.goalRow}>
-              <Text style={styles.goalTitle}>MacBook goal</Text>
-              <Text style={styles.goalPercent}>{goalPercentLabel}%</Text>
+              <Text style={styles.goalTitle}>Your plans</Text>
+              <Ionicons name="arrow-forward" size={17} color="#C8F169" />
             </View>
-            <View style={styles.goalTrack}>
-              <View style={[styles.goalFill, { width: `${goalPercent * 100}%` }]} />
-            </View>
+            <View style={styles.goalTrack} />
           </View>
         </View>
       </View>
@@ -189,6 +149,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.14)',
     justifyContent: 'flex-start',
+  },
+  emptyOverview: {
+    minHeight: 112,
+    marginTop: 24,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  emptyOverviewIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(200,241,105,0.12)',
+  },
+  emptyOverviewText: {
+    ...typography.captionMedium,
+    color: colors.white,
   },
   balanceLabel: {
     fontSize: 14,
@@ -291,6 +275,18 @@ const styles = StyleSheet.create({
     borderTopColor: '#ECE8DA',
     gap: 12,
   },
+  sharePlaceholder: {
+    flex: 1,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E8E9E1',
+  },
+  sharePlaceholderShort: {
+    width: 58,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E8E9E1',
+  },
   shareAvatar: {
     width: 40,
     height: 40,
@@ -329,6 +325,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: '#0A2A1E',
     alignItems: 'center',
+  },
+  budgetIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: 'rgba(200,241,105,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ring: {
     width: 176,

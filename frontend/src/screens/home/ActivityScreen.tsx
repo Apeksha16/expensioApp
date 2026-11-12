@@ -3,20 +3,21 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TransactionItem } from '../../components/TransactionItem';
-import { mockTransactions } from '../../data/mock';
+import { useApp } from '../../context/AppContext';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const filters = ['All', 'Food', 'Travel', 'Bills'];
+const filters = ['All', 'Expenses', 'Income'] as const;
 
 export function ActivityScreen() {
   const insets = useSafeAreaInsets();
-  const [filter, setFilter] = useState('All');
-  const transactions = useMemo(
+  const { transactions: savedTransactions } = useApp();
+  const [filter, setFilter] = useState<(typeof filters)[number]>('All');
+  const filteredTransactions = useMemo(
     () =>
       filter === 'All'
-        ? mockTransactions
-        : mockTransactions.filter((item) => item.category === filter),
-    [filter],
+        ? savedTransactions
+        : savedTransactions.filter((item) => item.type === (filter === 'Income' ? 'income' : 'expense')),
+    [filter, savedTransactions],
   );
 
   return (
@@ -25,7 +26,7 @@ export function ActivityScreen() {
         <View>
           <Text style={styles.kicker}>YOUR MONEY TRAIL</Text>
           <Text style={styles.title}>Activity</Text>
-          <Text style={styles.subtitle}>Every expense, clear at a glance.</Text>
+          <Text style={styles.subtitle}>Your transactions saved on this device.</Text>
         </View>
         <View style={styles.iconTile}>
           <Ionicons name="pulse-outline" size={22} color={colors.accent} />
@@ -52,22 +53,17 @@ export function ActivityScreen() {
             </Pressable>
           ))}
         </ScrollView>
-        <View style={styles.summary}>
-          <View>
-            <Text style={styles.summaryLabel}>This month</Text>
-            <Text style={styles.summaryAmount}>₹28,400</Text>
-          </View>
-          <View style={styles.summaryBadge}>
-            <Ionicons name="trending-down" size={15} color={colors.income} />
-            <Text style={styles.summaryBadgeText}>12% lower</Text>
-          </View>
-        </View>
-        <Text style={styles.sectionTitle}>Recent transactions</Text>
+        <Text style={styles.sectionTitle}>Transactions</Text>
         <View style={styles.list}>
-          {transactions.length ? (
-            transactions.map((item) => <TransactionItem key={item.id} item={item} />)
+          {filteredTransactions.length ? (
+            filteredTransactions.map((item) => <TransactionItem key={item.id} item={item} />)
           ) : (
-            <Text style={styles.empty}>No expenses in this category yet.</Text>
+            <View style={styles.emptyState}>
+              <Ionicons name="receipt-outline" size={24} color={colors.accent} />
+              <Text style={styles.empty}>
+                {filter === 'All' ? 'No transactions yet. Add one to see it here.' : `No ${filter.toLowerCase()} recorded yet.`}
+              </Text>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -88,29 +84,17 @@ const styles = StyleSheet.create({
   scroll: { paddingTop: spacing.xl, paddingBottom: 160, gap: spacing.lg },
   filters: { gap: spacing.xs },
   filter: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full,
+    minHeight: 44, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   filterActive: { backgroundColor: colors.accent },
   filterText: { ...typography.captionMedium, color: colors.textSecondary },
   filterTextActive: { color: colors.textInverse },
-  summary: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: spacing.lg, borderRadius: radius.xl, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  summaryLabel: { ...typography.caption, color: colors.textSecondary },
-  summaryAmount: { ...typography.h2, color: colors.textPrimary, marginTop: spacing.xxs },
-  summaryBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.xxs,
-    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs,
-    borderRadius: radius.full,     backgroundColor: colors.accentSoft,
-  },
-  summaryBadgeText: { ...typography.captionMedium, color: colors.income },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   list: {
     backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1,
     borderColor: colors.border, paddingHorizontal: spacing.md,
   },
   empty: { ...typography.body, color: colors.textSecondary, paddingVertical: spacing.xl },
+  emptyState: { alignItems: 'center', gap: spacing.xs },
 });

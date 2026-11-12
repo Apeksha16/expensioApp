@@ -43,6 +43,15 @@ export function getGreeting(date = new Date()): string {
   return 'Good evening';
 }
 
+export function formatTransactionDate(date: Date): string {
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || 'there';
 }

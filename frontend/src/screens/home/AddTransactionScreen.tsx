@@ -1,25 +1,57 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CurrencyInput } from '../../components/CurrencyInput';
 import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { useApp } from '../../context/AppContext';
+import type { MainTabParamList } from '../../navigation/MainTabs';
 import { colors, spacing, typography } from '../../theme';
+import { formatTransactionDate } from '../../utils/format';
 
-export function AddTransactionScreen() {
+type Props = BottomTabScreenProps<MainTabParamList, 'Add'>;
+
+export function AddTransactionScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { addTransaction } = useApp();
 
-  const save = () => {
+  React.useEffect(() => {
+    if (route.params?.type) {
+      setType(route.params.type);
+      navigation.setParams({ type: undefined });
+    }
+  }, [navigation, route.params?.type]);
+
+  const save = async () => {
     if (title.trim().length < 2) { setError('Add a short name for this transaction'); return; }
     if (amount <= 0) { setError('Enter an amount greater than zero'); return; }
     setError('');
     setLoading(true);
-    setTimeout(() => { setLoading(false); setTitle(''); setAmount(0); }, 650);
+    try {
+      const now = new Date();
+      await addTransaction({
+        type,
+        merchant: title.trim(),
+        category: 'Other',
+        icon: type === 'income' ? 'cash' : 'receipt',
+        iconColor: type === 'income' ? colors.income : colors.accent,
+        amount,
+        date: formatTransactionDate(now),
+        time: now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      });
+      setTitle('');
+      setAmount(0);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save this transaction on your device');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,7 +73,7 @@ export function AddTransactionScreen() {
           <InputField label="What is it?" value={title} onChangeText={(value) => { setTitle(value); setError(''); }} placeholder={type === 'expense' ? 'Coffee, groceries...' : 'Salary, freelance...'} autoCapitalize="sentences" />
           <CurrencyInput label="Amount" value={amount} onChangeValue={(value) => { setAmount(value); setError(''); }} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <PrimaryButton title={loading ? 'Saving...' : `Save ${type}`} loading={loading} onPress={save} style={styles.save} />
+          <PrimaryButton title={loading ? 'Saving...' : `Save ${type}`} loading={loading} onPress={() => void save()} style={styles.save} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

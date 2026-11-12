@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
@@ -33,11 +34,17 @@ function IndiaFlag() {
 
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
-  const { setAuthPhase, setPhoneCredentials, setVerification } = useApp();
-  const [mode, setMode] = useState<Mode>('mobile');
+  const {
+    setAuthPhase,
+    setPhoneCredentials,
+    setVerification,
+    verificationChannel,
+    verificationTarget,
+  } = useApp();
+  const [mode, setMode] = useState<Mode>(verificationChannel === 'email' ? 'email' : 'mobile');
   const [dial, setDial] = useState(DEFAULT_COUNTRY_DIAL);
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(verificationChannel === 'email' ? verificationTarget : '');
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -89,12 +96,18 @@ export function MobileLoginScreen() {
     try {
       if (mode === 'mobile') {
         const cleanPhone = phone.replace(/\D/g, '');
-        await sendOtp(cleanPhone);
+        const response = await sendOtp(cleanPhone);
+        if (response.debugOtp) {
+          Alert.alert('Development OTP', `Use ${response.debugOtp} to verify your number.`);
+        }
         setPhoneCredentials(dial, cleanPhone);
         setVerification('phone', cleanPhone);
       } else {
         const target = email.trim().toLowerCase();
-        await sendEmailOtp(target);
+        const response = await sendEmailOtp(target);
+        if (response.debugOtp) {
+          Alert.alert('Development OTP', `Use ${response.debugOtp} to verify your email.`);
+        }
         setVerification('email', target);
       }
       setAuthPhase('otp');
@@ -201,11 +214,12 @@ export function MobileLoginScreen() {
                   onChangeText={onInputChange}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
-                  onSubmitEditing={submit}
+                  onSubmitEditing={mode === 'email' ? submit : undefined}
                   keyboardType={mode === 'mobile' ? 'phone-pad' : 'email-address'}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  returnKeyType="done"
+                  returnKeyType={mode === 'email' ? 'done' : 'default'}
+                  blurOnSubmit={false}
                   placeholder={mode === 'mobile' ? '98765 43210' : 'you@example.com'}
                   placeholderTextColor="#74837A"
                   style={styles.input}

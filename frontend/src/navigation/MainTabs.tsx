@@ -5,15 +5,24 @@ import { colors } from '../theme';
 import { DashboardScreen } from '../screens/home/DashboardScreen';
 import { ActivityScreen } from '../screens/home/ActivityScreen';
 import { AddTransactionScreen } from '../screens/home/AddTransactionScreen';
+import { ModuleLandingScreen } from '../screens/home/ModuleLandingScreen';
 import { ProfileScreen } from '../screens/home/ProfileScreen';
+import { EmailChangeScreen } from '../screens/home/EmailChangeScreen';
 import { SplitStack } from './SplitStack';
 
 export type MainTabParamList = {
   Home: undefined;
   Activity: undefined;
-  Add: undefined;
+  Add: { type?: 'expense' | 'income' } | undefined;
   Split: undefined;
+  Budgets: undefined;
+  Reports: undefined;
+  Goals: undefined;
+  UpcomingPayments: undefined;
+  Analytics: undefined;
+  AdditionalModules: undefined;
   Profile: undefined;
+  EmailChange: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -21,6 +30,8 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 export function MainTabs() {
   return (
     <Tab.Navigator
+      initialRouteName="Home"
+      backBehavior="history"
       tabBar={(props) => <BottomNavigation {...props} />}
       screenOptions={{
         headerShown: false,
@@ -35,7 +46,14 @@ export function MainTabs() {
         component={SplitStack}
         options={{ headerShown: false }}
       />
+      <Tab.Screen name="Budgets" component={ModuleLandingScreen} />
+      <Tab.Screen name="Reports" component={ModuleLandingScreen} />
+      <Tab.Screen name="Goals" component={ModuleLandingScreen} />
+      <Tab.Screen name="UpcomingPayments" component={ModuleLandingScreen} />
+      <Tab.Screen name="Analytics" component={ModuleLandingScreen} />
+      <Tab.Screen name="AdditionalModules" component={ModuleLandingScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="EmailChange" component={EmailChangeScreen} />
     </Tab.Navigator>
   );
 }

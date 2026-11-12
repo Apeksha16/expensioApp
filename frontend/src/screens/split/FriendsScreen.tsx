@@ -86,6 +86,8 @@ export function FriendsScreen({ navigation }: Props) {
       </View>
 
       <ScrollView
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >

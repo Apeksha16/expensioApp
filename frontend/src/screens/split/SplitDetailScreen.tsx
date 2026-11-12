@@ -73,6 +73,8 @@ export function SplitDetailScreen({ navigation, route }: Props) {
       </View>
 
       <ScrollView
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         contentContainerStyle={[
           styles.scroll,
           { paddingBottom: insets.bottom + spacing.xxxl },

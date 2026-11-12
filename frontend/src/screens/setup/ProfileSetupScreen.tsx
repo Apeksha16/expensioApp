@@ -19,11 +19,11 @@ import { completeOnboarding } from '../../services/authApi';
 import { colors, radius, spacing, typography } from '../../theme';
 
 const employment = [
-  { value: 'salaried', label: 'Salaried', icon: 'briefcase-outline', income: 'Monthly salary' },
-  { value: 'business', label: 'Business', icon: 'storefront-outline', income: 'Monthly minimum income' },
-  { value: 'student', label: 'Student', icon: 'school-outline', income: 'Monthly pocket money' },
-  { value: 'retired', label: 'Retired', icon: 'sunny-outline', income: 'Monthly pension' },
-  { value: 'homemaker', label: 'Housemaker', icon: 'home-outline', income: 'Monthly household budget' },
+  { value: 'salaried', label: 'Salaried', detail: 'A regular paycheck', icon: 'briefcase-outline', income: 'Monthly salary' },
+  { value: 'business', label: 'Business', detail: 'Self-employed income', icon: 'storefront-outline', income: 'Monthly minimum income' },
+  { value: 'student', label: 'Student', detail: 'Allowance or stipend', icon: 'school-outline', income: 'Monthly pocket money' },
+  { value: 'retired', label: 'Retired', detail: 'Pension or retirement income', icon: 'sunny-outline', income: 'Monthly pension' },
+  { value: 'homemaker', label: 'Homemaker', detail: 'Household income', icon: 'home-outline', income: 'Monthly household budget' },
 ] as const;
 
 export function ProfileSetupScreen() {
@@ -180,7 +180,8 @@ export function ProfileSetupScreen() {
           <ScrollView
             style={styles.profileFormScroll}
             contentContainerStyle={[styles.profileContent, { paddingTop: insets.top + 10 }]}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.profileHeader}>
@@ -343,56 +344,214 @@ export function ProfileSetupScreen() {
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg }]}>
-        <Pressable onPress={goBack} hitSlop={8}><Text style={styles.back}>← Back</Text></Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={goBack}
+          hitSlop={8}
+          style={styles.journeyBack}
+        >
+          <Ionicons name="arrow-back" size={18} color={colors.accent} />
+          <Text style={styles.back}>Back</Text>
+          <View style={styles.journeyStepCount}>
+            <Text style={styles.journeyStepCountText}>{String(step).padStart(2, '0')} / 04</Text>
+          </View>
+        </Pressable>
         <JourneyTimeline steps={[{ label: 'Profile' }, { label: 'Work' }, { label: 'Money' }, { label: 'Review' }]} current={step} />
-        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView keyboardShouldPersistTaps="always" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           {step === 2 ? (
-            <View style={styles.section}>
-              <Text style={styles.kicker}>YOUR WORK</Text>
-              <Text style={styles.title}>What best describes you?</Text>
-              <Text style={styles.subtitle}>This chooses the right income label for your account.</Text>
-              <View style={styles.employmentGrid}>
-                {employment.map((item) => (
-                  <Pressable key={item.value} onPress={() => updateOnboardingDraft({ employmentType: item.value })} style={[styles.employmentCard, onboardingDraft.employmentType === item.value && styles.employmentActive]}>
-                    <Text style={styles.employmentIcon}>{item.icon === 'briefcase-outline' ? '▣' : item.icon === 'school-outline' ? '◇' : '◌'}</Text>
-                    <Text style={[styles.employmentLabel, onboardingDraft.employmentType === item.value && styles.activeText]}>{item.label}</Text>
-                  </Pressable>
-                ))}
+            <View style={styles.workSection}>
+              <View style={styles.workIntro}>
+                <View style={styles.workEyebrowRow}>
+                  <View style={styles.workEyebrowIcon}>
+                    <Ionicons name="sparkles" size={13} color={colors.accentDark} />
+                  </View>
+                  <Text style={styles.kicker}>YOUR WORK</Text>
+                </View>
+                <Text style={styles.title}>How do you earn?</Text>
+                <Text style={styles.subtitle}>Choose what fits best. You can update this any time.</Text>
               </View>
-              <CurrencyInput label={selectedEmployment.income} value={Number(onboardingDraft.incomeRupees) || 0} onChangeValue={(value) => updateOnboardingDraft({ incomeRupees: String(Math.max(0, Math.trunc(value))) })} />
+
+              <View style={styles.employmentGrid}>
+                {employment.map((item) => {
+                  const selected = onboardingDraft.employmentType === item.value;
+                  return (
+                    <Pressable
+                      key={item.value}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected }}
+                      onPress={() => {
+                        setError('');
+                        updateOnboardingDraft({ employmentType: item.value });
+                      }}
+                      style={[styles.employmentCard, selected && styles.employmentActive]}
+                    >
+                      <View style={styles.employmentCardTop}>
+                        <View style={[styles.employmentIconWrap, selected && styles.employmentIconWrapActive]}>
+                          <Ionicons name={item.icon} size={20} color={selected ? colors.white : colors.accent} />
+                        </View>
+                        <View style={[styles.employmentSelection, selected && styles.employmentSelectionActive]}>
+                          {selected ? <Ionicons name="checkmark" size={12} color={colors.white} /> : null}
+                        </View>
+                      </View>
+                      <Text style={[styles.employmentLabel, selected && styles.activeText]}>{item.label}</Text>
+                      <Text style={[styles.employmentDetail, selected && styles.employmentDetailActive]}>{item.detail}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <View style={styles.incomePanel}>
+                <View style={styles.incomePanelHeading}>
+                  <View style={styles.incomeHeadingCopy}>
+                    <Text style={styles.incomeEyebrow}>A QUICK ESTIMATE</Text>
+                    <Text style={styles.incomeTitle}>Your typical monthly income</Text>
+                  </View>
+                  <View style={styles.incomeAccent}>
+                    <Ionicons name="trending-up" size={18} color={colors.accentDark} />
+                  </View>
+                </View>
+                <CurrencyInput
+                  label={selectedEmployment.income}
+                  value={Number(onboardingDraft.incomeRupees) || 0}
+                  onChangeValue={(value) => updateOnboardingDraft({ incomeRupees: String(Math.max(0, Math.trunc(value))) })}
+                  variant="card"
+                />
+                <Text style={styles.incomeHint}>An estimate is all you need to get started.</Text>
+              </View>
             </View>
           ) : null}
           {step === 3 ? (
-            <View style={styles.section}>
-              <Text style={styles.kicker}>YOUR STARTING POINT</Text>
-              <Text style={styles.title}>Set your money baseline.</Text>
-              <Text style={styles.subtitle}>These are your declared balances, not verified bank balances.</Text>
-              <CurrencyInput label="Cash balance" value={Number(onboardingDraft.cashRupees) || 0} onChangeValue={(value) => updateOnboardingDraft({ cashRupees: String(Math.max(0, Math.trunc(value))) })} />
-              <CurrencyInput label="Savings amount" value={Number(onboardingDraft.savingsRupees) || 0} onChangeValue={(value) => updateOnboardingDraft({ savingsRupees: String(Math.max(0, Math.trunc(value))) })} />
-              <Text style={styles.currencyNote}>Currency: INR (₹)</Text>
+            <View style={styles.moneySection}>
+              <View style={styles.moneyIntro}>
+                <View style={styles.workEyebrowRow}>
+                  <View style={styles.workEyebrowIcon}>
+                    <Ionicons name="wallet-outline" size={13} color={colors.accentDark} />
+                  </View>
+                  <Text style={styles.kicker}>YOUR STARTING POINT</Text>
+                </View>
+                <Text style={styles.title}>Start with what you have.</Text>
+                <Text style={styles.subtitle}>Add your current cash and savings to give your money a clear starting point.</Text>
+              </View>
+
+              <View style={styles.moneyPrivacyNote}>
+                <Ionicons name="lock-closed-outline" size={16} color={colors.accent} />
+                <Text style={styles.moneyPrivacyText}>Your balances are self-reported and editable.</Text>
+              </View>
+
+              <View style={styles.moneyFields}>
+                <CurrencyInput
+                  label="Cash balance"
+                  value={Number(onboardingDraft.cashRupees) || 0}
+                  onChangeValue={(value) => updateOnboardingDraft({ cashRupees: String(Math.max(0, Math.trunc(value))) })}
+                  variant="card"
+                  icon="cash-outline"
+                />
+                <CurrencyInput
+                  label="Savings amount"
+                  value={Number(onboardingDraft.savingsRupees) || 0}
+                  onChangeValue={(value) => updateOnboardingDraft({ savingsRupees: String(Math.max(0, Math.trunc(value))) })}
+                  variant="card"
+                  icon="leaf-outline"
+                />
+              </View>
+
+              <View style={styles.currencyBadge}>
+                <Text style={styles.currencyBadgeSymbol}>₹</Text>
+                <Text style={styles.currencyBadgeText}>All amounts in Indian Rupees (INR)</Text>
+              </View>
             </View>
           ) : null}
           {step === 4 ? (
-            <View style={styles.section}>
-              <Text style={styles.kicker}>REVIEW</Text>
-              <Text style={styles.title}>Ready to make it official?</Text>
-              <Text style={styles.subtitle}>Review your details before creating your account.</Text>
-              <View style={styles.reviewCard}>
-                <Text style={styles.reviewHeading}>Profile</Text>
-                <Text style={styles.reviewValue}>{onboardingDraft.firstName} {onboardingDraft.lastName}</Text>
-                <Text style={styles.reviewValue}>{onboardingDraft.email}</Text>
-                <Text style={styles.reviewValue}>{onboardingDraft.phone}</Text>
-                <Pressable onPress={() => setStep(1)}><Text style={styles.edit}>Edit profile</Text></Pressable>
-                <Text style={styles.reviewHeading}>Work and money</Text>
-                <Text style={styles.reviewValue}>{selectedEmployment.label} · ₹{onboardingDraft.incomeRupees || '0'} / month</Text>
-                <Text style={styles.reviewValue}>Cash ₹{onboardingDraft.cashRupees || '0'} · Savings ₹{onboardingDraft.savingsRupees || '0'}</Text>
-                <Pressable onPress={() => setStep(2)}><Text style={styles.edit}>Edit work and money</Text></Pressable>
+            <View style={styles.reviewSection}>
+              <View style={styles.reviewIntro}>
+                <View style={styles.workEyebrowRow}>
+                  <View style={styles.workEyebrowIcon}>
+                    <Ionicons name="checkmark" size={14} color={colors.accentDark} />
+                  </View>
+                  <Text style={styles.kicker}>FINAL CHECK</Text>
+                </View>
+                <Text style={styles.title}>Your money, your way.</Text>
+                <Text style={styles.subtitle}>Take a quick look. You can go back and change anything before you begin.</Text>
+              </View>
+
+              <View style={styles.reviewProfileCard}>
+                <View style={styles.reviewProfileTop}>
+                  <View style={styles.reviewAvatar}>
+                    <Text style={styles.reviewAvatarText}>
+                      {`${onboardingDraft.firstName.trim()[0] || ''}${onboardingDraft.lastName.trim()[0] || ''}`.toUpperCase() || 'E'}
+                    </Text>
+                  </View>
+                  <View style={styles.reviewProfileIdentity}>
+                    <Text style={styles.reviewProfileEyebrow}>YOUR PROFILE</Text>
+                    <Text style={styles.reviewProfileName}>
+                      {onboardingDraft.firstName} {onboardingDraft.lastName}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit profile details"
+                    onPress={() => setStep(1)}
+                    style={styles.reviewEditButton}
+                  >
+                    <Ionicons name="create-outline" size={17} color={colors.white} />
+                  </Pressable>
+                </View>
+                <View style={styles.reviewProfileDivider} />
+                <View style={styles.reviewContactRow}>
+                  <Ionicons name="mail-outline" size={15} color={colors.surprise} />
+                  <Text style={styles.reviewContactText} numberOfLines={1}>{onboardingDraft.email || 'No email provided'}</Text>
+                </View>
+                <View style={styles.reviewContactRow}>
+                  <Ionicons name="call-outline" size={15} color={colors.surprise} />
+                  <Text style={styles.reviewContactText} numberOfLines={1}>{onboardingDraft.phone || phone || 'No mobile number provided'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.reviewMoneyCard}>
+                <View style={styles.reviewMoneyHeader}>
+                  <View style={styles.reviewMoneyIcon}>
+                    <Ionicons name="briefcase-outline" size={17} color={colors.accent} />
+                  </View>
+                  <View style={styles.reviewMoneyHeaderCopy}>
+                    <Text style={styles.reviewMoneyTitle}>Work & income</Text>
+                    <Text style={styles.reviewMoneySubtitle}>{selectedEmployment.label}</Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit work and income"
+                    onPress={() => setStep(2)}
+                    style={styles.reviewTextAction}
+                  >
+                    <Text style={styles.reviewTextActionLabel}>Edit</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.reviewIncomeAmount}>
+                  <Text style={styles.reviewAmountLabel}>{selectedEmployment.income}</Text>
+                  <Text style={styles.reviewAmountValue}>₹{onboardingDraft.incomeRupees || '0'}<Text style={styles.reviewAmountSuffix}> / month</Text></Text>
+                </View>
+                <View style={styles.reviewBalanceRow}>
+                  <View style={styles.reviewBalanceTile}>
+                    <Ionicons name="cash-outline" size={16} color={colors.accent} />
+                    <Text style={styles.reviewBalanceLabel}>Cash</Text>
+                    <Text style={styles.reviewBalanceValue}>₹{onboardingDraft.cashRupees || '0'}</Text>
+                  </View>
+                  <View style={styles.reviewBalanceTile}>
+                    <Ionicons name="leaf-outline" size={16} color={colors.accent} />
+                    <Text style={styles.reviewBalanceLabel}>Savings</Text>
+                    <Text style={styles.reviewBalanceValue}>₹{onboardingDraft.savingsRupees || '0'}</Text>
+                  </View>
+                </View>
               </View>
             </View>
           ) : null}
         </ScrollView>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <PrimaryButton title={step === 4 ? 'Create account' : 'Continue'} onPress={() => void next()} loading={loading} />
+        <PrimaryButton
+          title={step === 4 ? 'Create account' : step === 2 ? 'Continue to Money' : 'Continue to Review'}
+          onPress={() => void next()}
+          loading={loading}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -451,7 +610,6 @@ const styles = StyleSheet.create({
   nameInputWrapFocused: { borderColor: '#1F6B3D', shadowColor: '#C8F169', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 2 },
   nameInputIcon: { position: 'absolute', left: 12, zIndex: 1 },
   nameInput: { flex: 1, height: '100%', paddingLeft: 36, paddingRight: 8, color: '#0B2B1F', fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  nameInputPlaceholder: { fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
   verifiedFields: { gap: 8 },
   contactField: { minHeight: 58, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 14, backgroundColor: '#F9FAF7', borderWidth: 1, borderColor: '#E8ECE4', flexDirection: 'row', alignItems: 'center', gap: 10 },
   contactIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: '#E8F0E2', alignItems: 'center', justifyContent: 'center' },
@@ -470,25 +628,78 @@ const styles = StyleSheet.create({
   profileFooterHint: { color: '#87938A', fontSize: 10, lineHeight: 15, textAlign: 'center', fontFamily: 'PlusJakartaSans_500Medium' },
   flex: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, paddingHorizontal: spacing.lg, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  back: { ...typography.bodyMedium, color: colors.accent, marginBottom: spacing.lg },
+  journeyBack: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
+  back: { ...typography.bodyMedium, color: colors.accent },
+  journeyStepCount: { marginLeft: 'auto', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: colors.surfaceMuted },
+  journeyStepCountText: { ...typography.micro, color: colors.textSecondary, fontWeight: '700' },
   scroll: { paddingVertical: spacing.xl, gap: spacing.md, paddingBottom: spacing.lg },
   section: { gap: spacing.md },
+  workSection: { gap: spacing.lg },
+  workIntro: { gap: spacing.sm },
+  workEyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  workEyebrowIcon: { width: 24, height: 24, borderRadius: radius.full, backgroundColor: colors.surprise, alignItems: 'center', justifyContent: 'center' },
   kicker: { ...typography.label, color: colors.accent, letterSpacing: 1.4 },
   title: { ...typography.h1, color: colors.textPrimary },
-  subtitle: { ...typography.body, color: colors.textSecondary, lineHeight: 22 },
+  subtitle: { ...typography.body, color: colors.textSecondary, lineHeight: 23, maxWidth: 330 },
   verified: { ...typography.captionMedium, color: colors.income },
   employmentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  employmentCard: { width: '30%', minHeight: 84, padding: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: 'space-between' },
-  employmentActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  employmentIcon: { fontSize: 24, color: colors.accent },
-  employmentLabel: { ...typography.captionMedium, color: colors.textPrimary },
+  employmentCard: { width: '48%', minHeight: 118, padding: spacing.sm, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: 'space-between' },
+  employmentActive: { backgroundColor: colors.accentDark, borderColor: colors.accentDark },
+  employmentCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  employmentIconWrap: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  employmentIconWrapActive: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  employmentSelection: { width: 20, height: 20, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  employmentSelectionActive: { backgroundColor: colors.surprise, borderColor: colors.surprise },
+  employmentLabel: { ...typography.bodySemibold, color: colors.textPrimary, marginTop: spacing.sm },
+  employmentDetail: { ...typography.micro, color: colors.textSecondary, lineHeight: 16 },
+  employmentDetailActive: { color: 'rgba(255,255,255,0.72)' },
   activeText: { color: colors.white },
+  incomePanel: { padding: spacing.md, gap: spacing.sm, borderRadius: radius.xl, backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderLight },
+  incomePanelHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  incomeHeadingCopy: { flex: 1, gap: spacing.xxs },
+  incomeEyebrow: { ...typography.micro, color: colors.accent, fontWeight: '700', letterSpacing: 0.9 },
+  incomeTitle: { ...typography.h3, color: colors.textPrimary },
+  incomeAccent: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.unexpected, alignItems: 'center', justifyContent: 'center' },
+  incomeHint: { ...typography.caption, color: colors.textSecondary },
+  moneySection: { gap: spacing.lg },
+  moneyIntro: { gap: spacing.sm },
+  moneyPrivacyNote: { minHeight: 44, paddingHorizontal: spacing.sm, borderRadius: radius.md, backgroundColor: colors.accentSoft, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  moneyPrivacyText: { ...typography.captionMedium, color: colors.accentDark, flex: 1 },
+  moneyFields: { gap: spacing.sm },
+  currencyBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: colors.surface },
+  currencyBadgeSymbol: { ...typography.captionMedium, color: colors.accent },
+  currencyBadgeText: { ...typography.caption, color: colors.textSecondary },
+  reviewSection: { gap: spacing.lg },
+  reviewIntro: { gap: spacing.sm },
+  reviewProfileCard: { padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.accentDark, gap: spacing.sm },
+  reviewProfileTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  reviewAvatar: { width: 48, height: 48, borderRadius: radius.lg, backgroundColor: colors.surprise, alignItems: 'center', justifyContent: 'center' },
+  reviewAvatarText: { ...typography.h3, color: colors.accentDark },
+  reviewProfileIdentity: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  reviewProfileEyebrow: { ...typography.micro, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.9 },
+  reviewProfileName: { ...typography.h3, color: colors.white },
+  reviewEditButton: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  reviewProfileDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.16)', marginVertical: spacing.xxs },
+  reviewContactRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  reviewContactText: { ...typography.caption, color: 'rgba(255,255,255,0.88)', flex: 1 },
+  reviewMoneyCard: { padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: spacing.md },
+  reviewMoneyHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  reviewMoneyIcon: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  reviewMoneyHeaderCopy: { flex: 1, gap: 2 },
+  reviewMoneyTitle: { ...typography.bodySemibold, color: colors.textPrimary },
+  reviewMoneySubtitle: { ...typography.caption, color: colors.textSecondary },
+  reviewTextAction: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  reviewTextActionLabel: { ...typography.captionMedium, color: colors.accentDark },
+  reviewIncomeAmount: { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surfaceMuted, gap: spacing.xxs },
+  reviewAmountLabel: { ...typography.caption, color: colors.textSecondary },
+  reviewAmountValue: { ...typography.h2, color: colors.accentDark },
+  reviewAmountSuffix: { ...typography.captionMedium, color: colors.textSecondary },
+  reviewBalanceRow: { flexDirection: 'row', gap: spacing.sm },
+  reviewBalanceTile: { flex: 1, minWidth: 0, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.background, gap: spacing.xxs },
+  reviewBalanceLabel: { ...typography.caption, color: colors.textSecondary },
+  reviewBalanceValue: { ...typography.bodySemibold, color: colors.textPrimary },
   currencyNote: { ...typography.caption, color: colors.textTertiary },
   error: { ...typography.caption, color: colors.expense, marginBottom: spacing.sm },
-  reviewCard: { gap: spacing.xs, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  reviewHeading: { ...typography.bodyMedium, color: colors.textPrimary, marginTop: spacing.sm },
-  reviewValue: { ...typography.caption, color: colors.textSecondary },
-  edit: { ...typography.captionMedium, color: colors.accent, marginTop: spacing.xs },
 });
 
 interface ContactFieldProps {
@@ -534,7 +745,6 @@ function ProfileNameField({
   onCommit,
 }: ProfileNameFieldProps) {
   const [focused, setFocused] = useState(false);
-  const [text, setText] = useState(value);
   const textRef = useRef(value);
 
   return (
@@ -549,10 +759,9 @@ function ProfileNameField({
           style={styles.nameInputIcon}
         />
         <TextInput
-          value={text}
+          defaultValue={value}
           onChangeText={(nextValue) => {
             textRef.current = nextValue;
-            setText(nextValue);
             onChangeText(nextValue);
           }}
           placeholder={placeholder}
@@ -560,7 +769,7 @@ function ProfileNameField({
           autoCapitalize="words"
           autoCorrect={false}
           accessibilityLabel={accessibilityLabel}
-          style={[styles.nameInput, !text && styles.nameInputPlaceholder]}
+          style={styles.nameInput}
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setFocused(false);

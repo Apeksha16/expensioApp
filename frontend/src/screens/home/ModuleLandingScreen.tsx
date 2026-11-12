@@ -1,19 +1,44 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CurrencyInput } from '../../components/CurrencyInput';
+import { GoalCard } from '../../components/GoalCard';
+import { InputField } from '../../components/InputField';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import type { AppModule } from '../../data/modules';
-import { moduleRegistryService } from '../../services/moduleRegistryService';
 import { useApp } from '../../context/AppContext';
 import type { MainTabParamList } from '../../navigation/MainTabs';
+import { moduleRegistryService } from '../../services/moduleRegistryService';
+import { localDateString } from '../../services/moneyService';
 import { colors, radius, spacing, typography } from '../../theme';
+import type { PaymentCadence, PaymentKind } from '../../types';
+import { formatINR, progressRatio } from '../../utils/format';
 
 type Props = BottomTabScreenProps<MainTabParamList>;
+type PaymentFormKind = PaymentKind;
+
+const budgetCategories = ['Food & Dining', 'Shopping', 'Transport', 'Bills & Utilities', 'Health', 'Other'];
 
 export function ModuleLandingScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const { preferredModuleIds } = useApp();
+  const {
+    preferredModuleIds,
+    transactions,
+    budgets,
+    goals,
+    recurringPayments,
+    addBudget,
+    removeBudget,
+    addGoal,
+    removeGoal,
+    contributeToGoal,
+    addRecurringPayment,
+    removeRecurringPayment,
+    markRecurringPaymentPaid,
+    showToast,
+  } = useApp();
   const currentModule = moduleRegistryService.getModuleByRoute(route.name);
   const isAdditionalModules = currentModule?.id === 'additional-modules';
   const modules = moduleRegistryService.getModules();
@@ -23,6 +48,20 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
       && !preferredModuleIds.includes(module.id)
       && module.id !== 'additional-modules',
   );
+  const [formOpen, setFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [category, setCategory] = useState(budgetCategories[0]);
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState(0);
+  const [targetDate, setTargetDate] = useState('');
+  const [contributionGoalId, setContributionGoalId] = useState<string | null>(null);
+  const [paymentKind, setPaymentKind] = useState<PaymentFormKind>('emi');
+  const [cadence, setCadence] = useState<PaymentCadence>('monthly');
+  const [dueDate, setDueDate] = useState(localDateString(new Date()));
+  const [paymentCategory, setPaymentCategory] = useState('Bills & Utilities');
+  const [outstandingBalance, setOutstandingBalance] = useState(0);
+  const [remainingInstallments, setRemainingInstallments] = useState('');
 
   const openModule = (module: AppModule) => {
     if (module.route === 'Add') {
@@ -30,6 +69,97 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
       return;
     }
     navigation.navigate(module.route);
+  };
+
+  const isCurrentMonth = (transaction: (typeof transactions)[number]) => {
+    if (typeof transaction.occurredAt === 'number') {
+      const date = new Date(transaction.occurredAt);
+      const now = new Date();
+      return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+    }
+    if (transaction.date === 'Today' || transaction.date === 'Yesterday') return true;
+    const date = new Date(`${transaction.date} ${new Date().getFullYear()}`);
+    return !Number.isNaN(date.getTime()) && date.getMonth() === new Date().getMonth();
+  };
+
+  const thisMonthTransactions = transactions.filter(isCurrentMonth);
+  const monthIncome = thisMonthTransactions
+    .filter((transaction) => transaction.type === 'income')
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const monthExpenses = thisMonthTransactions
+    .filter((transaction) => transaction.type === 'expense')
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const upcomingPayments = recurringPayments
+    .filter((payment) => payment.active)
+    .slice()
+    .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate));
+  const completedPayments = recurringPayments.filter((payment) => !payment.active);
+
+  const monthlyBudgetSpent = (budgetCategory: string) => thisMonthTransactions
+    .filter((transaction) => transaction.type === 'expense' && transaction.category.toLowerCase() === budgetCategory.toLowerCase())
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  const clearForm = () => {
+    setFormOpen(false);
+    setContributionGoalId(null);
+    setTitle('');
+    setAmount(0);
+    setTargetDate('');
+    setOutstandingBalance(0);
+    setRemainingInstallments('');
+    setError('');
+  };
+
+  const saveForm = async () => {
+    setError('');
+    setSaving(true);
+    try {
+      if (currentModule?.id === 'budgets') {
+        await addBudget({ category, limit: amount });
+        showToast('success', 'Budget saved.');
+      } else if (currentModule?.id === 'goals' && contributionGoalId) {
+        await contributeToGoal(contributionGoalId, amount);
+        showToast('success', 'Goal contribution saved.');
+      } else if (currentModule?.id === 'goals') {
+        await addGoal({ title, target: amount, targetDate: targetDate || undefined });
+        showToast('success', 'Savings goal created.');
+      } else if (currentModule?.id === 'upcoming-payments') {
+        await addRecurringPayment({
+          name: title,
+          amount,
+          kind: paymentKind,
+          cadence,
+          nextDueDate: dueDate,
+          category: paymentCategory,
+          outstandingBalance: paymentKind === 'emi' && outstandingBalance > 0 ? outstandingBalance : undefined,
+          remainingInstallments: paymentKind === 'emi' && remainingInstallments ? Number(remainingInstallments) : undefined,
+        });
+        showToast('success', `${paymentKind === 'emi' ? 'EMI' : 'Subscription'} saved.`);
+      }
+      clearForm();
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : 'Unable to save this item on your device.';
+      setError(message);
+      showToast('error', message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmRemove = (label: string, remove: () => Promise<void>) => {
+    Alert.alert(`Remove ${label}?`, 'This only removes it from your device. Your transaction history is not changed.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          void remove().then(() => showToast('success', `${label} removed.`)).catch((removeError: unknown) => {
+            const message = removeError instanceof Error ? removeError.message : 'Unable to remove this item.';
+            showToast('error', message);
+          });
+        },
+      },
+    ]);
   };
 
   if (!currentModule) {
@@ -43,108 +173,391 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <View style={[styles.headerIcon, { backgroundColor: colors.accentSoft }]}>
-            <Ionicons
-              name={currentModule.icon as keyof typeof Ionicons.glyphMap}
-              size={24}
-              color={colors.accent}
-            />
+          <View style={styles.headerIcon}>
+            <Ionicons name={currentModule.icon as keyof typeof Ionicons.glyphMap} size={24} color={colors.accentDark} />
           </View>
-          <Text style={styles.title}>{currentModule.name}</Text>
-          <Text style={styles.copy}>{currentModule.description}.</Text>
+          <View style={styles.headerCopy}>
+            <Text style={styles.kicker}>YOUR MONEY SPACE</Text>
+            <Text style={styles.title}>{currentModule.name}</Text>
+            <Text style={styles.copy}>{currentModule.description}.</Text>
+          </View>
         </View>
 
         {isAdditionalModules ? (
-          <>
+          <View style={styles.moduleList}>
             <View style={styles.sectionHeading}>
-              <Text style={styles.sectionTitle}>Available outside your navbar</Text>
-              <Text style={styles.sectionSub}>Your five preferred modules stay in the bottom bar.</Text>
+              <Text style={styles.sectionTitle}>Explore your tools</Text>
+              <Text style={styles.sectionSub}>Your preferences stay saved in Profile.</Text>
             </View>
             {additionalModules.map((module) => (
-              <Pressable
-                key={module.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${module.name}`}
-                onPress={() => openModule(module)}
-                style={({ pressed }) => [styles.moduleRow, pressed && styles.pressed]}
-              >
-                <View style={styles.moduleIcon}>
-                  <Ionicons name={module.icon as keyof typeof Ionicons.glyphMap} size={21} color={colors.accent} />
-                </View>
-                <View style={styles.moduleCopy}>
-                  <Text style={styles.moduleTitle}>{module.name}</Text>
-                  <Text style={styles.moduleDescription}>{module.description}</Text>
+              <Pressable key={module.id} accessibilityRole="button" onPress={() => openModule(module)} style={styles.moduleRow}>
+                <View style={styles.rowIcon}><Ionicons name={module.icon as keyof typeof Ionicons.glyphMap} size={20} color={colors.accent} /></View>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowTitle}>{module.name}</Text>
+                  <Text style={styles.rowSub}>{module.description}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
               </Pressable>
             ))}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open Profile settings"
-              onPress={() => navigation.navigate('Profile')}
-              style={({ pressed }) => [styles.moduleRow, pressed && styles.pressed]}
-            >
-              <View style={styles.moduleIcon}>
-                <Ionicons name="person-outline" size={21} color={colors.accent} />
-              </View>
-              <View style={styles.moduleCopy}>
-                <Text style={styles.moduleTitle}>Profile & settings</Text>
-                <Text style={styles.moduleDescription}>Personal information and preferences</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Profile')} style={styles.secondaryButton}>
+              <Ionicons name="options-outline" size={18} color={colors.accent} />
+              <Text style={styles.secondaryButtonText}>Manage preferred modules</Text>
             </Pressable>
-            {!additionalModules.length ? (
-              <View style={styles.empty}>
-                <Text style={styles.moduleTitle}>All modules are in your navbar</Text>
-                <Text style={styles.moduleDescription}>You can change your five choices in Profile.</Text>
+          </View>
+        ) : null}
+
+        {currentModule.id === 'budgets' ? (
+          <View style={styles.moduleList}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>SPENDING THIS MONTH</Text>
+              <Text style={styles.summaryValue}>{formatINR(monthExpenses)}</Text>
+              <Text style={styles.summaryHint}>{thisMonthTransactions.filter((item) => item.type === 'expense').length} recorded expense{thisMonthTransactions.filter((item) => item.type === 'expense').length === 1 ? '' : 's'}</Text>
+            </View>
+            <SectionHeading title="Category budgets" subtitle="Compare your real expenses with limits you set." />
+            {budgets.map((budget) => {
+              const spent = monthlyBudgetSpent(budget.category);
+              const ratio = progressRatio(spent, budget.limit);
+              return (
+                <View key={budget.id} style={styles.itemCard}>
+                  <View style={styles.itemTop}>
+                    <View style={styles.rowIcon}><Ionicons name="pie-chart-outline" size={19} color={colors.accent} /></View>
+                    <View style={styles.rowCopy}>
+                      <Text style={styles.rowTitle}>{budget.category}</Text>
+                      <Text style={styles.rowSub}>{formatINR(spent)} spent of {formatINR(budget.limit)}</Text>
+                    </View>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${budget.category} budget`} onPress={() => confirmRemove(`${budget.category} budget`, () => removeBudget(budget.id))} hitSlop={8}>
+                      <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.track}><View style={[styles.trackFill, { width: `${Math.min(ratio * 100, 100)}%`, backgroundColor: ratio > 1 ? colors.expense : colors.accent }]} /></View>
+                  <Text style={styles.remainingText}>{spent > budget.limit ? `${formatINR(spent - budget.limit)} over limit` : `${formatINR(budget.limit - spent)} remaining`}</Text>
+                </View>
+              );
+            })}
+            {!budgets.length ? <EmptyState icon="pie-chart-outline" title="No budgets yet" message="Set a monthly limit for a category. Spending updates from transactions you record." /> : null}
+            <PrimaryButton title={formOpen ? 'Close form' : 'Create a budget'} onPress={() => { setError(''); setFormOpen(!formOpen); }} variant={formOpen ? 'secondary' : 'primary'} />
+            {formOpen ? (
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>New category budget</Text>
+                <Text style={styles.fieldLabel}>Category</Text>
+                <View style={styles.chipList}>
+                  {budgetCategories.map((item) => <ChoiceChip key={item} label={item} selected={category === item} onPress={() => setCategory(item)} />)}
+                </View>
+                <CurrencyInput label="Monthly limit" value={amount} onChangeValue={setAmount} variant="card" icon="wallet-outline" />
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+                <PrimaryButton title="Save budget" onPress={() => void saveForm()} loading={saving} />
               </View>
             ) : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => navigation.navigate('Profile')}
-              style={styles.manageButton}
-            >
-              <Ionicons name="options-outline" size={18} color={colors.accent} />
-              <Text style={styles.manageButtonText}>Manage preferred modules</Text>
-            </Pressable>
-          </>
-        ) : (
-          <View style={styles.empty}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="sparkles-outline" size={22} color={colors.accent} />
-            </View>
-            <Text style={styles.moduleTitle}>Nothing here yet</Text>
-            <Text style={styles.moduleDescription}>
-              Your information will appear here as you add it. No sample financial data is shown.
-            </Text>
           </View>
-        )}
+        ) : null}
+
+        {currentModule.id === 'goals' ? (
+          <View style={styles.moduleList}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>SAVINGS GOALS</Text>
+              <Text style={styles.summaryValue}>{goals.length}</Text>
+              <Text style={styles.summaryHint}>{goals.length === 1 ? 'goal you are tracking' : 'goals you are tracking'}</Text>
+            </View>
+            <SectionHeading title="Your goals" subtitle="Add contributions as you set money aside." />
+            {goals.map((goal) => (
+              <View key={goal.id} style={styles.goalItem}>
+                <GoalCard goal={goal} />
+                <View style={styles.goalActions}>
+                  <Pressable accessibilityRole="button" onPress={() => { setContributionGoalId(goal.id); setAmount(0); setFormOpen(true); setError(''); }} style={styles.secondaryButton}>
+                    <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+                    <Text style={styles.secondaryButtonText}>Add contribution</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Remove goal ${goal.title}`} onPress={() => confirmRemove(`goal “${goal.title}”`, () => removeGoal(goal.id))} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+            {!goals.length ? <EmptyState icon="flag-outline" title="Make a goal" message="Choose something you are saving for, set a target, and track progress as you contribute." /> : null}
+            {!contributionGoalId ? <PrimaryButton title={formOpen ? 'Close form' : 'Create a savings goal'} onPress={() => { setFormOpen(!formOpen); setError(''); }} variant={formOpen ? 'secondary' : 'primary'} /> : null}
+            {formOpen ? (
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>{contributionGoalId ? 'Add to your goal' : 'New savings goal'}</Text>
+                {!contributionGoalId ? <InputField label="What are you saving for?" value={title} onChangeText={setTitle} placeholder="e.g. Emergency fund" /> : null}
+                <CurrencyInput label={contributionGoalId ? 'Contribution amount' : 'Target amount'} value={amount} onChangeValue={setAmount} variant="card" icon="flag-outline" />
+                {!contributionGoalId ? <InputField label="Target date (optional)" value={targetDate} onChangeText={setTargetDate} placeholder="YYYY-MM-DD" autoCapitalize="none" /> : null}
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+                <PrimaryButton title={contributionGoalId ? 'Save contribution' : 'Create goal'} onPress={() => void saveForm()} loading={saving} />
+                <Pressable accessibilityRole="button" onPress={clearForm} style={styles.cancelLink}><Text style={styles.cancelText}>Cancel</Text></Pressable>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {currentModule.id === 'upcoming-payments' ? (
+          <View style={styles.moduleList}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>UPCOMING COMMITMENTS</Text>
+              <Text style={styles.summaryValue}>{upcomingPayments.length}</Text>
+              <Text style={styles.summaryHint}>Active EMIs and subscriptions you entered</Text>
+            </View>
+            <SectionHeading title="Your payments" subtitle="Mark a payment paid to add it to your expense ledger." />
+            {upcomingPayments.map((payment) => (
+              <View key={payment.id} style={styles.itemCard}>
+                <View style={styles.itemTop}>
+                  <View style={[styles.rowIcon, payment.kind === 'emi' ? styles.orangeIcon : styles.greenIcon]}>
+                    <Ionicons name={payment.kind === 'emi' ? 'home-outline' : 'refresh-outline'} size={19} color={colors.accentDark} />
+                  </View>
+                  <View style={styles.rowCopy}>
+                    <Text style={styles.rowTitle}>{payment.name}</Text>
+                    <Text style={styles.rowSub}>{payment.kind === 'emi' ? 'EMI' : 'Subscription'} · {payment.category}</Text>
+                  </View>
+                  <Text style={styles.paymentAmount}>{formatINR(payment.amount)}</Text>
+                </View>
+                <View style={styles.paymentFooter}>
+                  <View>
+                    <Text style={styles.dueLabel}>NEXT DUE</Text>
+                    <Text style={styles.dueDate}>{formatPaymentDate(payment.nextDueDate)} · {payment.cadence}</Text>
+                  </View>
+                  {payment.active ? (
+                    <Pressable accessibilityRole="button" onPress={() => {
+                      void markRecurringPaymentPaid(payment.id)
+                        .then(() => showToast('success', `${payment.name} marked paid and added to expenses.`))
+                        .catch((paymentError: unknown) => showToast('error', paymentError instanceof Error ? paymentError.message : 'Unable to mark payment as paid.'));
+                    }} style={styles.paidButton}>
+                      <Text style={styles.paidButtonText}>Mark paid</Text>
+                    </Pressable>
+                  ) : <Text style={styles.completedLabel}>Completed</Text>}
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${payment.name}`} onPress={() => confirmRemove(payment.name, () => removeRecurringPayment(payment.id))} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+                  </Pressable>
+                </View>
+                {payment.kind === 'emi' && (payment.outstandingBalance !== undefined || payment.remainingInstallments !== undefined) ? (
+                  <Text style={styles.loanDetails}>
+                    {payment.outstandingBalance !== undefined ? `${formatINR(payment.outstandingBalance)} outstanding` : ''}
+                    {payment.outstandingBalance !== undefined && payment.remainingInstallments !== undefined ? ' · ' : ''}
+                    {payment.remainingInstallments !== undefined ? `${payment.remainingInstallments} installments left` : ''}
+                  </Text>
+                ) : null}
+              </View>
+            ))}
+            {completedPayments.length ? (
+              <>
+                <SectionHeading title="Completed EMIs" subtitle="Loans with no installments remaining." />
+                {completedPayments.map((payment) => (
+                  <View key={payment.id} style={styles.itemCard}>
+                    <View style={styles.itemTop}>
+                      <View style={styles.rowIcon}><Ionicons name="checkmark-circle-outline" size={19} color={colors.income} /></View>
+                      <View style={styles.rowCopy}>
+                        <Text style={styles.rowTitle}>{payment.name}</Text>
+                        <Text style={styles.rowSub}>Paid off · {payment.category}</Text>
+                      </View>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${payment.name}`} onPress={() => confirmRemove(payment.name, () => removeRecurringPayment(payment.id))} hitSlop={8}>
+                        <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </>
+            ) : null}
+            {!upcomingPayments.length && !completedPayments.length ? <EmptyState icon="calendar-outline" title="Nothing scheduled yet" message="Add an EMI or subscription to keep upcoming payments in one place." /> : null}
+            <PrimaryButton title={formOpen ? 'Close form' : 'Add EMI or subscription'} onPress={() => { setFormOpen(!formOpen); setError(''); }} variant={formOpen ? 'secondary' : 'primary'} />
+            {formOpen ? (
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>Recurring payment</Text>
+                <View style={styles.formSegment}>
+                  {(['emi', 'subscription'] as const).map((kind) => <ChoiceChip key={kind} label={kind === 'emi' ? 'EMI' : 'Subscription'} selected={paymentKind === kind} onPress={() => setPaymentKind(kind)} />)}
+                </View>
+                <InputField label={paymentKind === 'emi' ? 'Loan or EMI name' : 'Subscription name'} value={title} onChangeText={setTitle} placeholder={paymentKind === 'emi' ? 'e.g. Home loan' : 'e.g. Music service'} />
+                <CurrencyInput label="Payment amount" value={amount} onChangeValue={setAmount} variant="card" icon="wallet-outline" />
+                <Text style={styles.fieldLabel}>Frequency</Text>
+                <View style={styles.chipList}>
+                  {(['weekly', 'monthly', 'yearly'] as const).map((item) => <ChoiceChip key={item} label={item} selected={cadence === item} onPress={() => setCadence(item)} />)}
+                </View>
+                <InputField label="Next due date" value={dueDate} onChangeText={setDueDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+                <InputField label="Expense category" value={paymentCategory} onChangeText={setPaymentCategory} placeholder="Bills & Utilities" />
+                {paymentKind === 'emi' ? (
+                  <>
+                    <CurrencyInput label="Outstanding loan balance (optional)" value={outstandingBalance} onChangeValue={setOutstandingBalance} variant="card" icon="business-outline" />
+                    <InputField
+                      label="Installments remaining (optional)"
+                      value={remainingInstallments}
+                      onChangeText={(value) => setRemainingInstallments(value.replace(/\D/g, ''))}
+                      placeholder="e.g. 24"
+                      keyboardType="number-pad"
+                      inputMode="numeric"
+                    />
+                  </>
+                ) : null}
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+                <PrimaryButton title="Save payment" onPress={() => void saveForm()} loading={saving} />
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {currentModule.id === 'reports' || currentModule.id === 'analytics' ? (
+          <View style={styles.moduleList}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>THIS MONTH · FROM YOUR ENTRIES</Text>
+              {thisMonthTransactions.length ? (
+                <View style={styles.statRow}>
+                  <View style={styles.statBlock}>
+                    <Text style={styles.statLabel}>Income</Text>
+                    <Text style={[styles.statValue, styles.incomeText]}>{formatINR(monthIncome)}</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statBlock}>
+                    <Text style={styles.statLabel}>Expenses</Text>
+                    <Text style={[styles.statValue, styles.expenseText]}>{formatINR(monthExpenses)}</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.summaryValue}>No data yet</Text>
+                  <Text style={styles.summaryHint}>Add transactions to see your real monthly summary.</Text>
+                </>
+              )}
+            </View>
+            {thisMonthTransactions.length ? (
+              <>
+                <SectionHeading title="By category" subtitle="Expense totals from this month’s transactions." />
+                {Object.entries(thisMonthTransactions
+                  .filter((item) => item.type === 'expense')
+                  .reduce<Record<string, number>>((totals, item) => {
+                    totals[item.category] = (totals[item.category] ?? 0) + item.amount;
+                    return totals;
+                  }, {}))
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([itemCategory, total]) => {
+                    const ratio = monthExpenses ? total / monthExpenses : 0;
+                    return (
+                      <View key={itemCategory} style={styles.itemCard}>
+                        <View style={styles.itemTop}>
+                          <View style={styles.rowCopy}>
+                            <Text style={styles.rowTitle}>{itemCategory}</Text>
+                            <Text style={styles.rowSub}>{Math.round(ratio * 100)}% of recorded expenses</Text>
+                          </View>
+                          <Text style={styles.paymentAmount}>{formatINR(total)}</Text>
+                        </View>
+                        <View style={styles.track}><View style={[styles.trackFill, { width: `${Math.min(ratio * 100, 100)}%` }]} /></View>
+                      </View>
+                    );
+                  })}
+              </>
+            ) : null}
+          </View>
+        ) : null}
+
+        {!isAdditionalModules
+          && !['budgets', 'goals', 'upcoming-payments', 'reports', 'analytics'].includes(currentModule.id) ? (
+          <EmptyState icon="sparkles-outline" title="Nothing here yet" message={`Your ${currentModule.name.toLowerCase()} information will appear here as you add it. No sample financial data is shown.`} />
+        ) : null}
       </ScrollView>
     </View>
   );
 }
 
+function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <View style={styles.sectionHeading}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={styles.sectionSub}>{subtitle}</Text>
+    </View>
+  );
+}
+
+function EmptyState({ icon, title, message }: { icon: keyof typeof Ionicons.glyphMap; title: string; message: string }) {
+  return (
+    <View style={styles.emptyCard}>
+      <View style={styles.emptyIcon}><Ionicons name={icon} size={22} color={colors.accentDark} /></View>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyMessage}>{message}</Text>
+    </View>
+  );
+}
+
+function ChoiceChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={onPress} style={[styles.chip, selected && styles.chipSelected]}>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function formatPaymentDate(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 150, gap: spacing.md },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 150, gap: spacing.lg, width: '100%', maxWidth: 760, alignSelf: 'center' },
   centered: { justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  header: { gap: spacing.xs, marginBottom: spacing.sm },
-  headerIcon: { width: 52, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  headerIcon: { width: 52, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise },
+  headerCopy: { flex: 1, gap: 2 },
+  kicker: { ...typography.micro, color: colors.accent, fontWeight: '700', letterSpacing: 0.9 },
   title: { ...typography.h1, color: colors.textPrimary },
-  copy: { ...typography.body, color: colors.textSecondary, lineHeight: 23 },
-  sectionHeading: { gap: 4, marginTop: spacing.sm, marginBottom: spacing.xs },
+  copy: { ...typography.caption, color: colors.textSecondary, lineHeight: 19 },
+  moduleList: { gap: spacing.md },
+  sectionHeading: { gap: 4, marginTop: spacing.xs },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   sectionSub: { ...typography.caption, color: colors.textSecondary, lineHeight: 19 },
+  summaryCard: { padding: spacing.lg, borderRadius: radius.xl, backgroundColor: colors.accentDark, gap: spacing.xs },
+  summaryLabel: { ...typography.micro, color: colors.surprise, letterSpacing: 0.8, fontWeight: '700' },
+  summaryValue: { ...typography.h1, color: colors.white },
+  summaryHint: { ...typography.caption, color: 'rgba(255,255,255,0.72)' },
   moduleRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  moduleIcon: { width: 42, height: 42, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },
-  moduleCopy: { flex: 1, gap: 3 },
-  moduleTitle: { ...typography.bodySemibold, color: colors.textPrimary },
-  moduleDescription: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
-  empty: { alignItems: 'center', gap: spacing.sm, padding: spacing.xl, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  emptyIcon: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.accentSoft },
-  manageButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radius.full, borderWidth: 1, borderColor: colors.accentMuted, backgroundColor: colors.accentSoft },
-  manageButtonText: { ...typography.bodySemibold, color: colors.accentDark },
-  pressed: { opacity: 0.8 },
+  rowIcon: { width: 42, height: 42, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },
+  orangeIcon: { backgroundColor: colors.warningSoft },
+  greenIcon: { backgroundColor: colors.surprise },
+  rowCopy: { flex: 1, minWidth: 0, gap: 3 },
+  rowTitle: { ...typography.bodySemibold, color: colors.textPrimary },
+  rowSub: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
+  itemCard: { padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: spacing.sm },
+  itemTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  track: { height: 8, overflow: 'hidden', borderRadius: radius.full, backgroundColor: colors.surfaceMuted },
+  trackFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.accent },
+  remainingText: { ...typography.caption, color: colors.textSecondary },
+  paymentAmount: { ...typography.bodySemibold, color: colors.textPrimary },
+  paymentFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  dueLabel: { ...typography.micro, color: colors.textTertiary, letterSpacing: 0.6 },
+  dueDate: { ...typography.captionMedium, color: colors.textSecondary, marginTop: 2 },
+  loanDetails: { ...typography.caption, color: colors.textSecondary, marginTop: -spacing.xs },
+  paidButton: { minHeight: 38, justifyContent: 'center', paddingHorizontal: spacing.sm, marginLeft: 'auto', borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  paidButtonText: { ...typography.captionMedium, color: colors.accentDark },
+  completedLabel: { ...typography.captionMedium, color: colors.income, marginLeft: 'auto' },
+  emptyCard: { alignItems: 'center', padding: spacing.lg, gap: spacing.xs, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  emptyIcon: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.surprise, marginBottom: spacing.xs },
+  emptyTitle: { ...typography.bodySemibold, color: colors.textPrimary },
+  emptyMessage: { ...typography.caption, color: colors.textSecondary, lineHeight: 19, textAlign: 'center', maxWidth: 300 },
+  formCard: { padding: spacing.md, gap: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  formTitle: { ...typography.h3, color: colors.textPrimary },
+  fieldLabel: { ...typography.captionMedium, color: colors.textSecondary },
+  chipList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  formSegment: { flexDirection: 'row', gap: spacing.xs },
+  chip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.full, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+  chipSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accentMuted },
+  chipText: { ...typography.caption, color: colors.textSecondary, textTransform: 'capitalize' },
+  chipTextSelected: { color: colors.accentDark, fontWeight: '700' },
+  error: { ...typography.caption, color: colors.expense },
+  goalItem: { gap: spacing.xs },
+  goalActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xs },
+  secondaryButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  secondaryButtonText: { ...typography.captionMedium, color: colors.accentDark },
+  cancelLink: { alignItems: 'center', padding: spacing.xs },
+  cancelText: { ...typography.captionMedium, color: colors.textSecondary },
+  statRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
+  statBlock: { flex: 1, gap: spacing.xxs },
+  statDivider: { width: 1, height: 42, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: spacing.md },
+  statLabel: { ...typography.caption, color: 'rgba(255,255,255,0.7)' },
+  statValue: { ...typography.h3, color: colors.white },
+  incomeText: { color: colors.surprise },
+  expenseText: { color: '#FFB8AF' },
 });

@@ -133,7 +133,8 @@ export function MobileLoginScreen() {
 
         <ScrollView
           bounces={false}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.content,

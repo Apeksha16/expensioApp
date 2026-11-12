@@ -15,8 +15,11 @@ import {
 import { reportPreferenceService, type ReportPreferenceChanges } from '../services/reportPreferenceService';
 import type {
   AuthPhase,
+  CategoryBudget,
   CreateSplitInput,
   Friend,
+  RecurringPayment,
+  SavingsGoal,
   SplitExpense,
   Transaction,
   UserProfile,
@@ -27,6 +30,8 @@ import { clearSession, readSession, writeSession } from '../core/storage/session
 import { readLocalData, writeLocalData } from '../core/storage/localData';
 import { avatarPreferenceService } from '../services/avatarPreferenceService';
 import { profileService, type ProfileRecord } from '../services/profileService';
+import { advancePaymentDate, localDateString, validateDate, validatePositiveAmount } from '../services/moneyService';
+import { colors } from '../theme';
 
 interface AppState {
   authPhase: AuthPhase;
@@ -65,7 +70,20 @@ interface AppState {
   friends: Friend[];
   splits: SplitExpense[];
   transactions: Transaction[];
+  budgets: CategoryBudget[];
+  goals: SavingsGoal[];
+  recurringPayments: RecurringPayment[];
   addTransaction: (input: Omit<Transaction, 'id'>) => Promise<void>;
+  updateTransaction: (id: string, changes: Pick<Transaction, 'merchant' | 'category' | 'amount'>) => Promise<void>;
+  removeTransaction: (id: string) => Promise<void>;
+  addBudget: (input: Pick<CategoryBudget, 'category' | 'limit'>) => Promise<void>;
+  removeBudget: (budgetId: string) => Promise<void>;
+  addGoal: (input: Pick<SavingsGoal, 'title' | 'target' | 'targetDate'>) => Promise<void>;
+  removeGoal: (goalId: string) => Promise<void>;
+  contributeToGoal: (goalId: string, amount: number) => Promise<void>;
+  addRecurringPayment: (input: Pick<RecurringPayment, 'name' | 'amount' | 'kind' | 'cadence' | 'nextDueDate' | 'category' | 'outstandingBalance' | 'remainingInstallments'>) => Promise<void>;
+  removeRecurringPayment: (paymentId: string) => Promise<void>;
+  markRecurringPaymentPaid: (paymentId: string) => Promise<void>;
   addFriend: (input: Pick<Friend, 'name' | 'userId'>) => Promise<void>;
   addSplit: (input: CreateSplitInput) => Promise<SplitExpense>;
   settleShare: (splitId: string, friendId: string) => Promise<void>;
@@ -144,6 +162,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [splits, setSplits] = useState<SplitExpense[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
 
   const restoreLocalState = useCallback(async () => {
     setAuthPhase('restoring');
@@ -159,6 +180,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTransactions(localData.transactions);
       setFriends(localData.friends);
       setSplits(localData.splits);
+      setBudgets(localData.budgets);
+      setGoals(localData.goals);
+      setRecurringPayments(localData.recurringPayments);
       const user = session?.user as unknown as UserProfile | undefined;
       const draft = session?.onboardingDraft as Partial<OnboardingDraft> | undefined;
       const sessionName = user?.name?.trim().split(/\s+/) ?? [];
@@ -421,11 +445,159 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       friends,
       splits,
       transactions,
+      budgets,
+      goals,
+      recurringPayments,
       addTransaction: async (input) => {
         const transaction: Transaction = { ...input, id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
         const nextTransactions = [transaction, ...transactions];
-        await writeLocalData({ transactions: nextTransactions, friends, splits });
+        await writeLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments });
         setTransactions(nextTransactions);
+      },
+      updateTransaction: async (id, changes) => {
+        const merchant = changes.merchant.trim();
+        if (!merchant) throw new Error('Enter a name for this transaction.');
+        validatePositiveAmount(changes.amount, 'transaction amount');
+        if (!transactions.some((transaction) => transaction.id === id)) {
+          throw new Error('This transaction is no longer available.');
+        }
+        const nextTransactions = transactions.map((transaction) => transaction.id === id
+          ? {
+            ...transaction,
+            merchant,
+            category: changes.category.trim() || transaction.category,
+            amount: Math.trunc(changes.amount),
+          }
+          : transaction);
+        await writeLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments });
+        setTransactions(nextTransactions);
+      },
+      removeTransaction: async (id) => {
+        const nextTransactions = transactions.filter((transaction) => transaction.id !== id);
+        if (nextTransactions.length === transactions.length) return;
+        await writeLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments });
+        setTransactions(nextTransactions);
+      },
+      addBudget: async (input) => {
+        const category = input.category.trim();
+        if (!category) throw new Error('Enter a budget category.');
+        validatePositiveAmount(input.limit, 'budget limit');
+        if (budgets.some((budget) => budget.category.toLowerCase() === category.toLowerCase())) {
+          throw new Error('A budget for this category already exists.');
+        }
+        const budget: CategoryBudget = {
+          id: `budget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          category,
+          limit: Math.trunc(input.limit),
+          createdAt: Date.now(),
+        };
+        const nextBudgets = [budget, ...budgets];
+        await writeLocalData({ transactions, friends, splits, budgets: nextBudgets, goals, recurringPayments });
+        setBudgets(nextBudgets);
+      },
+      removeBudget: async (budgetId) => {
+        const nextBudgets = budgets.filter((budget) => budget.id !== budgetId);
+        if (nextBudgets.length === budgets.length) return;
+        await writeLocalData({ transactions, friends, splits, budgets: nextBudgets, goals, recurringPayments });
+        setBudgets(nextBudgets);
+      },
+      addGoal: async (input) => {
+        const title = input.title.trim();
+        if (!title) throw new Error('Enter a name for your goal.');
+        validatePositiveAmount(input.target, 'goal target');
+        if (input.targetDate) validateDate(input.targetDate, 'target date');
+        const goal: SavingsGoal = {
+          id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          title,
+          current: 0,
+          target: Math.trunc(input.target),
+          targetDate: input.targetDate,
+        };
+        const nextGoals = [goal, ...goals];
+        await writeLocalData({ transactions, friends, splits, budgets, goals: nextGoals, recurringPayments });
+        setGoals(nextGoals);
+      },
+      removeGoal: async (goalId) => {
+        const nextGoals = goals.filter((goal) => goal.id !== goalId);
+        if (nextGoals.length === goals.length) return;
+        await writeLocalData({ transactions, friends, splits, budgets, goals: nextGoals, recurringPayments });
+        setGoals(nextGoals);
+      },
+      contributeToGoal: async (goalId, amount) => {
+        validatePositiveAmount(amount, 'contribution');
+        const goal = goals.find((item) => item.id === goalId);
+        if (!goal) throw new Error('This goal is no longer available.');
+        const nextGoals = goals.map((item) => item.id === goalId
+          ? { ...item, current: item.current + Math.trunc(amount) }
+          : item);
+        await writeLocalData({ transactions, friends, splits, budgets, goals: nextGoals, recurringPayments });
+        setGoals(nextGoals);
+      },
+      addRecurringPayment: async (input) => {
+        const name = input.name.trim();
+        const category = input.category.trim();
+        if (!name) throw new Error('Enter a name for this payment.');
+        if (!category) throw new Error('Enter a category for this payment.');
+        validatePositiveAmount(input.amount, 'payment amount');
+        validateDate(input.nextDueDate, 'due date');
+        if (!['weekly', 'monthly', 'yearly'].includes(input.cadence)) throw new Error('Choose a valid payment frequency.');
+        if (input.outstandingBalance !== undefined && (!Number.isFinite(input.outstandingBalance) || input.outstandingBalance < 0)) {
+          throw new Error('Enter a valid outstanding balance.');
+        }
+        if (input.remainingInstallments !== undefined && (!Number.isInteger(input.remainingInstallments) || input.remainingInstallments < 1)) {
+          throw new Error('Remaining installments must be a whole number greater than zero.');
+        }
+        const payment: RecurringPayment = {
+          ...input,
+          id: `payment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name,
+          category,
+          amount: Math.trunc(input.amount),
+          active: true,
+        };
+        const nextPayments = [payment, ...recurringPayments];
+        await writeLocalData({ transactions, friends, splits, budgets, goals, recurringPayments: nextPayments });
+        setRecurringPayments(nextPayments);
+      },
+      removeRecurringPayment: async (paymentId) => {
+        const nextPayments = recurringPayments.filter((payment) => payment.id !== paymentId);
+        if (nextPayments.length === recurringPayments.length) return;
+        await writeLocalData({ transactions, friends, splits, budgets, goals, recurringPayments: nextPayments });
+        setRecurringPayments(nextPayments);
+      },
+      markRecurringPaymentPaid: async (paymentId) => {
+        const payment = recurringPayments.find((item) => item.id === paymentId);
+        if (!payment || !payment.active) throw new Error('This recurring payment is unavailable.');
+        const now = new Date();
+        const nextPayments = recurringPayments.map((item) => item.id === paymentId
+          ? {
+            ...item,
+            nextDueDate: advancePaymentDate(item.nextDueDate, item.cadence, now),
+            outstandingBalance: item.kind === 'emi' && item.outstandingBalance !== undefined
+              ? Math.max(0, item.outstandingBalance - item.amount)
+              : item.outstandingBalance,
+            remainingInstallments: item.kind === 'emi' && item.remainingInstallments !== undefined
+              ? Math.max(0, item.remainingInstallments - 1)
+              : item.remainingInstallments,
+            active: item.kind === 'emi' && item.remainingInstallments === 1 ? false : item.active,
+          }
+          : item);
+        const transaction: Transaction = {
+          id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: 'expense',
+          merchant: payment.name,
+          category: payment.category,
+          icon: payment.kind === 'emi' ? 'cash' : 'receipt',
+          iconColor: colors.expense,
+          amount: payment.amount,
+          date: localDateString(now),
+          time: now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+          occurredAt: now.getTime(),
+        };
+        const nextTransactions = [transaction, ...transactions];
+        await writeLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments: nextPayments });
+        setTransactions(nextTransactions);
+        setRecurringPayments(nextPayments);
       },
       addFriend: async (input) => {
         const name = input.name.trim();
@@ -442,13 +614,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           color: colorsForFriend[friends.length % colorsForFriend.length],
         };
         const nextFriends = [...friends, friend];
-        await writeLocalData({ transactions, friends: nextFriends, splits });
+        await writeLocalData({ transactions, friends: nextFriends, splits, budgets, goals, recurringPayments });
         setFriends(nextFriends);
       },
       addSplit: async (input) => {
         const next = createSplitExpense(input);
         const nextSplits = [next, ...splits];
-        await writeLocalData({ transactions, friends, splits: nextSplits });
+        await writeLocalData({ transactions, friends, splits: nextSplits, budgets, goals, recurringPayments });
         setSplits(nextSplits);
         return next;
       },
@@ -464,7 +636,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ),
             };
           });
-        await writeLocalData({ transactions, friends, splits: nextSplits });
+        await writeLocalData({ transactions, friends, splits: nextSplits, budgets, goals, recurringPayments });
         setSplits(nextSplits);
       },
       settleMyShare: async (splitId) => {
@@ -479,7 +651,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ),
             };
           });
-        await writeLocalData({ transactions, friends, splits: nextSplits });
+        await writeLocalData({ transactions, friends, splits: nextSplits, budgets, goals, recurringPayments });
         setSplits(nextSplits);
       },
       applyAuthSession: async (response) => {
@@ -581,7 +753,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthPhase('otp');
       },
     }),
-    [authPhase, restoreError, restoreLocalState, showToast, phone, countryCode, profile, profileState, preferences, friends, splits, transactions, verificationChannel, verificationTarget, phoneVerified, emailVerified, onboardingDraft, onboardingStep],
+    [authPhase, restoreError, restoreLocalState, showToast, phone, countryCode, profile, profileState, preferences, friends, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, phoneVerified, emailVerified, onboardingDraft, onboardingStep],
   );
 
   return (

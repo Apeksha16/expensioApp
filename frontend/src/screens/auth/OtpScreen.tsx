@@ -128,7 +128,8 @@ function PhoneOtpScreen() {
         </View>
         <ScrollView
           bounces={false}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             mobileOtpStyles.container,
@@ -360,7 +361,8 @@ function EmailOtpScreen() {
         </View>
         <ScrollView
           bounces={false}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             emailStyles.container,

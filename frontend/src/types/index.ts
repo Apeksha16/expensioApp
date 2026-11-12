@@ -21,6 +21,7 @@ export interface Transaction {
   amount: number;
   date: string;
   time: string;
+  occurredAt?: number;
 }
 
 export interface BudgetSummary {
@@ -50,6 +51,30 @@ export interface SavingsGoal {
   title: string;
   current: number;
   target: number;
+  targetDate?: string;
+}
+
+export interface CategoryBudget {
+  id: string;
+  category: string;
+  limit: number;
+  createdAt: number;
+}
+
+export type PaymentKind = 'emi' | 'subscription';
+export type PaymentCadence = 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurringPayment {
+  id: string;
+  name: string;
+  amount: number;
+  kind: PaymentKind;
+  cadence: PaymentCadence;
+  nextDueDate: string;
+  category: string;
+  active: boolean;
+  outstandingBalance?: number;
+  remainingInstallments?: number;
 }
 
 export interface Subscription {

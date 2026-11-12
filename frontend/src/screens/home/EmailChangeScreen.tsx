@@ -142,7 +142,8 @@ export function EmailChangeScreen({ navigation }: Props) {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
       <ScrollView
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, spacing.xl) }]}
         showsVerticalScrollIndicator={false}
       >

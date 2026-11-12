@@ -14,6 +14,8 @@ export function AuthEntryScreen() {
     <View style={styles.screen}>
       <ScrollView
         bounces={false}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         contentContainerStyle={[
           styles.container,
           {

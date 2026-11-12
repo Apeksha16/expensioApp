@@ -32,7 +32,6 @@ const weekdays: { value: ReportDayOfWeek; label: string; short: string }[] = [
 export function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const {
-    profile,
     profileState,
     showToast,
     saveAvatarPreference,
@@ -204,7 +203,7 @@ export function ProfileScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView keyboardShouldPersistTaps="always" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={styles.kicker}>YOUR SPACE</Text>
         <Text style={styles.pageTitle}>Profile</Text>
 
@@ -221,8 +220,9 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
           </Pressable>
           <View style={styles.identityCopy}>
+            <Text style={styles.identityEyebrow}>YOUR EXPENSIO PROFILE</Text>
             <Text style={styles.name}>{fullName}</Text>
-            <Text style={styles.userId}>{profile?.userId || 'Your Expensio profile'}</Text>
+            <Text style={styles.userId}>{mobileLabel}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -544,15 +544,16 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 150, gap: spacing.sm },
   kicker: { ...typography.label, color: colors.accent, letterSpacing: 1.4 },
   pageTitle: { ...typography.h1, color: colors.textPrimary, marginTop: -spacing.xs },
-  identityCard: { marginTop: spacing.sm, padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  avatarButton: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft, borderWidth: 2, borderColor: colors.accentMuted },
+  identityCard: { marginTop: spacing.sm, padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.accentDark, borderWidth: 1, borderColor: colors.accentDark, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  avatarButton: { width: 62, height: 62, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise, borderWidth: 2, borderColor: 'rgba(255,255,255,0.28)' },
   avatarEmoji: { fontSize: 38 },
-  editAvatarBadge: { position: 'absolute', right: -3, bottom: -3, width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent, borderWidth: 2, borderColor: colors.surface },
+  editAvatarBadge: { position: 'absolute', right: -3, bottom: -3, width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent, borderWidth: 2, borderColor: colors.accentDark },
   identityCopy: { flex: 1, minWidth: 0 },
-  name: { ...typography.h3, color: colors.textPrimary },
-  userId: { ...typography.caption, color: colors.textSecondary, marginTop: 3 },
-  changeAvatarButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  changeAvatarText: { ...typography.captionMedium, color: colors.accent },
+  identityEyebrow: { ...typography.micro, color: colors.surprise, letterSpacing: 0.7, marginBottom: 2 },
+  name: { ...typography.h3, color: colors.white },
+  userId: { ...typography.caption, color: 'rgba(255,255,255,0.72)', marginTop: 3 },
+  changeAvatarButton: { minHeight: 38, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.12)' },
+  changeAvatarText: { ...typography.captionMedium, color: colors.white },
   sectionHeading: { gap: 3, marginTop: spacing.md },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   sectionSubtitle: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },

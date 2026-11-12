@@ -46,6 +46,8 @@ export function SplitHomeScreen({ navigation }: Props) {
       </View>
 
       <ScrollView
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
@@ -84,22 +86,40 @@ export function SplitHomeScreen({ navigation }: Props) {
 
         <View>
           <SectionHeader
-            title="All splits"
+            title="Your groups"
             actionLabel="Friends →"
             onAction={() => navigation.navigate('Friends')}
           />
-          <View style={styles.list}>
-            {splits.map((split) => (
-              <SplitListItem
-                key={split.id}
-                split={split}
-                friends={friends}
-                onPress={() =>
-                  navigation.navigate('SplitDetail', { splitId: split.id })
-                }
-              />
-            ))}
-          </View>
+          {splits.length ? (
+            <View style={styles.list}>
+              {splits.map((split) => (
+                <SplitListItem
+                  key={split.id}
+                  split={split}
+                  friends={friends}
+                  onPress={() =>
+                    navigation.navigate('SplitDetail', { splitId: split.id })
+                  }
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="people-outline" size={22} color={colors.accent} />
+              </View>
+              <Text style={styles.emptyTitle}>No groups yet</Text>
+              <Text style={styles.emptyCopy}>Start a split to keep shared expenses organized with friends.</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('CreateSplit')}
+                style={styles.emptyAction}
+              >
+                <Text style={styles.emptyActionText}>Create your first split</Text>
+                <Ionicons name="arrow-forward" size={15} color={colors.accentDark} />
+              </Pressable>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -150,4 +170,10 @@ const styles = StyleSheet.create({
   list: {
     gap: spacing.xs,
   },
+  emptyCard: { alignItems: 'center', padding: spacing.lg, gap: spacing.xs, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  emptyIcon: { width: 48, height: 48, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise },
+  emptyTitle: { ...typography.bodySemibold, color: colors.textPrimary },
+  emptyCopy: { ...typography.caption, color: colors.textSecondary, lineHeight: 18, textAlign: 'center', maxWidth: 280 },
+  emptyAction: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, marginTop: spacing.xs, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  emptyActionText: { ...typography.captionMedium, color: colors.accentDark },
 });

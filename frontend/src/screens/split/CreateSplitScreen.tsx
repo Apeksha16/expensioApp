@@ -157,7 +157,8 @@ export function CreateSplitScreen({ navigation }: Props) {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
         >
           {step === 1 ? (
             <View style={styles.section}>

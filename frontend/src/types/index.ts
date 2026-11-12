@@ -1,4 +1,4 @@
-export type AuthPhase = 'onboarding' | 'login' | 'mobile' | 'email' | 'otp' | 'setup' | 'main';
+export type AuthPhase = 'restoring' | 'onboarding' | 'login' | 'mobile' | 'email' | 'otp' | 'setup' | 'main';
 
 export interface UserProfile {
   name: string;

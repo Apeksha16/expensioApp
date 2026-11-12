@@ -9,9 +9,27 @@ import { OtpScreen } from '../screens/auth/OtpScreen';
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { ProfileSetupScreen } from '../screens/setup/ProfileSetupScreen';
 import { MainTabs } from './MainTabs';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
+const styles = StyleSheet.create({
+  restoring: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+});
 
 export function RootNavigator() {
   const { authPhase } = useApp();
+
+  if (authPhase === 'restoring') {
+    return (
+      <View style={styles.restoring}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
 
   switch (authPhase) {
     case 'login':
@@ -46,4 +64,5 @@ export function RootNavigator() {
     default:
       return <OnboardingScreen />;
   }
+
 }

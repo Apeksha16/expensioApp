@@ -11,6 +11,7 @@ export const db = {
     incomeAmountMinor: '0',
     cashBalanceMinor: '0',
     savingsAmountMinor: '0',
+    onboardingStep: 1,
     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=apeksha',
   },
 

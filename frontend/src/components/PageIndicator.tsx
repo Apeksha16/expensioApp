@@ -20,9 +20,9 @@ export function PageIndicator({ count, activeIndex, tone = 'forest' }: Props) {
           <View
             key={index}
             style={[
-              tone === 'lime' ? styles.heroBar : styles.dot,
+              styles.heroBar,
               { backgroundColor: isActive ? active : idle },
-              isActive && (tone === 'lime' ? styles.heroBarActive : styles.dotActive),
+              isActive && styles.heroBarActive,
             ]}
           />
         );

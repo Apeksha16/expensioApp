@@ -28,7 +28,6 @@ export function OnboardingScreen() {
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<OnboardingSlide>>(null);
   const isLast = index === onboardingSlides.length - 1;
-  const isHero = index === 0;
   const isBudget = index === 2;
   const isDark = index === 0 || index === 3;
   const pageBackground = isBudget ? '#C8F169' : isDark ? '#0A2A1E' : '#F3F0E6';
@@ -68,7 +67,7 @@ export function OnboardingScreen() {
       >
         <PageIndicator count={onboardingSlides.length} activeIndex={index} tone={isDark ? 'lime' : 'forest'} />
         <View style={styles.topBar}>
-          {!isHero ? (
+          {isLast ? (
             <Pressable onPress={goBack} hitSlop={10} style={styles.iconBtn}>
               <Ionicons name="chevron-back" size={22} color={foreground} />
             </Pressable>

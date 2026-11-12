@@ -10,6 +10,7 @@ export interface StoredSession {
   onboardingDraft?: Record<string, unknown>;
   phoneVerified?: boolean;
   emailVerified?: boolean;
+  onboardingStep?: number;
 }
 
 export async function readSession(): Promise<StoredSession | null> {

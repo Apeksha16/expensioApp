@@ -14,6 +14,7 @@ import {
   completeOnboarding,
   refresh,
   logout,
+  updateOnboardingProgress,
 } from '../controllers/authController.js';
 
 const router = Router();
@@ -28,6 +29,8 @@ router.post('/complete-onboarding', completeOnboarding);
 router.post('/refresh', refresh);
 router.post('/logout', logout);
 router.get('/profile', requireAuth, getProfile);
+router.post('/profile', requireAuth, getProfile);
+router.post('/onboarding-progress', requireAuth, updateOnboardingProgress);
 router.post('/profile', requireAuth, updateProfile);
 router.post('/mpin/set', setMpin);
 router.post('/mpin/verify', verifyMpin);

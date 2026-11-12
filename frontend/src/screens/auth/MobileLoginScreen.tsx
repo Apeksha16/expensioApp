@@ -1,55 +1,102 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_COUNTRY_DIAL } from '../../data/config';
 import { countryCodes } from '../../data/mock';
-import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { sendEmailOtp, sendOtp } from '../../services/authApi';
 import { isValidIndianMobile } from '../../utils/validation';
-import { sendOtp } from '../../services/authApi';
+
+type Mode = 'mobile' | 'email';
+
+function IndiaFlag() {
+  return (
+    <View style={styles.flag}>
+      <View style={styles.flagSaffron} />
+      <View style={styles.flagWhite}><View style={styles.flagWheel} /></View>
+      <View style={styles.flagGreen} />
+    </View>
+  );
+}
 
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
-  const { setAuthPhase, setPhoneCredentials } = useApp();
+  const { setAuthPhase, setPhoneCredentials, setVerification } = useApp();
+  const [mode, setMode] = useState<Mode>('mobile');
   const [dial, setDial] = useState(DEFAULT_COUNTRY_DIAL);
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [focused, setFocused] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const selected = countryCodes.find((item) => item.dial === dial) ?? countryCodes[0];
+  const phoneDigits = phone.replace(/\D/g, '');
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isReady = mode === 'mobile'
+    ? (dial === '+91' ? isValidIndianMobile(phoneDigits, dial) : /^\d{8,15}$/.test(phoneDigits))
+    : validEmail;
 
-  useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 350);
-    return () => clearTimeout(timer);
-  }, []);
+  const switchMode = (nextMode: Mode) => {
+    if (loading || nextMode === mode) return;
+    setMode(nextMode);
+    setError('');
+    setFocused(false);
+  };
 
   const onPhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, dial === '+91' ? 10 : 15);
-    setPhone(dial === '+91' ? digits.replace(/^(\d{5})(\d)/, '$1 $2') : digits);
+    setPhone(digits);
     if (error) setError('');
   };
 
+  const onEmailChange = (value: string) => {
+    setEmail(value);
+    if (error) setError('');
+  };
+
+  const onInputChange = (value: string) => {
+    if (mode === 'mobile') {
+      onPhoneChange(value);
+    } else {
+      onEmailChange(value);
+    }
+  };
+
   const submit = async () => {
-    if (!isValidIndianMobile(phone, dial)) {
-      setError(dial === '+91' ? 'Enter a valid 10-digit number' : 'Enter a valid mobile number');
+    if (loading) return;
+    if (!isReady) {
+      setError(mode === 'mobile'
+        ? dial === '+91' ? 'Enter a valid 10-digit number' : 'Enter a valid mobile number'
+        : 'Enter a valid email address');
       return;
     }
+
     setLoading(true);
+    setError('');
     try {
-      const cleanPhone = phone.replace(/\s/g, '');
-      await sendOtp(cleanPhone);
-      setPhoneCredentials(dial, cleanPhone);
+      if (mode === 'mobile') {
+        const cleanPhone = phone.replace(/\D/g, '');
+        await sendOtp(cleanPhone);
+        setPhoneCredentials(dial, cleanPhone);
+        setVerification('phone', cleanPhone);
+      } else {
+        const target = email.trim().toLowerCase();
+        await sendEmailOtp(target);
+        setVerification('email', target);
+      }
       setAuthPhase('otp');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to send OTP');
@@ -61,98 +108,162 @@ export function MobileLoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
-      <View
-        style={[
-          styles.container,
-          { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.sm },
-        ]}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => setAuthPhase('login')} hitSlop={10} style={styles.back}>
-            <Text style={styles.backText}>‹</Text>
-          </Pressable>
-          <View style={styles.brandRow}>
-            <View style={styles.brandMark}><Text style={styles.brandMarkText}>e</Text></View>
-            <Text style={styles.brand}>expensio</Text>
-          </View>
-          <View style={styles.headerSpacer} />
+      <View style={styles.screen}>
+        <View pointerEvents="none" style={styles.decoration}>
+          <View style={styles.outerRing} />
+          <View style={styles.middleRing} />
+          <View style={styles.innerDisc} />
         </View>
 
-        <View style={styles.intro}>
-          <Text style={styles.kicker}>WELCOME BACK</Text>
-          <Text style={styles.title}>Your money,{"\n"}made simpler.</Text>
-          <Text style={styles.subtitle}>Sign in to pick up where you left off.</Text>
-        </View>
-
-        <View style={styles.visual}>
-          <View style={styles.visualGlow} />
-          <View style={styles.visualCard}>
-            <View style={styles.visualTop}>
-              <Text style={styles.visualLabel}>YOUR MONEY</Text>
-              <View style={styles.visualDot} />
+        <ScrollView
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 28) },
+          ]}
+        >
+          <View style={styles.header}>
+            <Pressable
+              accessibilityLabel="Back"
+              onPress={() => setAuthPhase('login')}
+              hitSlop={8}
+              style={styles.backButton}
+            >
+              <Ionicons name="chevron-back" size={22} color="#F3F1E7" />
+            </Pressable>
+            <View style={styles.brand}>
+              <View style={styles.brandMark}><Text style={styles.brandMarkText}>e</Text></View>
+              <Text style={styles.brandText}>expensio</Text>
             </View>
-            <Text style={styles.visualAmount}>₹1,24,500</Text>
-            <View style={styles.visualBars}>
-              {[28, 42, 34, 54, 68].map((height, index) => (
-                <View key={height} style={[styles.visualBar, { height }, index === 4 && styles.visualBarAccent]} />
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <View style={styles.hero}>
+            <View style={styles.eyebrow}>
+              <View style={styles.eyebrowDot} />
+              <Text style={styles.eyebrowText}>WELCOME BACK</Text>
+            </View>
+            <Text style={styles.headline}>
+              Your money,{'\n'}
+              <Text style={styles.headlineAccent}>made simpler.</Text>
+            </Text>
+            <Text style={styles.subtitle}>Log in with a one-time code. No password to remember.</Text>
+          </View>
+
+          <View style={styles.spacer} />
+
+          <View style={styles.formCard}>
+            <View accessibilityLabel="Login method" accessibilityRole="tablist" style={styles.toggle}>
+              {(['mobile', 'email'] as const).map((item) => (
+                <Pressable
+                  key={item}
+                  accessibilityLabel={`Use ${item} login`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: mode === item }}
+                  onPress={() => switchMode(item)}
+                  style={[styles.toggleButton, mode === item && styles.toggleSelected]}
+                >
+                  <Text style={[styles.toggleText, mode === item && styles.toggleTextSelected]}>
+                    {item === 'mobile' ? 'Mobile' : 'Email'}
+                  </Text>
+                </Pressable>
               ))}
             </View>
-          </View>
-          <View style={styles.sparkle}><Text style={styles.sparkleText}>✦</Text></View>
-        </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Log in with OTP</Text>
-          <Text style={styles.formSubtitle}>Enter your mobile number to receive a one-time password.</Text>
-          <Text style={styles.label}>Mobile number</Text>
-          <View style={[styles.phoneField, error && styles.phoneFieldError]}>
-            <Pressable style={styles.country} onPress={() => setPickerOpen(true)}>
-              <Text style={styles.flag}>{selected.flag}</Text>
-              <Text style={styles.dial}>{selected.dial}</Text>
-              <Text style={styles.chevron}>⌄</Text>
-            </Pressable>
-            <View style={styles.divider} />
-            <TextInput
-              ref={inputRef}
-              accessibilityLabel="Mobile number"
-              autoComplete="tel"
-              value={phone}
-              onChangeText={onPhoneChange}
-              onSubmitEditing={submit}
-              keyboardType="number-pad"
-              placeholder="Enter mobile number"
-              placeholderTextColor={colors.textTertiary}
-              returnKeyType="done"
-              selectionColor={colors.accent}
-              textContentType="telephoneNumber"
-              style={styles.input}
-            />
+            <View style={styles.formGroup}>
+              <Text nativeID="login-field-label" style={styles.label}>
+                {mode === 'mobile' ? 'Mobile number' : 'Email address'}
+              </Text>
+              <View style={[styles.inputRow, focused && styles.inputRowFocused]}>
+                {mode === 'mobile' ? (
+                  <Pressable
+                    accessibilityLabel="Select country"
+                    onPress={() => setPickerOpen(true)}
+                    style={styles.countrySection}
+                  >
+                    {dial === '+91' ? <IndiaFlag /> : <Text style={styles.countryEmoji}>{selected.flag}</Text>}
+                    <Text style={styles.dial}>{dial}</Text>
+                    <Ionicons name="chevron-down" size={16} color="#0B2B1F" />
+                  </Pressable>
+                ) : null}
+                <TextInput
+                  key={`${mode}-${dial}`}
+                  accessibilityLabel={mode === 'mobile' ? 'Mobile number' : 'Email address'}
+                  accessibilityLabelledBy="login-field-label"
+                  {...(mode === 'mobile'
+                    ? { defaultValue: phone.replace(/^(\d{5})(\d)/, '$1 $2') }
+                    : { value: email })}
+                  onChangeText={onInputChange}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  onSubmitEditing={submit}
+                  keyboardType={mode === 'mobile' ? 'phone-pad' : 'email-address'}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  placeholder={mode === 'mobile' ? '98765 43210' : 'you@example.com'}
+                  placeholderTextColor="#74837A"
+                  style={styles.input}
+                />
+              </View>
+              <Text style={styles.helper}>
+                {mode === 'mobile'
+                  ? "We'll text you a 6-digit code. Message rates may apply."
+                  : "We'll email you a 6-digit code. No password needed."}
+              </Text>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+            </View>
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <PrimaryButton title="Send OTP  →" onPress={submit} loading={loading} style={styles.cta} />
-          <Text style={styles.legal}>By continuing, you agree to our <Text style={styles.link}>Terms & Privacy Policy.</Text></Text>
-        </View>
+
+          <Pressable
+            accessibilityLabel="Send OTP"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !isReady || loading, busy: loading }}
+            onPress={() => void submit()}
+            disabled={!isReady || loading}
+            style={[styles.sendButton, isReady ? styles.sendButtonReady : styles.sendButtonDisabled]}
+          >
+            {loading ? <ActivityIndicator color="#0B2B1F" /> : (
+              <>
+                <Text style={[styles.sendLabel, !isReady && styles.sendLabelDisabled]}>Send OTP</Text>
+                <Ionicons name="arrow-forward" size={20} color={isReady ? '#0B2B1F' : '#8FA698'} />
+              </>
+            )}
+          </Pressable>
+
+          <Text style={styles.terms}>
+            By continuing, you agree to our{' '}
+            <Text accessibilityRole="link" style={styles.termLink}>Terms</Text>
+            {' '}and{' '}
+            <Text accessibilityRole="link" style={styles.termLink}>Privacy Policy</Text>.
+          </Text>
+        </ScrollView>
       </View>
 
-      <Modal visible={pickerOpen} transparent animationType="slide">
+      <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setPickerOpen(false)}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Select country</Text>
+          <View style={styles.picker}>
+            <View style={styles.handle} />
+            <Text style={styles.pickerTitle}>Select country</Text>
             {countryCodes.map((item) => (
               <Pressable
                 key={item.code}
-                style={styles.sheetRow}
+                accessibilityLabel={`${item.name} ${item.dial}`}
+                style={styles.pickerRow}
                 onPress={() => {
                   setDial(item.dial);
+                  setPhone('');
                   setPickerOpen(false);
                 }}
               >
-                <Text style={styles.flag}>{item.flag}</Text>
-                <Text style={styles.sheetName}>{item.name}</Text>
-                <Text style={styles.dial}>{item.dial}</Text>
+                <Text style={styles.countryEmoji}>{item.flag}</Text>
+                <Text style={styles.countryName}>{item.name}</Text>
+                <Text style={styles.pickerDial}>{item.dial}</Text>
               </Pressable>
             ))}
           </View>
@@ -163,123 +274,192 @@ export function MobileLoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  container: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
-    paddingHorizontal: spacing.lg,
+  screen: { flex: 1, backgroundColor: '#0B2B1F' },
+  content: { flexGrow: 1, paddingHorizontal: 20 },
+  decoration: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
+  outerRing: {
+    position: 'absolute',
+    width: 416,
+    height: 416,
+    borderRadius: 208,
+    borderWidth: 1.5,
+    borderColor: 'rgba(200,241,105,0.16)',
+    top: 150,
+    right: -208,
+  },
+  middleRing: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    borderWidth: 1.5,
+    borderColor: 'rgba(200,241,105,0.12)',
+    top: 208,
+    right: -150,
+  },
+  innerDisc: {
+    position: 'absolute',
+    width: 184,
+    height: 184,
+    borderRadius: 92,
+    backgroundColor: 'rgba(200,241,105,0.07)',
+    top: 266,
+    right: -92,
   },
   header: {
-    height: 46,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  back: { width: 42 },
-  backText: { color: colors.accentDark, fontSize: 40, lineHeight: 40, fontWeight: '300' },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#2B5644',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSpacer: { width: 44, height: 44 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandMark: {
     width: 34,
     height: 34,
-    borderRadius: radius.sm,
-    backgroundColor: colors.accent,
+    borderRadius: 10,
+    backgroundColor: '#C8F169',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  brandMarkText: { color: colors.white, fontSize: 22, fontWeight: '800' },
-  brand: { color: colors.accentDark, fontSize: 23, fontWeight: '800', letterSpacing: -0.8 },
-  headerSpacer: { width: 42 },
-  intro: { marginTop: spacing.lg },
-  kicker: { ...typography.label, color: colors.accent, letterSpacing: 1.4, marginBottom: spacing.xs },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 32,
-    lineHeight: 35,
-    fontWeight: '800',
-    letterSpacing: -1,
-  },
-  subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },
-  visual: {
-    height: 152,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: spacing.sm,
-  },
-  visualGlow: {
-    position: 'absolute',
-    width: 230,
-    height: 130,
-    borderRadius: 100,
-    backgroundColor: colors.accentSoft,
-  },
-  visualCard: {
-    width: 190,
-    height: 112,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    padding: spacing.sm,
-    transform: [{ rotate: '-6deg' }],
-    ...shadows.card,
-  },
-  visualTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  visualLabel: { ...typography.micro, color: colors.textTertiary, letterSpacing: 1 },
-  visualDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
-  visualAmount: { color: colors.accentDark, fontSize: 22, fontWeight: '800', marginTop: spacing.xs },
-  visualBars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 40, marginTop: spacing.xs },
-  visualBar: { width: 18, borderRadius: 5, backgroundColor: colors.accentMuted },
-  visualBarAccent: { backgroundColor: colors.surprise },
-  sparkle: {
-    position: 'absolute',
-    bottom: 8,
-    left: '18%',
-    width: 42,
-    height: 42,
-    borderRadius: radius.md,
-    backgroundColor: colors.surprise,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-12deg' }],
-  },
-  sparkleText: { color: colors.accentDark, fontSize: 25 },
-  formCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 30,
+  brandMarkText: { color: '#0B2B1F', fontSize: 20, fontWeight: '800' },
+  brandText: { color: '#F3F1E7', fontSize: 22, fontWeight: '700', letterSpacing: -0.4 },
+  hero: { marginTop: 44, paddingHorizontal: 4, gap: 16 },
+  eyebrow: {
+    height: 30,
+    alignSelf: 'flex-start',
+    paddingLeft: 12,
+    paddingRight: 14,
+    borderRadius: 15,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    padding: spacing.lg,
-    ...shadows.soft,
-  },
-  formTitle: { ...typography.h2, fontSize: 25, color: colors.textPrimary },
-  formSubtitle: { ...typography.body, color: colors.textSecondary, lineHeight: 21, marginTop: spacing.xs, marginBottom: spacing.md },
-  label: { ...typography.bodyMedium, color: colors.textPrimary, marginBottom: spacing.xs },
-  phoneField: {
-    height: 58,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: '#2B5644',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
+    gap: 8,
   },
-  phoneFieldError: { borderColor: colors.expense },
-  country: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xs },
-  flag: { fontSize: 19 },
-  dial: { ...typography.bodyMedium, color: colors.textPrimary },
-  chevron: { color: colors.textSecondary, fontSize: 19, marginTop: -4 },
-  divider: { width: 1, height: 30, backgroundColor: colors.border, marginHorizontal: spacing.xs },
-  input: { flex: 1, ...typography.body, color: colors.textPrimary, paddingVertical: spacing.sm },
-  error: { ...typography.caption, color: colors.expense, marginTop: spacing.xs },
-  cta: { height: 56, borderRadius: radius.full, marginTop: spacing.md },
-  legal: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', lineHeight: 18, marginTop: spacing.md },
-  link: { color: colors.accentDark, textDecorationLine: 'underline' },
-  overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, padding: spacing.lg, paddingBottom: spacing.xxl },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md },
-  sheetTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.md },
-  sheetRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  sheetName: { ...typography.body, color: colors.textPrimary, flex: 1 },
+  eyebrowDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#C8F169' },
+  eyebrowText: { color: '#C8F169', fontSize: 12, fontWeight: '700', letterSpacing: 1.8 },
+  headline: {
+    color: '#F3F1E7',
+    fontSize: 46,
+    lineHeight: 47,
+    fontWeight: '800',
+    letterSpacing: -1.8,
+  },
+  headlineAccent: { color: '#C8F169' },
+  subtitle: { color: '#B7C9BC', fontSize: 16, lineHeight: 24, fontWeight: '500', maxWidth: 290 },
+  spacer: { flex: 1, minHeight: 18 },
+  formCard: {
+    backgroundColor: '#F3F1E7',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(11,43,31,0.06)',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 22,
+    gap: 20,
+    shadowColor: '#000000',
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 5,
+  },
+  toggle: {
+    height: 52,
+    padding: 4,
+    gap: 4,
+    borderRadius: 24,
+    backgroundColor: '#E4E7D9',
+    flexDirection: 'row',
+  },
+  toggleButton: { flex: 1, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  toggleSelected: { backgroundColor: '#0B2B1F' },
+  toggleText: { color: '#3F5247', fontSize: 14, fontWeight: '700' },
+  toggleTextSelected: { color: '#C8F169' },
+  formGroup: { gap: 11 },
+  label: { color: '#0B2B1F', fontSize: 15, fontWeight: '700' },
+  inputRow: {
+    height: 64,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#CBD2C2',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputRowFocused: {
+    borderColor: '#0B2B1F',
+    shadowColor: '#C8F169',
+    shadowOpacity: 0.6,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
+  },
+  countrySection: {
+    height: '100%',
+    paddingHorizontal: 14,
+    borderRightWidth: 1.5,
+    borderRightColor: '#E0E4D6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  flag: { width: 26, height: 26, borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(10,42,30,0.12)' },
+  flagSaffron: { flex: 1, backgroundColor: '#FF9933' },
+  flagWhite: { flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  flagGreen: { flex: 1, backgroundColor: '#138808' },
+  flagWheel: { width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: '#123B77' },
+  countryEmoji: { fontSize: 22 },
+  dial: { color: '#0B2B1F', fontSize: 18, fontWeight: '700' },
+  input: {
+    flex: 1,
+    minWidth: 0,
+    height: '100%',
+    paddingHorizontal: 16,
+    color: '#0B2B1F',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  helper: { color: '#4B5A50', fontSize: 13, lineHeight: 19 },
+  error: { color: '#B3261E', fontSize: 13, lineHeight: 19, marginTop: -4 },
+  sendButton: {
+    height: 60,
+    marginTop: 16,
+    borderRadius: 30,
+    backgroundColor: '#C8F169',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  sendButtonReady: {
+    shadowColor: '#C8F169',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  sendButtonDisabled: { backgroundColor: '#1E4132' },
+  sendLabel: { color: '#0B2B1F', fontSize: 17, fontWeight: '800' },
+  sendLabelDisabled: { color: '#8FA698' },
+  terms: { color: '#9DB0A2', fontSize: 12.5, lineHeight: 18, textAlign: 'center', marginHorizontal: 12, marginTop: 14 },
+  termLink: { color: '#F3F1E7', fontWeight: '700', textDecorationLine: 'underline' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  picker: { backgroundColor: '#F3F1E7', padding: 24, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+  handle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', backgroundColor: '#B8B4A7', marginBottom: 20 },
+  pickerTitle: { color: '#0B2B1F', fontSize: 20, fontWeight: '700', marginBottom: 12 },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  countryName: { flex: 1, color: '#0B2B1F', fontSize: 16 },
+  pickerDial: { color: '#4B5A50', fontSize: 16 },
 });

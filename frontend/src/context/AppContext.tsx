@@ -10,7 +10,7 @@ import type {
 import { createSplitExpense } from '../utils/splits';
 import type { AuthResponse } from '../services/authApi';
 import { clearSession, readSession, writeSession } from '../core/storage/session';
-import { refreshSession, logoutSession } from '../services/authApi';
+import { getAuthProfile, refreshSession, logoutSession, updateOnboardingProgress } from '../services/authApi';
 
 interface AppState {
   authPhase: AuthPhase;
@@ -21,11 +21,13 @@ interface AppState {
   verificationTarget: string;
   phoneVerified: boolean;
   emailVerified: boolean;
+  onboardingStep: number;
   onboardingDraft: OnboardingDraft;
   setPhoneCredentials: (countryCode: string, phone: string) => void;
   setVerification: (channel: 'phone' | 'email', target: string) => void;
   markVerified: (channel: 'phone' | 'email') => void;
   updateOnboardingDraft: (draft: Partial<OnboardingDraft>) => void;
+  setOnboardingStep: (step: number) => void;
   profile: UserProfile | null;
   completeSetup: (profile: Omit<UserProfile, 'phone' | 'countryCode'>) => void;
   logout: () => void;
@@ -65,13 +67,14 @@ const emptyProfile = (
 });
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [authPhase, setAuthPhase] = useState<AuthPhase>('onboarding');
+  const [authPhase, setAuthPhase] = useState<AuthPhase>('restoring');
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
   const [verificationChannel, setVerificationChannel] = useState<'phone' | 'email'>('phone');
   const [verificationTarget, setVerificationTarget] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [onboardingStep, setOnboardingStepState] = useState(1);
   const [onboardingDraft, setOnboardingDraft] = useState<OnboardingDraft>({
     firstName: '', lastName: '', email: '', phone: '', employmentType: '',
     incomeRupees: '', cashRupees: '', savingsRupees: '',
@@ -82,7 +85,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void readSession().then(async (session) => {
-      if (!session?.user) return;
+      if (!session?.user) {
+        setAuthPhase('onboarding');
+        return;
+      }
       if (session.refreshToken) {
         try {
           const refreshed = await refreshSession(session.refreshToken);
@@ -92,17 +98,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         } catch {
           await clearSession();
+          setAuthPhase('onboarding');
           return;
         }
       }
-      const user = session.user as unknown as UserProfile;
+      let user = session.user as unknown as UserProfile;
+      let isProfileComplete = session.isProfileComplete;
+      let serverOnboardingStep: number | null = null;
+      try {
+        const status = await getAuthProfile();
+        if (status.user) {
+          user = status.user as UserProfile;
+          isProfileComplete = status.isProfileComplete === true;
+          if (status.nextStep) {
+            const step = status.nextStep === 'employment' ? 2 : status.nextStep === 'financial' ? 3 : status.nextStep === 'review' ? 4 : 1;
+            setOnboardingStepState(step);
+            serverOnboardingStep = step;
+          }
+        }
+      } catch {
+        await clearSession();
+        setAuthPhase('onboarding');
+        return;
+      }
       setProfile(user);
       setPhoneVerified(session.phoneVerified === true);
       setEmailVerified(session.emailVerified === true);
       if (session.onboardingDraft) {
         setOnboardingDraft((current) => ({ ...current, ...session.onboardingDraft }));
       }
-      setAuthPhase(session.isProfileComplete ? 'main' : 'setup');
+      if (!isProfileComplete && serverOnboardingStep === null) {
+        setOnboardingStepState(session.onboardingStep || 1);
+      }
+      setAuthPhase(isProfileComplete ? 'main' : 'setup');
     });
   }, []);
 
@@ -116,6 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       verificationTarget,
       phoneVerified,
       emailVerified,
+      onboardingStep,
       onboardingDraft,
       setPhoneCredentials: (code, number) => {
         setCountryCode(code);
@@ -142,12 +171,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
       },
       updateOnboardingDraft: (draft) => {
-        setOnboardingDraft((current) => ({ ...current, ...draft }));
+        setOnboardingDraft((current) => {
+          const next = { ...current, ...draft };
+          void readSession().then((session) => {
+            if (session) void writeSession({ ...session, onboardingDraft: next });
+          });
+          return next;
+        });
+      },
+      setOnboardingStep: (step) => {
+        const nextStep = Math.min(4, Math.max(1, step));
+        setOnboardingStepState(nextStep);
+        void updateOnboardingProgress(nextStep).catch(() => undefined);
         void readSession().then((session) => {
-          if (session) {
-            return writeSession({ ...session, onboardingDraft: { ...onboardingDraft, ...draft } });
-          }
-          return undefined;
+          if (session) void writeSession({ ...session, onboardingStep: nextStep });
         });
       },
       profile,
@@ -166,6 +203,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCountryCode('+91');
         setPhoneVerified(false);
         setEmailVerified(false);
+        setOnboardingStepState(1);
         setVerificationTarget('');
         setOnboardingDraft({
           firstName: '', lastName: '', email: '', phone: '', employmentType: '',
@@ -243,6 +281,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           isProfileComplete: response.isProfileComplete === true,
           phoneVerified,
           emailVerified,
+          onboardingStep,
         });
         setAuthPhase(response.isProfileComplete ? 'main' : 'setup');
       },
@@ -276,11 +315,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           isProfileComplete: false,
           phoneVerified,
           emailVerified,
+          onboardingStep,
         });
         setAuthPhase('otp');
       },
     }),
-    [authPhase, phone, countryCode, profile, friends, splits, verificationChannel, verificationTarget, phoneVerified, emailVerified, onboardingDraft],
+    [authPhase, phone, countryCode, profile, friends, splits, verificationChannel, verificationTarget, phoneVerified, emailVerified, onboardingDraft, onboardingStep],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

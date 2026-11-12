@@ -29,6 +29,13 @@ export function maskPhone(countryCode: string, phone: string): string {
   return `${countryCode} ${masked}${visible}`;
 }
 
+export function maskEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return email;
+  const visible = local.slice(0, 1);
+  return `${visible}${'•'.repeat(Math.max(local.length - 1, 1))}@${domain}`;
+}
+
 export function getGreeting(date = new Date()): string {
   const hour = date.getHours();
   if (hour < 12) return 'Good morning';

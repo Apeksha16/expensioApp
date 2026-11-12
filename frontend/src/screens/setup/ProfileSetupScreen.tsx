@@ -24,11 +24,15 @@ export function ProfileSetupScreen() {
   const {
     setAuthPhase, phone, countryCode, verificationChannel, setVerification,
     phoneVerified, emailVerified, onboardingDraft, updateOnboardingDraft,
-    applyAuthSession,
+    applyAuthSession, onboardingStep, setOnboardingStep,
   } = useApp();
-  const [step, setStep] = useState(1);
+  const [step, setStepState] = useState(onboardingStep);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const setStep = (nextStep: number) => {
+    setStepState(nextStep);
+    setOnboardingStep(nextStep);
+  };
 
   const selectedEmployment = useMemo(
     () => employment.find((item) => item.value === onboardingDraft.employmentType) ?? employment[0],
@@ -87,7 +91,15 @@ export function ProfileSetupScreen() {
       setStep(3);
       return;
     }
-    if (!onboardingDraft.cashRupees) {
+    if (step === 3) {
+      if (onboardingDraft.cashRupees.trim() === '') {
+        setError('Enter your cash balance, or 0 if you have none');
+        return;
+      }
+      setStep(4);
+      return;
+    }
+    if (onboardingDraft.cashRupees.trim() === '') {
       setError('Enter your cash balance, or 0 if you have none');
       return;
     }
@@ -115,7 +127,7 @@ export function ProfileSetupScreen() {
     if (step === 1) {
       setAuthPhase(verificationChannel === 'email' ? 'email' : 'mobile');
     } else {
-      setStep((current) => current - 1);
+      setStep(step - 1);
     }
   };
 
@@ -123,7 +135,7 @@ export function ProfileSetupScreen() {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg }]}>
         <Pressable onPress={goBack} hitSlop={8}><Text style={styles.back}>← Back</Text></Pressable>
-        <JourneyTimeline steps={[{ label: 'Profile' }, { label: 'Work' }, { label: 'Money' }]} current={step} />
+        <JourneyTimeline steps={[{ label: 'Profile' }, { label: 'Work' }, { label: 'Money' }, { label: 'Review' }]} current={step} />
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           {step === 1 ? (
             <View style={styles.section}>
@@ -163,9 +175,27 @@ export function ProfileSetupScreen() {
               <Text style={styles.currencyNote}>Currency: INR (₹)</Text>
             </View>
           ) : null}
+          {step === 4 ? (
+            <View style={styles.section}>
+              <Text style={styles.kicker}>REVIEW</Text>
+              <Text style={styles.title}>Ready to make it official?</Text>
+              <Text style={styles.subtitle}>Review your details before creating your account.</Text>
+              <View style={styles.reviewCard}>
+                <Text style={styles.reviewHeading}>Profile</Text>
+                <Text style={styles.reviewValue}>{onboardingDraft.firstName} {onboardingDraft.lastName}</Text>
+                <Text style={styles.reviewValue}>{onboardingDraft.email}</Text>
+                <Text style={styles.reviewValue}>{onboardingDraft.phone}</Text>
+                <Pressable onPress={() => setStep(1)}><Text style={styles.edit}>Edit profile</Text></Pressable>
+                <Text style={styles.reviewHeading}>Work and money</Text>
+                <Text style={styles.reviewValue}>{selectedEmployment.label} · ₹{onboardingDraft.incomeRupees || '0'} / month</Text>
+                <Text style={styles.reviewValue}>Cash ₹{onboardingDraft.cashRupees || '0'} · Savings ₹{onboardingDraft.savingsRupees || '0'}</Text>
+                <Pressable onPress={() => setStep(2)}><Text style={styles.edit}>Edit work and money</Text></Pressable>
+              </View>
+            </View>
+          ) : null}
         </ScrollView>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <PrimaryButton title={step === 3 ? 'Complete account' : 'Continue'} onPress={() => void next()} loading={loading} />
+        <PrimaryButton title={step === 4 ? 'Create account' : 'Continue'} onPress={() => void next()} loading={loading} />
       </View>
     </KeyboardAvoidingView>
   );
@@ -189,4 +219,8 @@ const styles = StyleSheet.create({
   activeText: { color: colors.white },
   currencyNote: { ...typography.caption, color: colors.textTertiary },
   error: { ...typography.caption, color: colors.expense, marginBottom: spacing.sm },
+  reviewCard: { gap: spacing.xs, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  reviewHeading: { ...typography.bodyMedium, color: colors.textPrimary, marginTop: spacing.sm },
+  reviewValue: { ...typography.caption, color: colors.textSecondary },
+  edit: { ...typography.captionMedium, color: colors.accent, marginTop: spacing.xs },
 });

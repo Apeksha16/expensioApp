@@ -272,12 +272,29 @@ export const logout = (req, res) => {
 // GET /api/user/profile & GET /api/auth/profile
 export const getProfile = (req, res) => {
   const isProfileComplete = checkProfileCompleteness(db.user);
+  const nextStep = isProfileComplete ? 'dashboard' : (
+    { 1: 'profile', 2: 'employment', 3: 'financial', 4: 'review' }[db.user.onboardingStep || 1]
+  );
   return res.json({
     success: true,
     user: publicUser(db.user),
     isProfileComplete,
+    nextStep,
   });
 };
+
+export const updateOnboardingProgress = (req, res) => {
+  const step = Number(req.body.step);
+  if (!Number.isInteger(step) || step < 1 || step > 4) {
+    return res.status(400).json({ error: 'Onboarding step must be between 1 and 4' });
+  }
+  db.user.onboardingStep = step;
+  return res.json({ success: true, nextStep: getProfileStep(step) });
+};
+
+const getProfileStep = (step) => (
+  { 1: 'profile', 2: 'employment', 3: 'financial', 4: 'review' }[step] || 'profile'
+);
 
 // POST /api/user/profile - Update onboarding & user details
 export const updateProfile = (req, res) => {

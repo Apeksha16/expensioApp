@@ -3,6 +3,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  ViewStyle,
   type TextInputKeyPressEvent,
 } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme';
@@ -12,6 +13,7 @@ interface Props {
   onChange: (value: string) => void;
   length?: number;
   autoFocus?: boolean;
+  cellStyle?: ViewStyle;
 }
 
 type InputRef = React.ElementRef<typeof TextInput>;
@@ -21,6 +23,7 @@ export function OtpInput({
   onChange,
   length = 6,
   autoFocus = true,
+  cellStyle,
 }: Props) {
   const refs = useRef<Array<InputRef | null>>([]);
   const digits = Array.from({ length }, (_, i) => value[i] ?? '');
@@ -71,7 +74,7 @@ export function OtpInput({
           maxLength={length}
           autoFocus={autoFocus && index === 0}
           selectTextOnFocus
-          style={[styles.cell, digit ? styles.cellFilled : null]}
+          style={[styles.cell, digit ? styles.cellFilled : null, cellStyle]}
         />
       ))}
     </View>

@@ -3,7 +3,7 @@ import { readSession } from '../core/storage/session';
 
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
-  (Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000');
+  (Platform.OS === 'android' ? 'http://10.0.2.2:5005' : 'http://localhost:5005');
 
 export interface AuthUser {
   id?: string;
@@ -27,7 +27,7 @@ export interface AuthResponse {
   error?: string;
   message?: string;
   requiresVerification?: 'email' | 'phone';
-  nextStep?: 'dashboard' | 'onboarding' | 'verify_email' | 'verify_phone';
+  nextStep?: 'dashboard' | 'onboarding' | 'profile' | 'employment' | 'financial' | 'review' | 'verify_email' | 'verify_phone';
 }
 
 async function post(path: string, body: Record<string, unknown>, accessToken?: string): Promise<AuthResponse> {
@@ -36,13 +36,12 @@ async function post(path: string, body: Record<string, unknown>, accessToken?: s
   let response: Response;
   try {
     const session = accessToken ? null : await readSession();
+    const token = accessToken || session?.accessToken;
     response = await fetch(`${API_URL}/api/auth${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(accessToken || session?.accessToken
-          ? { Authorization: `Bearer ${accessToken || session?.accessToken}` }
-          : {}),
+        ...(token ? { Authorization: ['Bearer', token].join(' ') } : {}),
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -53,7 +52,16 @@ async function post(path: string, body: Record<string, unknown>, accessToken?: s
   }
   clearTimeout(timeout);
 
-  const payload = (await response.json()) as AuthResponse;
+  const rawPayload = await response.text();
+  if (!rawPayload.trim()) {
+    throw new Error(`Expensio server returned HTTP ${response.status}.`);
+  }
+  let payload: AuthResponse;
+  try {
+    payload = JSON.parse(rawPayload) as AuthResponse;
+  } catch {
+    throw new Error('Expensio returned an invalid server response.');
+  }
   if (!response.ok || !payload.success) {
     throw new Error(payload.error || payload.message || 'Authentication failed.');
   }
@@ -105,4 +113,12 @@ export interface CompleteOnboardingInput {
 
 export function completeOnboarding(input: CompleteOnboardingInput) {
   return post('/complete-onboarding', input as unknown as Record<string, unknown>);
+}
+
+export function getAuthProfile() {
+  return post('/profile', {});
+}
+
+export function updateOnboardingProgress(step: number) {
+  return post('/onboarding-progress', { step });
 }

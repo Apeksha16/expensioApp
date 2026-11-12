@@ -26,8 +26,8 @@ export type LocalPreferenceChanges = Partial<Pick<
 >>;
 
 export interface ModulePreferenceService {
-  getPreferredModules(): Promise<AppModuleId[]>;
-  savePreferredModules(value: unknown): Promise<AppModuleId[]>;
+  getPreferredModules(ownerId?: string | null): Promise<AppModuleId[]>;
+  savePreferredModules(value: unknown, ownerId?: string | null): Promise<AppModuleId[]>;
   validatePreferredModules(value: unknown): AppModuleId[];
   getAvailableModules(): AppModule[];
   resetPreferredModules(): Promise<AppModuleId[]>;
@@ -72,11 +72,11 @@ export function validatePreferredModules(value: unknown): AppModuleId[] {
   return selected;
 }
 
-async function loadAndRepairPreferences(): Promise<{
+async function loadAndRepairPreferences(ownerId?: string | null): Promise<{
   preferences: LocalPreferences;
   preferredModuleIds: AppModuleId[];
 }> {
-  const preferences = await readPreferences();
+  const preferences = await readPreferences(ownerId);
   const preferredModuleIds = normalizePreferredModuleIds(preferences.preferredModuleIds);
   const needsRepair = preferredModuleIds.length !== preferences.preferredModuleIds.length
     || preferredModuleIds.some((id, index) => id !== preferences.preferredModuleIds[index])
@@ -87,26 +87,26 @@ async function loadAndRepairPreferences(): Promise<{
 
   if (needsRepair) {
     const repaired = { ...preferences, preferredModuleIds };
-    await writePreferences(repaired);
+    await writePreferences(repaired, ownerId);
     return { preferences: repaired, preferredModuleIds };
   }
   return { preferences, preferredModuleIds };
 }
 
-export async function getPreferredModules(): Promise<AppModuleId[]> {
-  return (await getLocalPreferences()).preferredModuleIds;
+export async function getPreferredModules(ownerId?: string | null): Promise<AppModuleId[]> {
+  return (await getLocalPreferences(ownerId)).preferredModuleIds;
 }
 
-export function savePreferredModules(value: unknown): Promise<AppModuleId[]> {
+export function savePreferredModules(value: unknown, ownerId?: string | null): Promise<AppModuleId[]> {
   const preferredModuleIds = validatePreferredModules(value);
-  const key = preferredModuleIds.join('|');
+  const key = `${ownerId ?? 'guest'}:${preferredModuleIds.join('|')}`;
   const pending = pendingPreferredModuleSaves.get(key);
   if (pending) return pending;
 
   const save = serializeWrite(async () => {
-    const preferences = await readPreferences();
+    const preferences = await readPreferences(ownerId);
     const updated = { ...preferences, preferredModuleIds };
-    await writePreferences(updated);
+    await writePreferences(updated, ownerId);
     return preferredModuleIds;
   });
   pendingPreferredModuleSaves.set(key, save);
@@ -119,6 +119,7 @@ export function savePreferredModules(value: unknown): Promise<AppModuleId[]> {
 
 export function updateLocalPreferences(
   changes: LocalPreferenceChanges,
+  ownerId?: string | null,
 ): Promise<ValidatedLocalPreferences> {
   if (
     changes.reportsEnabled !== undefined
@@ -154,7 +155,7 @@ export function updateLocalPreferences(
     return Promise.reject(new Error('Enter a valid report destination email address.'));
   }
   return serializeWrite(async () => {
-    const { preferences, preferredModuleIds } = await loadAndRepairPreferences();
+    const { preferences, preferredModuleIds } = await loadAndRepairPreferences(ownerId);
     const updated: LocalPreferences = { ...preferences, ...changes };
     if (
       changes.reportFrequency !== undefined
@@ -167,18 +168,18 @@ export function updateLocalPreferences(
         dayOfMonth: updated.reportDayOfMonth,
       });
     }
-    await writePreferences(updated);
+    await writePreferences(updated, ownerId);
     return { ...updated, preferredModuleIds };
   });
 }
 
-export function resetPreferredModules(): Promise<AppModuleId[]> {
-  return savePreferredModules(DEFAULT_PREFERRED_MODULE_IDS);
+export function resetPreferredModules(ownerId?: string | null): Promise<AppModuleId[]> {
+  return savePreferredModules(DEFAULT_PREFERRED_MODULE_IDS, ownerId);
 }
 
-export async function getLocalPreferences(): Promise<ValidatedLocalPreferences> {
+export async function getLocalPreferences(ownerId?: string | null): Promise<ValidatedLocalPreferences> {
   await writeQueue;
-  const { preferences, preferredModuleIds } = await loadAndRepairPreferences();
+  const { preferences, preferredModuleIds } = await loadAndRepairPreferences(ownerId);
   return { ...preferences, preferredModuleIds };
 }
 

@@ -2,11 +2,9 @@ import { readSession } from '../core/storage/session';
 import {
   CorruptStoredDataError,
   readJson,
-  readText,
   removeValue,
   STORAGE_KEYS,
   writeJson,
-  writeText,
 } from '../core/storage/localPersistence';
 
 export interface AuthUser {
@@ -53,6 +51,15 @@ interface LocalAccount {
   user: AuthUser;
   isProfileComplete: boolean;
 }
+
+interface LocalOtpRecord {
+  code: string;
+  expiresAt: number;
+  attempts: number;
+}
+
+export const LOCAL_OTP_LIFETIME_MS = 5 * 60 * 1000;
+const MAX_OTP_ATTEMPTS = 5;
 
 function accountKey(email: string) {
   return `${STORAGE_KEYS.localAccountPrefix}${encodeURIComponent(email.trim().toLowerCase())}`;
@@ -163,9 +170,16 @@ export async function updateLocalAccountEmail(
 async function issueOtp(channel: 'phone' | 'email', target: string): Promise<AuthResponse> {
   const normalizedTarget = target.trim().toLowerCase();
   if (!normalizedTarget) throw new Error(`Enter a ${channel === 'phone' ? 'mobile number' : 'email address'} first.`);
+  if (channel === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedTarget)) {
+    throw new Error('Enter a valid email address.');
+  }
+  if (channel === 'phone' && !/^\+?\d{7,15}$/.test(normalizedTarget.replace(/[\s()-]/g, ''))) {
+    throw new Error('Enter a valid mobile number.');
+  }
   const code = String(Math.floor(100000 + Math.random() * 900000));
-  await writeText(otpKey(channel, normalizedTarget), code);
-  return { success: true, debugOtp: code };
+  const expiresAt = Date.now() + LOCAL_OTP_LIFETIME_MS;
+  await writeJson(otpKey(channel, normalizedTarget), { code, expiresAt, attempts: 0 } satisfies LocalOtpRecord);
+  return { success: true, debugOtp: code, message: `Development verification code expires at ${new Date(expiresAt).toLocaleTimeString()}.` };
 }
 
 async function verifyLocalOtp(
@@ -175,8 +189,40 @@ async function verifyLocalOtp(
 ): Promise<AuthResponse> {
   const normalizedTarget = target.trim().toLowerCase();
   const key = otpKey(channel, normalizedTarget);
-  const storedCode = await readText(key);
-  if (!storedCode || storedCode !== code) {
+  let stored: unknown;
+  try {
+    stored = await readJson<unknown>(key);
+  } catch (error) {
+    if (!(error instanceof CorruptStoredDataError)) throw error;
+    await removeValue(key);
+    throw new Error('Saved verification data is unreadable. Request a new code.');
+  }
+  if (
+    typeof stored !== 'object'
+    || stored === null
+    || !('code' in stored)
+    || typeof stored.code !== 'string'
+    || !('expiresAt' in stored)
+    || typeof stored.expiresAt !== 'number'
+    || !('attempts' in stored)
+    || typeof stored.attempts !== 'number'
+  ) {
+    if (stored !== null) await removeValue(key);
+    throw new Error('Request a new verification code.');
+  }
+  const record = stored as LocalOtpRecord;
+  if (Date.now() >= record.expiresAt) {
+    await removeValue(key);
+    throw new Error('This code has expired. Request a new one.');
+  }
+  if (record.attempts >= MAX_OTP_ATTEMPTS) {
+    await removeValue(key);
+    throw new Error('Too many incorrect attempts. Request a new code.');
+  }
+  if (record.code !== code) {
+    const attempts = record.attempts + 1;
+    if (attempts >= MAX_OTP_ATTEMPTS) await removeValue(key);
+    else await writeJson(key, { ...record, attempts });
     throw new Error('That code didn’t match. Try again.');
   }
   await removeValue(key);

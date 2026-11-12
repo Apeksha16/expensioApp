@@ -11,12 +11,12 @@ export type ReportPreferenceChanges = Pick<
 >;
 
 export interface ReportPreferenceService {
-  getReportPreferences(): Promise<ReportPreferenceChanges>;
-  saveReportPreferences(changes: Partial<ReportPreferenceChanges>): Promise<ReportPreferenceChanges>;
+  getReportPreferences(ownerId?: string | null): Promise<ReportPreferenceChanges>;
+  saveReportPreferences(changes: Partial<ReportPreferenceChanges>, ownerId?: string | null): Promise<ReportPreferenceChanges>;
 }
 
-export async function getReportPreferences(): Promise<ReportPreferenceChanges> {
-  const preferences = await getLocalPreferences();
+export async function getReportPreferences(ownerId?: string | null): Promise<ReportPreferenceChanges> {
+  const preferences = await getLocalPreferences(ownerId);
   return {
     reportFrequency: preferences.reportFrequency,
     reportsEnabled: preferences.reportsEnabled,
@@ -28,8 +28,9 @@ export async function getReportPreferences(): Promise<ReportPreferenceChanges> {
 
 export async function saveReportPreferences(
   changes: Partial<ReportPreferenceChanges>,
+  ownerId?: string | null,
 ): Promise<ReportPreferenceChanges> {
-  const updated = await updateLocalPreferences(changes);
+  const updated = await updateLocalPreferences(changes, ownerId);
   return {
     reportFrequency: updated.reportFrequency,
     reportsEnabled: updated.reportsEnabled,

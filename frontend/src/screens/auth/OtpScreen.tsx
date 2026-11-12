@@ -310,7 +310,7 @@ function EmailOtpScreen() {
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : '';
       setOtp('');
-      setError(/invalid|expired/i.test(message)
+      setError(/invalid/i.test(message)
         ? "That code didn't match. Try again."
         : message || 'Unable to verify code. Try again.');
     } finally {

@@ -38,7 +38,10 @@ export function GoalCard({ goal }: Props) {
         height={8}
         style={styles.bar}
       />
-      <Text style={styles.hint}>{formatINR(goal.target - goal.current)} left to go</Text>
+      <Text style={styles.hint}>
+        {goal.current >= goal.target ? 'Target reached' : `${formatINR(Math.max(0, goal.target - goal.current))} left to go`}
+        {goal.targetDate ? ` · target ${new Date(`${goal.targetDate}T12:00:00`).toLocaleDateString()}` : ''}
+      </Text>
     </View>
   );
 }

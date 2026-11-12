@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurrencyInput } from '../../components/CurrencyInput';
 import { GoalCard } from '../../components/GoalCard';
@@ -11,15 +11,23 @@ import type { AppModule } from '../../data/modules';
 import { useApp } from '../../context/AppContext';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
-import { localDateString } from '../../services/moneyService';
+import { localDateString, validateDate } from '../../services/moneyService';
 import { colors, radius, spacing, typography } from '../../theme';
-import type { PaymentCadence, PaymentKind } from '../../types';
+import type { PaymentCadence, PaymentKind, RecurringPayment } from '../../types';
 import { formatINR, progressRatio } from '../../utils/format';
 
 type Props = BottomTabScreenProps<MainTabParamList>;
 type PaymentFormKind = PaymentKind;
 
 const budgetCategories = ['Food & Dining', 'Shopping', 'Transport', 'Bills & Utilities', 'Health', 'Other'];
+
+function isCompletedPayment(payment: RecurringPayment): boolean {
+  return payment.completed === true
+    || (!payment.active
+      && payment.kind === 'emi'
+      && ((payment.remainingInstallments !== undefined && payment.remainingInstallments === 0)
+        || (payment.outstandingBalance !== undefined && payment.outstandingBalance === 0)));
+}
 
 export function ModuleLandingScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
@@ -30,11 +38,14 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     goals,
     recurringPayments,
     addBudget,
+    updateBudget,
     removeBudget,
     addGoal,
     removeGoal,
     contributeToGoal,
     addRecurringPayment,
+    updateRecurringPayment,
+    setRecurringPaymentActive,
     removeRecurringPayment,
     markRecurringPaymentPaid,
     showToast,
@@ -62,6 +73,12 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
   const [paymentCategory, setPaymentCategory] = useState('Bills & Utilities');
   const [outstandingBalance, setOutstandingBalance] = useState(0);
   const [remainingInstallments, setRemainingInstallments] = useState('');
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [customCategory, setCustomCategory] = useState('');
+  const [reportStart, setReportStart] = useState(() => localDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [reportEnd, setReportEnd] = useState(() => localDateString(new Date()));
+  const [reportError, setReportError] = useState('');
 
   const openModule = (module: AppModule) => {
     if (module.route === 'Add') {
@@ -93,7 +110,41 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     .filter((payment) => payment.active)
     .slice()
     .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate));
-  const completedPayments = recurringPayments.filter((payment) => !payment.active);
+  const scheduledPayments = recurringPayments
+    .filter((payment) => !isCompletedPayment(payment))
+    .slice()
+    .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate));
+  const completedPayments = recurringPayments.filter(isCompletedPayment);
+  const reportRangeError = (() => {
+    try {
+      validateDate(reportStart, 'report start date');
+      validateDate(reportEnd, 'report end date');
+      if (reportStart > reportEnd) return 'Report start date must be on or before the end date.';
+      return '';
+    } catch (validationError) {
+      return validationError instanceof Error ? validationError.message : 'Choose a valid report date range.';
+    }
+  })();
+  const selectedReportTransactions = reportRangeError ? [] : transactions.filter((transaction) => {
+    const date = typeof transaction.occurredAt === 'number'
+      ? new Date(transaction.occurredAt)
+      : transaction.date === 'Today' || transaction.date === 'Yesterday'
+        ? new Date(Date.now())
+        : new Date(transaction.date);
+    if (transaction.date === 'Yesterday' && transaction.occurredAt === undefined) date.setDate(date.getDate() - 1);
+    if (Number.isNaN(date.getTime())) return false;
+    const dateValue = localDateString(date);
+    return dateValue >= reportStart && dateValue <= reportEnd;
+  });
+  const reportIncome = selectedReportTransactions.filter((transaction) => transaction.type === 'income').reduce((sum, item) => sum + item.amount, 0);
+  const reportExpenses = selectedReportTransactions.filter((transaction) => transaction.type === 'expense').reduce((sum, item) => sum + item.amount, 0);
+  const duePayments = upcomingPayments.filter((payment) => {
+    const [year, month, day] = payment.nextDueDate.split('-').map(Number);
+    const due = new Date(year, month - 1, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((due.getTime() - today.getTime()) / 86400000) <= 7;
+  });
 
   const monthlyBudgetSpent = (budgetCategory: string) => thisMonthTransactions
     .filter((transaction) => transaction.type === 'expense' && transaction.category.toLowerCase() === budgetCategory.toLowerCase())
@@ -108,6 +159,44 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     setOutstandingBalance(0);
     setRemainingInstallments('');
     setError('');
+    setEditingBudgetId(null);
+    setEditingPaymentId(null);
+    setCustomCategory('');
+  };
+
+  const exportReport = async () => {
+    setReportError('');
+    try {
+      validateDate(reportStart, 'report start date');
+      validateDate(reportEnd, 'report end date');
+      if (reportStart > reportEnd) {
+        throw new Error('Choose a valid date range with the start on or before the end.');
+      }
+      const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+      const rows = [
+        ['Date', 'Type', 'Name', 'Category', 'Amount'],
+        ...selectedReportTransactions.map((transaction) => [
+          transaction.date,
+          transaction.type,
+          transaction.merchant,
+          transaction.category,
+          String(transaction.amount),
+        ]),
+      ];
+      const csv = rows.map((row) => row.map(escapeCsv).join(',')).join('\n');
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `expensio-report-${reportStart}-to-${reportEnd}.csv`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({ title: 'Expensio report CSV', message: csv });
+      }
+    } catch (exportError) {
+      setReportError(exportError instanceof Error ? exportError.message : 'Unable to export this report.');
+    }
   };
 
   const saveForm = async () => {
@@ -115,8 +204,15 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     setSaving(true);
     try {
       if (currentModule?.id === 'budgets') {
-        await addBudget({ category, limit: amount });
-        showToast('success', 'Budget saved.');
+        const selectedCategory = category === 'Custom' ? customCategory.trim() : category;
+        if (!selectedCategory) throw new Error('Enter a budget category.');
+        if (editingBudgetId) {
+          await updateBudget(editingBudgetId, { category: selectedCategory, limit: amount });
+          showToast('success', 'Budget updated.');
+        } else {
+          await addBudget({ category: selectedCategory, limit: amount });
+          showToast('success', 'Budget saved.');
+        }
       } else if (currentModule?.id === 'goals' && contributionGoalId) {
         await contributeToGoal(contributionGoalId, amount);
         showToast('success', 'Goal contribution saved.');
@@ -124,7 +220,7 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
         await addGoal({ title, target: amount, targetDate: targetDate || undefined });
         showToast('success', 'Savings goal created.');
       } else if (currentModule?.id === 'upcoming-payments') {
-        await addRecurringPayment({
+        const details = {
           name: title,
           amount,
           kind: paymentKind,
@@ -133,8 +229,14 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
           category: paymentCategory,
           outstandingBalance: paymentKind === 'emi' && outstandingBalance > 0 ? outstandingBalance : undefined,
           remainingInstallments: paymentKind === 'emi' && remainingInstallments ? Number(remainingInstallments) : undefined,
-        });
-        showToast('success', `${paymentKind === 'emi' ? 'EMI' : 'Subscription'} saved.`);
+        };
+        if (editingPaymentId) {
+          await updateRecurringPayment(editingPaymentId, details);
+          showToast('success', `${paymentKind === 'emi' ? 'EMI' : 'Subscription'} updated.`);
+        } else {
+          await addRecurringPayment(details);
+          showToast('success', `${paymentKind === 'emi' ? 'EMI' : 'Subscription'} saved.`);
+        }
       }
       clearForm();
     } catch (saveError) {
@@ -147,18 +249,20 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
   };
 
   const confirmRemove = (label: string, remove: () => Promise<void>) => {
-    Alert.alert(`Remove ${label}?`, 'This only removes it from your device. Your transaction history is not changed.', [
+    const performRemove = () => {
+      void remove().then(() => showToast('success', `${label} removed.`)).catch((removeError: unknown) => {
+        const message = removeError instanceof Error ? removeError.message : 'Unable to remove this item.';
+        showToast('error', message);
+      });
+    };
+    const message = 'This only removes it from your device. Your transaction history is not changed.';
+    if (Platform.OS === 'web' && typeof globalThis.confirm === 'function') {
+      if (globalThis.confirm(`Remove ${label}? ${message}`)) performRemove();
+      return;
+    }
+    Alert.alert(`Remove ${label}?`, message, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => {
-          void remove().then(() => showToast('success', `${label} removed.`)).catch((removeError: unknown) => {
-            const message = removeError instanceof Error ? removeError.message : 'Unable to remove this item.';
-            showToast('error', message);
-          });
-        },
-      },
+      { text: 'Remove', style: 'destructive', onPress: performRemove },
     ]);
   };
 
@@ -232,6 +336,16 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                       <Text style={styles.rowTitle}>{budget.category}</Text>
                       <Text style={styles.rowSub}>{formatINR(spent)} spent of {formatINR(budget.limit)}</Text>
                     </View>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${budget.category} budget`} onPress={() => {
+                      setEditingBudgetId(budget.id);
+                      setCategory(budgetCategories.includes(budget.category) ? budget.category : 'Custom');
+                      setCustomCategory(budgetCategories.includes(budget.category) ? '' : budget.category);
+                      setAmount(budget.limit);
+                      setFormOpen(true);
+                      setError('');
+                    }} hitSlop={8}>
+                      <Ionicons name="pencil-outline" size={18} color={colors.accent} />
+                    </Pressable>
                     <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${budget.category} budget`} onPress={() => confirmRemove(`${budget.category} budget`, () => removeBudget(budget.id))} hitSlop={8}>
                       <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
                     </Pressable>
@@ -242,17 +356,19 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
               );
             })}
             {!budgets.length ? <EmptyState icon="pie-chart-outline" title="No budgets yet" message="Set a monthly limit for a category. Spending updates from transactions you record." /> : null}
-            <PrimaryButton title={formOpen ? 'Close form' : 'Create a budget'} onPress={() => { setError(''); setFormOpen(!formOpen); }} variant={formOpen ? 'secondary' : 'primary'} />
+            <PrimaryButton title={formOpen ? 'Close form' : 'Create a budget'} onPress={() => { if (formOpen) clearForm(); else { setEditingBudgetId(null); setAmount(0); setFormOpen(true); } setError(''); }} variant={formOpen ? 'secondary' : 'primary'} />
             {formOpen ? (
               <View style={styles.formCard}>
-                <Text style={styles.formTitle}>New category budget</Text>
+                <Text style={styles.formTitle}>{editingBudgetId ? 'Edit category budget' : 'New category budget'}</Text>
                 <Text style={styles.fieldLabel}>Category</Text>
                 <View style={styles.chipList}>
-                  {budgetCategories.map((item) => <ChoiceChip key={item} label={item} selected={category === item} onPress={() => setCategory(item)} />)}
+                  {[...budgetCategories, 'Custom'].map((item) => <ChoiceChip key={item} label={item} selected={category === item} onPress={() => setCategory(item)} />)}
                 </View>
+                {category === 'Custom' ? <InputField label="Custom category" value={customCategory} onChangeText={setCustomCategory} placeholder="e.g. Pet care" /> : null}
                 <CurrencyInput label="Monthly limit" value={amount} onChangeValue={setAmount} variant="card" icon="wallet-outline" />
+                <Text style={styles.formHint}>You’ll see an in-app alert at 80% and when you exceed the limit.</Text>
                 {error ? <Text style={styles.error}>{error}</Text> : null}
-                <PrimaryButton title="Save budget" onPress={() => void saveForm()} loading={saving} />
+                <PrimaryButton title={editingBudgetId ? 'Save changes' : 'Save budget'} onPress={() => void saveForm()} loading={saving} />
               </View>
             ) : null}
           </View>
@@ -269,6 +385,18 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
             {goals.map((goal) => (
               <View key={goal.id} style={styles.goalItem}>
                 <GoalCard goal={goal} />
+                {goal.contributions?.length ? (
+                  <View style={styles.contributionHistory}>
+                    <Text style={styles.fieldLabel}>Recent contributions</Text>
+                    {goal.contributions.slice(-3).reverse().map((contribution) => (
+                      <View key={contribution.id} style={styles.contributionRow}>
+                        <Text style={styles.rowSub}>{new Date(contribution.occurredAt).toLocaleDateString()}</Text>
+                        <Text style={styles.rowTitle}>{formatINR(contribution.amount)}</Text>
+                      </View>
+                    ))}
+                    <Text style={styles.formHint}>Contributions earmark savings; they don’t change your total balance.</Text>
+                  </View>
+                ) : null}
                 <View style={styles.goalActions}>
                   <Pressable accessibilityRole="button" onPress={() => { setContributionGoalId(goal.id); setAmount(0); setFormOpen(true); setError(''); }} style={styles.secondaryButton}>
                     <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
@@ -304,7 +432,16 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
               <Text style={styles.summaryHint}>Active EMIs and subscriptions you entered</Text>
             </View>
             <SectionHeading title="Your payments" subtitle="Mark a payment paid to add it to your expense ledger." />
-            {upcomingPayments.map((payment) => (
+            {duePayments.length ? (
+              <View style={styles.reminderCard}>
+                <Ionicons name="notifications-outline" size={20} color={colors.accentDark} />
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowTitle}>{duePayments.length} payment{duePayments.length === 1 ? '' : 's'} due soon</Text>
+                  <Text style={styles.rowSub}>{duePayments.map((payment) => payment.name).join(', ')}{duePayments.length ? ' · check your schedule' : ''}</Text>
+                </View>
+              </View>
+            ) : null}
+            {scheduledPayments.map((payment) => (
               <View key={payment.id} style={styles.itemCard}>
                 <View style={styles.itemTop}>
                   <View style={[styles.rowIcon, payment.kind === 'emi' ? styles.orangeIcon : styles.greenIcon]}>
@@ -329,7 +466,29 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                     }} style={styles.paidButton}>
                       <Text style={styles.paidButtonText}>Mark paid</Text>
                     </Pressable>
-                  ) : <Text style={styles.completedLabel}>Completed</Text>}
+                  ) : <Text style={styles.pausedLabel}>Paused</Text>}
+                  <Pressable accessibilityRole="button" accessibilityLabel={`${payment.active ? 'Pause' : 'Resume'} ${payment.name}`} onPress={() => {
+                    void setRecurringPaymentActive(payment.id, !payment.active)
+                      .then(() => showToast('success', `${payment.name} ${payment.active ? 'paused' : 'resumed'}.`))
+                      .catch((paymentError: unknown) => showToast('error', paymentError instanceof Error ? paymentError.message : 'Unable to update payment status.'));
+                  }} hitSlop={8}>
+                    <Ionicons name={payment.active ? 'pause-circle-outline' : 'play-circle-outline'} size={21} color={colors.accent} />
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${payment.name}`} onPress={() => {
+                    setEditingPaymentId(payment.id);
+                    setPaymentKind(payment.kind);
+                    setTitle(payment.name);
+                    setAmount(payment.amount);
+                    setCadence(payment.cadence);
+                    setDueDate(payment.nextDueDate);
+                    setPaymentCategory(payment.category);
+                    setOutstandingBalance(payment.outstandingBalance ?? 0);
+                    setRemainingInstallments(payment.remainingInstallments?.toString() ?? '');
+                    setFormOpen(true);
+                    setError('');
+                  }} hitSlop={8}>
+                    <Ionicons name="pencil-outline" size={18} color={colors.accent} />
+                  </Pressable>
                   <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${payment.name}`} onPress={() => confirmRemove(payment.name, () => removeRecurringPayment(payment.id))} hitSlop={8}>
                     <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
                   </Pressable>
@@ -362,11 +521,11 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                 ))}
               </>
             ) : null}
-            {!upcomingPayments.length && !completedPayments.length ? <EmptyState icon="calendar-outline" title="Nothing scheduled yet" message="Add an EMI or subscription to keep upcoming payments in one place." /> : null}
-            <PrimaryButton title={formOpen ? 'Close form' : 'Add EMI or subscription'} onPress={() => { setFormOpen(!formOpen); setError(''); }} variant={formOpen ? 'secondary' : 'primary'} />
+            {!scheduledPayments.length && !completedPayments.length ? <EmptyState icon="calendar-outline" title="Nothing scheduled yet" message="Add an EMI or subscription to keep upcoming payments in one place." /> : null}
+            <PrimaryButton title={formOpen ? 'Close form' : 'Add EMI or subscription'} onPress={() => { if (formOpen) clearForm(); else { setEditingPaymentId(null); setFormOpen(true); } setError(''); }} variant={formOpen ? 'secondary' : 'primary'} />
             {formOpen ? (
               <View style={styles.formCard}>
-                <Text style={styles.formTitle}>Recurring payment</Text>
+                <Text style={styles.formTitle}>{editingPaymentId ? 'Edit recurring payment' : 'Recurring payment'}</Text>
                 <View style={styles.formSegment}>
                   {(['emi', 'subscription'] as const).map((kind) => <ChoiceChip key={kind} label={kind === 'emi' ? 'EMI' : 'Subscription'} selected={paymentKind === kind} onPress={() => setPaymentKind(kind)} />)}
                 </View>
@@ -392,7 +551,7 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                   </>
                 ) : null}
                 {error ? <Text style={styles.error}>{error}</Text> : null}
-                <PrimaryButton title="Save payment" onPress={() => void saveForm()} loading={saving} />
+                <PrimaryButton title={editingPaymentId ? 'Save changes' : 'Save payment'} onPress={() => void saveForm()} loading={saving} />
               </View>
             ) : null}
           </View>
@@ -401,17 +560,17 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
         {currentModule.id === 'reports' || currentModule.id === 'analytics' ? (
           <View style={styles.moduleList}>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>THIS MONTH · FROM YOUR ENTRIES</Text>
-              {thisMonthTransactions.length ? (
+              <Text style={styles.summaryLabel}>SELECTED PERIOD · FROM YOUR ENTRIES</Text>
+              {selectedReportTransactions.length ? (
                 <View style={styles.statRow}>
                   <View style={styles.statBlock}>
                     <Text style={styles.statLabel}>Income</Text>
-                    <Text style={[styles.statValue, styles.incomeText]}>{formatINR(monthIncome)}</Text>
+                    <Text style={[styles.statValue, styles.incomeText]}>{formatINR(reportIncome)}</Text>
                   </View>
                   <View style={styles.statDivider} />
                   <View style={styles.statBlock}>
                     <Text style={styles.statLabel}>Expenses</Text>
-                    <Text style={[styles.statValue, styles.expenseText]}>{formatINR(monthExpenses)}</Text>
+                    <Text style={[styles.statValue, styles.expenseText]}>{formatINR(reportExpenses)}</Text>
                   </View>
                 </View>
               ) : (
@@ -421,10 +580,17 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                 </>
               )}
             </View>
-            {thisMonthTransactions.length ? (
+            <View style={styles.dateRange}>
+              <InputField label="From" value={reportStart} onChangeText={(value) => { setReportStart(value); setReportError(''); }} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+              <InputField label="To" value={reportEnd} onChangeText={(value) => { setReportEnd(value); setReportError(''); }} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+            </View>
+            <PrimaryButton title="Export CSV" variant="secondary" onPress={() => void exportReport()} disabled={Boolean(reportRangeError)} />
+            {reportRangeError ? <Text style={styles.error}>{reportRangeError}</Text> : null}
+            {reportError ? <Text style={styles.error}>{reportError}</Text> : null}
+            {selectedReportTransactions.length ? (
               <>
-                <SectionHeading title="By category" subtitle="Expense totals from this month’s transactions." />
-                {Object.entries(thisMonthTransactions
+                <SectionHeading title="By category" subtitle={`Expense totals from ${reportStart} to ${reportEnd}.`} />
+                {Object.entries(selectedReportTransactions
                   .filter((item) => item.type === 'expense')
                   .reduce<Record<string, number>>((totals, item) => {
                     totals[item.category] = (totals[item.category] ?? 0) + item.amount;
@@ -533,12 +699,16 @@ const styles = StyleSheet.create({
   paidButton: { minHeight: 38, justifyContent: 'center', paddingHorizontal: spacing.sm, marginLeft: 'auto', borderRadius: radius.full, backgroundColor: colors.accentSoft },
   paidButtonText: { ...typography.captionMedium, color: colors.accentDark },
   completedLabel: { ...typography.captionMedium, color: colors.income, marginLeft: 'auto' },
+  pausedLabel: { ...typography.captionMedium, color: colors.textTertiary, marginLeft: 'auto' },
   emptyCard: { alignItems: 'center', padding: spacing.lg, gap: spacing.xs, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   emptyIcon: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.surprise, marginBottom: spacing.xs },
   emptyTitle: { ...typography.bodySemibold, color: colors.textPrimary },
   emptyMessage: { ...typography.caption, color: colors.textSecondary, lineHeight: 19, textAlign: 'center', maxWidth: 300 },
   formCard: { padding: spacing.md, gap: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   formTitle: { ...typography.h3, color: colors.textPrimary },
+  formHint: { ...typography.caption, color: colors.textTertiary, lineHeight: 18 },
+  dateRange: { gap: spacing.xs },
+  reminderCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surprise },
   fieldLabel: { ...typography.captionMedium, color: colors.textSecondary },
   chipList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   formSegment: { flexDirection: 'row', gap: spacing.xs },
@@ -548,6 +718,8 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: colors.accentDark, fontWeight: '700' },
   error: { ...typography.caption, color: colors.expense },
   goalItem: { gap: spacing.xs },
+  contributionHistory: { padding: spacing.md, gap: spacing.xs, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  contributionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xxs },
   goalActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xs },
   secondaryButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.accentSoft },
   secondaryButtonText: { ...typography.captionMedium, color: colors.accentDark },

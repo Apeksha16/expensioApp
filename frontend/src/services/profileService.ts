@@ -9,9 +9,9 @@ export interface ProfileRecord {
 }
 
 export interface ProfileService {
-  getProfile(): Promise<ProfileRecord>;
-  saveProfile(profile: ProfileRecord): Promise<ProfileRecord>;
-  updateProfile(changes: Partial<ProfileRecord>): Promise<ProfileRecord>;
+  getProfile(ownerId?: string | null): Promise<ProfileRecord>;
+  saveProfile(profile: ProfileRecord, ownerId?: string | null): Promise<ProfileRecord>;
+  updateProfile(changes: Partial<ProfileRecord>, ownerId?: string | null): Promise<ProfileRecord>;
 }
 
 const EMPTY_PROFILE: ProfileRecord = {
@@ -42,32 +42,54 @@ function normalizeProfile(profile: ProfileRecord): ProfileRecord {
   };
 }
 
-async function getLocalProfile(): Promise<ProfileRecord> {
+function profileKey(ownerId?: string | null): string {
+  return ownerId
+    ? `${STORAGE_KEYS.profileAccountPrefix}${encodeURIComponent(ownerId.trim().toLowerCase())}`
+    : STORAGE_KEYS.profile;
+}
+
+async function getLocalProfile(ownerId?: string | null): Promise<ProfileRecord> {
+  const key = profileKey(ownerId);
   let stored: unknown;
   try {
-    stored = await readJson<unknown>(STORAGE_KEYS.profile);
+    stored = await readJson<unknown>(key);
   } catch (error) {
     if (!(error instanceof CorruptStoredDataError)) throw error;
-    await removeValue(STORAGE_KEYS.profile);
+    await removeValue(key);
     return EMPTY_PROFILE;
   }
-  if (stored === null) return EMPTY_PROFILE;
+  if (stored === null) {
+    if (ownerId) {
+      try {
+        const legacy = await readJson<unknown>(STORAGE_KEYS.profile);
+        if (legacy !== null && isProfileRecord(legacy)) {
+          await writeJson(key, normalizeProfile(legacy));
+          await removeValue(STORAGE_KEYS.profile);
+          return normalizeProfile(legacy);
+        }
+      } catch (error) {
+        if (!(error instanceof CorruptStoredDataError)) throw error;
+        await removeValue(STORAGE_KEYS.profile);
+      }
+    }
+    return EMPTY_PROFILE;
+  }
   if (!isProfileRecord(stored)) {
-    await removeValue(STORAGE_KEYS.profile);
+    await removeValue(key);
     return EMPTY_PROFILE;
   }
   return normalizeProfile(stored);
 }
 
-async function saveLocalProfile(profile: ProfileRecord): Promise<ProfileRecord> {
+async function saveLocalProfile(profile: ProfileRecord, ownerId?: string | null): Promise<ProfileRecord> {
   const normalized = normalizeProfile(profile);
-  await writeJson(STORAGE_KEYS.profile, normalized);
+  await writeJson(profileKey(ownerId), normalized);
   return normalized;
 }
 
-async function updateLocalProfile(changes: Partial<ProfileRecord>): Promise<ProfileRecord> {
-  const current = await getLocalProfile();
-  return saveLocalProfile({ ...current, ...changes });
+async function updateLocalProfile(changes: Partial<ProfileRecord>, ownerId?: string | null): Promise<ProfileRecord> {
+  const current = await getLocalProfile(ownerId);
+  return saveLocalProfile({ ...current, ...changes }, ownerId);
 }
 
 export const profileService: ProfileService = {

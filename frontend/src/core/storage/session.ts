@@ -9,6 +9,7 @@ export interface StoredSession {
   phoneVerified?: boolean;
   emailVerified?: boolean;
   onboardingStep?: number;
+  dataOwnerId?: string;
 }
 
 export async function readSession(): Promise<StoredSession | null> {

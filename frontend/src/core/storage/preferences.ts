@@ -161,23 +161,56 @@ async function readLegacyPreferences(): Promise<LocalPreferences | null> {
   return parsePreferences({ ...defaults(), ...parsed, preferredModuleIds: ids }) ?? defaults();
 }
 
-export async function readPreferences(): Promise<LocalPreferences> {
+function preferenceKeys(ownerId?: string | null): { modules: string; avatar: string; reports: string } {
+  if (!ownerId) return {
+    modules: STORAGE_KEYS.modulePreferences,
+    avatar: STORAGE_KEYS.avatar,
+    reports: STORAGE_KEYS.reportPreferences,
+  };
+  const suffix = encodeURIComponent(ownerId.trim().toLowerCase());
+  return {
+    modules: `${STORAGE_KEYS.modulePreferencesAccountPrefix}${suffix}`,
+    avatar: `${STORAGE_KEYS.avatarAccountPrefix}${suffix}`,
+    reports: `${STORAGE_KEYS.reportPreferencesAccountPrefix}${suffix}`,
+  };
+}
+
+export async function readPreferences(ownerId?: string | null): Promise<LocalPreferences> {
+  const keys = preferenceKeys(ownerId);
   const [moduleValue, avatarValue, reportValue] = await Promise.all([
-    readObject(STORAGE_KEYS.modulePreferences),
-    readObject(STORAGE_KEYS.avatar),
-    readObject(STORAGE_KEYS.reportPreferences),
+    readObject(keys.modules),
+    readObject(keys.avatar),
+    readObject(keys.reports),
   ]);
   const saved = parseStoredPreferences(moduleValue, avatarValue, reportValue);
   if (saved) return saved;
 
+  if (ownerId && moduleValue === null && avatarValue === null && reportValue === null) {
+    const legacyKeys = preferenceKeys();
+    const legacyValues = await Promise.all([
+      readObject(legacyKeys.modules),
+      readObject(legacyKeys.avatar),
+      readObject(legacyKeys.reports),
+    ]);
+    if (legacyValues.some((value) => value !== null)) {
+      const legacySaved = parseStoredPreferences(legacyValues[0], legacyValues[1], legacyValues[2]);
+      if (legacySaved) {
+        await writePreferences(legacySaved, ownerId);
+        await Promise.all(Object.values(legacyKeys).map((key) => removeValue(key)));
+        return legacySaved;
+      }
+    }
+  }
+
   const legacy = await readLegacyPreferences();
   const initial = legacy ?? defaults();
-  await writePreferences(initial);
+  await writePreferences(initial, ownerId);
   if (legacy) await removeValue(STORAGE_KEYS.legacyPreferences);
   return initial;
 }
 
-export async function writePreferences(preferences: LocalPreferences): Promise<void> {
+export async function writePreferences(preferences: LocalPreferences, ownerId?: string | null): Promise<void> {
+  const keys = preferenceKeys(ownerId);
   const ids = [...preferences.preferredModuleIds];
   const reports: StoredReportPreferences = {
     reportFrequency: preferences.reportFrequency,
@@ -187,9 +220,9 @@ export async function writePreferences(preferences: LocalPreferences): Promise<v
     reportEmail: preferences.reportEmail,
   };
   const entries: [string, string][] = [
-    [STORAGE_KEYS.modulePreferences, JSON.stringify({ preferredModuleIds: ids } satisfies StoredModulePreferences)],
-    [STORAGE_KEYS.avatar, JSON.stringify({ avatarId: preferences.avatarId })],
-    [STORAGE_KEYS.reportPreferences, JSON.stringify(reports)],
+    [keys.modules, JSON.stringify({ preferredModuleIds: ids } satisfies StoredModulePreferences)],
+    [keys.avatar, JSON.stringify({ avatarId: preferences.avatarId })],
+    [keys.reports, JSON.stringify(reports)],
   ];
   const previous = await Promise.all(entries.map(async ([key]) => [key, await readText(key)] as const));
   const previousByKey = new Map(previous);

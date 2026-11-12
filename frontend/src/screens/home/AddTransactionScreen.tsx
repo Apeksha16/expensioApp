@@ -23,6 +23,8 @@ export function AddTransactionScreen({ navigation, route }: Props) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState(0);
   const [category, setCategory] = useState('Food & Dining');
+  const [customCategory, setCustomCategory] = useState('');
+  const [useCustomCategory, setUseCustomCategory] = useState(false);
   const [date, setDate] = useState(localDateString(new Date()));
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
     if (route.params?.type) {
       setType(route.params.type);
       setCategory(route.params.type === 'expense' ? 'Food & Dining' : 'Salary');
+      setUseCustomCategory(false);
       navigation.setParams({ type: undefined });
     }
   }, [navigation, route.params?.type]);
@@ -39,6 +42,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
   const save = async () => {
     if (title.trim().length < 2) { setError('Add a short name for this transaction'); return; }
     if (amount <= 0) { setError('Enter an amount greater than zero'); return; }
+    if (useCustomCategory && !customCategory.trim()) { setError('Enter a category name'); return; }
     try {
       validateDate(date, 'transaction date');
     } catch (dateError) {
@@ -54,7 +58,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
       await addTransaction({
         type,
         merchant: title.trim(),
-        category,
+        category: useCustomCategory ? customCategory.trim() : category,
         icon: type === 'income' ? 'cash' : category === 'Food & Dining' ? 'restaurant' : category === 'Transport' ? 'car' : category === 'Shopping' ? 'cart' : 'receipt',
         iconColor: type === 'income' ? colors.income : colors.accent,
         amount,
@@ -98,6 +102,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
               onPress={() => {
                 setType(item);
                 setCategory(item === 'expense' ? 'Food & Dining' : 'Salary');
+                setUseCustomCategory(false);
                 setError('');
               }}
               style={[styles.segmentOption, type === item && styles.segmentOptionActive]}
@@ -135,14 +140,19 @@ export function AddTransactionScreen({ navigation, route }: Props) {
           <View style={styles.categorySection}>
             <Text style={styles.categoryHeading}>Category</Text>
             <View style={styles.categoryOptions}>
-              {(type === 'expense' ? expenseCategories : incomeCategories).map((item) => {
-                const selected = category === item;
+              {[...(type === 'expense' ? expenseCategories : incomeCategories), 'Custom'].map((item) => {
+                const custom = item === 'Custom';
+                const selected = custom ? useCustomCategory : !useCustomCategory && category === item;
                 return (
                   <Pressable
                     key={item}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
-                    onPress={() => setCategory(item)}
+                    onPress={() => {
+                      setUseCustomCategory(custom);
+                      if (!custom) setCategory(item);
+                      setError('');
+                    }}
                     style={[styles.categoryChip, selected && styles.categoryChipSelected]}
                   >
                     <Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>{item}</Text>
@@ -150,6 +160,9 @@ export function AddTransactionScreen({ navigation, route }: Props) {
                 );
               })}
             </View>
+            {useCustomCategory ? (
+              <InputField label="Custom category" value={customCategory} onChangeText={(value) => { setCustomCategory(value); setError(''); }} placeholder="e.g. Pet care" />
+            ) : null}
           </View>
           <View style={styles.metaRows}>
             <View style={styles.metaRow}>

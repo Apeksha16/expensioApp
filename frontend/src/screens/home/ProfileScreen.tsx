@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { InputField } from '../../components/InputField';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { profileAvatars, getProfileAvatar } from '../../data/avatars';
@@ -37,6 +39,7 @@ export function ProfileScreen({ navigation }: Props) {
     saveAvatarPreference,
     saveReportPreferences,
     savePreferredModules,
+    updateProfileDetails,
     logout,
   } = useApp();
   const {
@@ -60,6 +63,10 @@ export function ProfileScreen({ navigation }: Props) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [reportSaving, setReportSaving] = useState(false);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [draftFirstName, setDraftFirstName] = useState(savedFirstName);
+  const [draftLastName, setDraftLastName] = useState(savedLastName);
   const [reportDraft, setReportDraft] = useState<ReportPreferenceChanges>({
     reportFrequency,
     reportsEnabled,
@@ -74,6 +81,10 @@ export function ProfileScreen({ navigation }: Props) {
   useEffect(() => {
     setDraftAvatarId(avatarId);
   }, [avatarId]);
+  useEffect(() => {
+    setDraftFirstName(savedFirstName);
+    setDraftLastName(savedLastName);
+  }, [savedFirstName, savedLastName]);
   useEffect(() => {
     setReportDraft({ reportFrequency, reportsEnabled, reportDayOfWeek, reportDayOfMonth, reportEmail });
   }, [reportFrequency, reportsEnabled, reportDayOfWeek, reportDayOfMonth, reportEmail]);
@@ -201,6 +212,24 @@ export function ProfileScreen({ navigation }: Props) {
     setAvatarPickerOpen(true);
   };
 
+  const saveProfileDetails = async () => {
+    if (profileSaving) return;
+    setProfileSaving(true);
+    setError('');
+    try {
+      await updateProfileDetails({ firstName: draftFirstName, lastName: draftLastName });
+      setProfileEditorOpen(false);
+      setMessage('Profile details updated.');
+      showToast('success', 'Profile updated.');
+    } catch (saveError) {
+      const notice = saveError instanceof Error ? saveError.message : 'Unable to update your profile.';
+      setError(notice);
+      showToast('error', notice);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
       <ScrollView keyboardShouldPersistTaps="always" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -234,7 +263,7 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        <SectionHeading title="Personal information" subtitle="Your name and verified number stay read-only." />
+        <SectionHeading title="Personal information" subtitle="Edit your name here. Email and mobile verification use their dedicated flows." />
         <View style={styles.infoCard}>
           <InfoRow icon="person-outline" label="First name" value={firstName} />
           <InfoRow icon="person-outline" label="Last name" value={lastName} />
@@ -253,6 +282,10 @@ export function ProfileScreen({ navigation }: Props) {
               <Text style={styles.editEmailText}>Edit</Text>
             </Pressable>
           </View>
+          <Pressable accessibilityRole="button" onPress={() => setProfileEditorOpen(true)} style={styles.editProfileButton}>
+            <Ionicons name="pencil-outline" size={17} color={colors.accent} />
+            <Text style={styles.editProfileButtonText}>Edit name</Text>
+          </Pressable>
         </View>
 
         <SectionHeading title="Preferred modules" subtitle={`Choose and order exactly ${PREFERRED_MODULE_LIMIT} navbar destinations.`} />
@@ -463,6 +496,25 @@ export function ProfileScreen({ navigation }: Props) {
         </Pressable>
       </ScrollView>
 
+      <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.profileModal, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Edit your name</Text>
+            <InputField label="First name" value={draftFirstName} onChangeText={setDraftFirstName} autoCapitalize="words" />
+            <InputField label="Last name" value={draftLastName} onChangeText={setDraftLastName} autoCapitalize="words" />
+            <Text style={styles.modalSubtitle}>Your verified mobile number and email are managed separately.</Text>
+            {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
+            <View style={styles.modalActions}>
+              <Pressable accessibilityRole="button" onPress={() => { setProfileEditorOpen(false); setDraftFirstName(savedFirstName); setDraftLastName(savedLastName); }} style={styles.cancelButton}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+              <PrimaryButton title={profileSaving ? 'Saving…' : 'Save name'} onPress={() => void saveProfileDetails()} loading={profileSaving} style={styles.profileSaveButton} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={avatarPickerOpen}
         transparent
@@ -558,6 +610,10 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   sectionSubtitle: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
   infoCard: { paddingHorizontal: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  editProfileButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  editProfileButtonText: { ...typography.captionMedium, color: colors.accent },
+  profileModal: { width: '100%', maxWidth: 460, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, alignSelf: 'center', gap: spacing.md, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.background },
+  profileSaveButton: { flex: 1 },
   infoRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   infoIcon: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   infoCopy: { flex: 1, minWidth: 0, gap: 3 },

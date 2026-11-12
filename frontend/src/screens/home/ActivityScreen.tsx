@@ -8,6 +8,7 @@ import { TransactionItem } from '../../components/TransactionItem';
 import { useApp } from '../../context/AppContext';
 import { colors, radius, spacing, typography } from '../../theme';
 import type { Transaction } from '../../types';
+import { validateDate } from '../../services/moneyService';
 
 const filters = ['All', 'Expenses', 'Income'] as const;
 
@@ -20,6 +21,10 @@ export function ActivityScreen() {
   const [draftMerchant, setDraftMerchant] = useState('');
   const [draftCategory, setDraftCategory] = useState('');
   const [draftAmount, setDraftAmount] = useState(0);
+  const [draftType, setDraftType] = useState<'expense' | 'income'>('expense');
+  const [draftDate, setDraftDate] = useState('');
+  const [rangeStart, setRangeStart] = useState('');
+  const [rangeEnd, setRangeEnd] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -28,15 +33,40 @@ export function ActivityScreen() {
       (filter === 'All'
         ? savedTransactions
         : savedTransactions.filter((item) => item.type === (filter === 'Income' ? 'income' : 'expense')))
-        .filter((item) => `${item.merchant} ${item.category}`.toLowerCase().includes(query.trim().toLowerCase())),
-    [filter, query, savedTransactions],
+        .filter((item) => `${item.merchant} ${item.category}`.toLowerCase().includes(query.trim().toLowerCase()))
+        .filter((item) => {
+          if (!rangeStart && !rangeEnd) return true;
+          const date = typeof item.occurredAt === 'number'
+            ? new Date(item.occurredAt)
+            : item.date === 'Today' || item.date === 'Yesterday'
+              ? new Date(Date.now())
+              : new Date(item.date);
+          if (item.date === 'Yesterday' && item.occurredAt === undefined) date.setDate(date.getDate() - 1);
+          if (Number.isNaN(date.getTime())) return false;
+          const dateValue = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+          return (!rangeStart || dateValue >= rangeStart) && (!rangeEnd || dateValue <= rangeEnd);
+        }),
+    [filter, query, rangeStart, rangeEnd, savedTransactions],
   );
+  const rangeError = (() => {
+    try {
+      if (rangeStart) validateDate(rangeStart, 'start date');
+      if (rangeEnd) validateDate(rangeEnd, 'end date');
+      if (rangeStart && rangeEnd && rangeStart > rangeEnd) return 'Start date must be on or before end date.';
+      return '';
+    } catch (validationError) {
+      return validationError instanceof Error ? validationError.message : 'Choose a valid date range.';
+    }
+  })();
 
   const openEditor = (item: Transaction) => {
     setSelectedTransaction(item);
     setDraftMerchant(item.merchant);
     setDraftCategory(item.category);
     setDraftAmount(item.amount);
+    setDraftType(item.type);
+    const date = typeof item.occurredAt === 'number' ? new Date(item.occurredAt) : new Date();
+    setDraftDate(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
     setConfirmDelete(false);
     setError('');
   };
@@ -50,6 +80,8 @@ export function ActivityScreen() {
         merchant: draftMerchant,
         category: draftCategory,
         amount: draftAmount,
+        type: draftType,
+        date: draftDate,
       });
       setSelectedTransaction(null);
       showToast('success', 'Transaction updated.');
@@ -119,6 +151,26 @@ export function ActivityScreen() {
             </Pressable>
           ) : null}
         </View>
+        <View style={styles.dateRange}>
+          <TextInput
+            accessibilityLabel="Transactions from date"
+            value={rangeStart}
+            onChangeText={setRangeStart}
+            placeholder="From YYYY-MM-DD"
+            placeholderTextColor={colors.textTertiary}
+            style={styles.rangeInput}
+          />
+          <Text style={styles.rangeDivider}>to</Text>
+          <TextInput
+            accessibilityLabel="Transactions through date"
+            value={rangeEnd}
+            onChangeText={setRangeEnd}
+            placeholder="To YYYY-MM-DD"
+            placeholderTextColor={colors.textTertiary}
+            style={styles.rangeInput}
+          />
+        </View>
+        {rangeError ? <Text style={styles.error}>{rangeError}</Text> : null}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -204,9 +256,17 @@ export function ActivityScreen() {
               </View>
             ) : (
               <>
+                <View style={styles.typeOptions}>
+                  {(['expense', 'income'] as const).map((type) => (
+                    <Pressable key={type} accessibilityRole="radio" accessibilityState={{ checked: draftType === type }} onPress={() => setDraftType(type)} style={[styles.typeOption, draftType === type && styles.typeOptionActive]}>
+                      <Text style={[styles.typeOptionText, draftType === type && styles.typeOptionTextActive]}>{type === 'expense' ? 'Expense' : 'Income'}</Text>
+                    </Pressable>
+                  ))}
+                </View>
                 <InputField label="Name" value={draftMerchant} onChangeText={setDraftMerchant} />
                 <InputField label="Category" value={draftCategory} onChangeText={setDraftCategory} />
                 <CurrencyInput label="Amount" value={draftAmount} onChangeValue={setDraftAmount} variant="card" />
+                <InputField label="Date" value={draftDate} onChangeText={setDraftDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
                 {error ? <Text style={styles.error}>{error}</Text> : null}
               </>
             )}
@@ -252,6 +312,9 @@ const styles = StyleSheet.create({
   scroll: { paddingTop: spacing.xl, paddingBottom: 160, gap: spacing.lg },
   searchBox: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, minWidth: 0, ...typography.caption, color: colors.textPrimary, paddingVertical: spacing.xs },
+  dateRange: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  rangeInput: { flex: 1, minWidth: 0, height: 42, borderRadius: radius.md, paddingHorizontal: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...typography.caption, color: colors.textPrimary },
+  rangeDivider: { ...typography.caption, color: colors.textTertiary },
   filters: { gap: spacing.xs },
   filter: {
     minHeight: 44, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full,
@@ -278,6 +341,11 @@ const styles = StyleSheet.create({
   editorHeadingCopy: { flex: 1, gap: 3 },
   editorTitle: { ...typography.h3, color: colors.textPrimary },
   editorSubtitle: { ...typography.caption, color: colors.textSecondary },
+  typeOptions: { flexDirection: 'row', gap: spacing.xs },
+  typeOption: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  typeOptionActive: { backgroundColor: colors.accent },
+  typeOptionText: { ...typography.captionMedium, color: colors.textSecondary, textTransform: 'capitalize' },
+  typeOptionTextActive: { color: colors.white },
   deletePrompt: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, gap: spacing.xs },
   deleteText: { ...typography.bodySemibold, color: colors.textPrimary },
   deleteAmount: { ...typography.body, color: colors.textSecondary },

@@ -13,16 +13,19 @@ export function buildEqualShares(
   amount: number,
   paidById: string,
 ): SplitShare[] {
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter a split amount greater than zero.');
+  if (!participantIds.length) throw new Error('Select at least one participant.');
   const count = participantIds.length;
-  const base = Math.floor(amount / count);
-  let remainder = amount - base * count;
+  const totalPaise = Math.round(amount * 100);
+  const base = Math.floor(totalPaise / count);
+  let remainder = totalPaise - base * count;
 
   return participantIds.map((friendId) => {
     const extra = remainder > 0 ? 1 : 0;
     if (remainder > 0) remainder -= 1;
     return {
       friendId,
-      amount: base + extra,
+      amount: (base + extra) / 100,
       settled: friendId === paidById,
     };
   });
@@ -41,6 +44,13 @@ export function buildCustomShares(
 }
 
 export function createSplitExpense(input: CreateSplitInput): SplitExpense {
+  const title = input.title.trim();
+  if (!title) throw new Error('Enter a title for this split.');
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error('Enter a split amount greater than zero.');
+  if (!input.participantIds.length || new Set(input.participantIds).size !== input.participantIds.length) {
+    throw new Error('Choose at least one participant without duplicates.');
+  }
+  if (!input.participantIds.includes(input.paidById)) throw new Error('Choose a payer from the participants.');
   const shares =
     input.method === 'equal'
       ? buildEqualShares(input.participantIds, input.amount, input.paidById)
@@ -49,10 +59,17 @@ export function createSplitExpense(input: CreateSplitInput): SplitExpense {
           input.customShares ?? {},
           input.paidById,
         );
+  if (shares.some((share) => !Number.isFinite(share.amount) || share.amount < 0)) {
+    throw new Error('Enter valid non-negative split shares.');
+  }
+  const sharesTotal = shares.reduce((total, share) => total + share.amount, 0);
+  if (Math.round(sharesTotal * 100) !== Math.round(input.amount * 100)) {
+    throw new Error('Split shares must add up to the full expense amount.');
+  }
 
   return {
     id: `sp_${Date.now()}`,
-    title: input.title.trim(),
+    title,
     amount: input.amount,
     paidById: input.paidById,
     date: input.date,

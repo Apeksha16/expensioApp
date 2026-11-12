@@ -8,7 +8,7 @@ import { SplitHomeScreen } from '../screens/split/SplitHomeScreen';
 export type SplitStackParamList = {
   SplitHome: undefined;
   Friends: undefined;
-  CreateSplit: undefined;
+  CreateSplit: { groupId?: string } | undefined;
   SplitDetail: { splitId: string };
 };
 

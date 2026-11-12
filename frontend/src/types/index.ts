@@ -52,6 +52,13 @@ export interface SavingsGoal {
   current: number;
   target: number;
   targetDate?: string;
+  contributions?: GoalContribution[];
+}
+
+export interface GoalContribution {
+  id: string;
+  amount: number;
+  occurredAt: number;
 }
 
 export interface CategoryBudget {
@@ -59,6 +66,7 @@ export interface CategoryBudget {
   category: string;
   limit: number;
   createdAt: number;
+  alertThreshold?: number;
 }
 
 export type PaymentKind = 'emi' | 'subscription';
@@ -73,6 +81,7 @@ export interface RecurringPayment {
   nextDueDate: string;
   category: string;
   active: boolean;
+  completed?: boolean;
   outstandingBalance?: number;
   remainingInstallments?: number;
 }
@@ -108,6 +117,13 @@ export interface Friend {
   color: string;
 }
 
+export interface SplitGroup {
+  id: string;
+  name: string;
+  friendIds: string[];
+  createdAt: number;
+}
+
 export type SplitMethod = 'equal' | 'custom';
 
 export interface SplitShare {
@@ -126,6 +142,7 @@ export interface SplitExpense {
   shares: SplitShare[];
   note?: string;
   createdAt: number;
+  ledgerTransactionId?: string;
 }
 
 export interface PendingBalance {

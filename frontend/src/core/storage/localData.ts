@@ -57,6 +57,7 @@ function isSplit(value: unknown): value is SplitExpense {
     && typeof value.paidById === 'string'
     && typeof value.date === 'string'
     && (value.method === 'equal' || value.method === 'custom')
+    && (value.ledgerTransactionId === undefined || typeof value.ledgerTransactionId === 'string')
     && Array.isArray(value.shares)
     && value.shares.every((share) => isRecord(share)
       && typeof share.friendId === 'string'
@@ -72,7 +73,8 @@ function isBudget(value: unknown): value is CategoryBudget {
     && typeof value.limit === 'number'
     && Number.isFinite(value.limit)
     && value.limit > 0
-    && typeof value.createdAt === 'number';
+    && typeof value.createdAt === 'number'
+    && (value.alertThreshold === undefined || (typeof value.alertThreshold === 'number' && value.alertThreshold > 0 && value.alertThreshold <= 1));
 }
 
 function isGoal(value: unknown): value is SavingsGoal {
@@ -85,7 +87,15 @@ function isGoal(value: unknown): value is SavingsGoal {
     && typeof value.target === 'number'
     && Number.isFinite(value.target)
     && value.target > 0
-    && (value.targetDate === undefined || typeof value.targetDate === 'string');
+    && (value.targetDate === undefined || typeof value.targetDate === 'string')
+    && (value.contributions === undefined || (Array.isArray(value.contributions) && value.contributions.every((item) =>
+      isRecord(item)
+      && typeof item.id === 'string'
+      && typeof item.amount === 'number'
+      && Number.isFinite(item.amount)
+      && item.amount > 0
+      && typeof item.occurredAt === 'number'
+      && Number.isFinite(item.occurredAt))));
 }
 
 function isRecurringPayment(value: unknown): value is RecurringPayment {
@@ -100,20 +110,38 @@ function isRecurringPayment(value: unknown): value is RecurringPayment {
     && typeof value.nextDueDate === 'string'
     && typeof value.category === 'string'
     && typeof value.active === 'boolean'
+    && (value.completed === undefined || typeof value.completed === 'boolean')
     && (value.outstandingBalance === undefined || (typeof value.outstandingBalance === 'number' && Number.isFinite(value.outstandingBalance) && value.outstandingBalance >= 0))
     && (value.remainingInstallments === undefined || (typeof value.remainingInstallments === 'number' && Number.isInteger(value.remainingInstallments) && value.remainingInstallments >= 0));
 }
 
-export async function readLocalData(): Promise<LocalAppData> {
+function localDataKey(ownerId?: string | null): string {
+  return ownerId
+    ? `${STORAGE_KEYS.localDataAccountPrefix}${encodeURIComponent(ownerId.trim().toLowerCase())}`
+    : STORAGE_KEYS.localData;
+}
+
+export async function readLocalData(ownerId?: string | null): Promise<LocalAppData> {
+  const key = localDataKey(ownerId);
   let parsed: unknown;
   try {
-    parsed = await readJson<unknown>(STORAGE_KEYS.localData);
+    parsed = await readJson<unknown>(key);
   } catch (error) {
     if (!(error instanceof CorruptStoredDataError)) throw error;
-    await removeValue(STORAGE_KEYS.localData);
+    await removeValue(key);
     return emptyData();
   }
-  if (parsed === null) return emptyData();
+  if (parsed === null) {
+    if (ownerId) {
+      const legacyData = await readJson<unknown>(STORAGE_KEYS.localData);
+      if (legacyData !== null) {
+        await writeJson(key, legacyData);
+        await removeValue(STORAGE_KEYS.localData);
+        return readLocalData(ownerId);
+      }
+    }
+    return emptyData();
+  }
   if (
     typeof parsed !== 'object' ||
     parsed === null ||
@@ -124,7 +152,7 @@ export async function readLocalData(): Promise<LocalAppData> {
     !('splits' in parsed) ||
     !Array.isArray(parsed.splits)
   ) {
-    await removeValue(STORAGE_KEYS.localData);
+    await removeValue(key);
     return emptyData();
   }
   const record = parsed as Partial<LocalAppData>;
@@ -138,6 +166,6 @@ export async function readLocalData(): Promise<LocalAppData> {
   };
 }
 
-export function writeLocalData(data: LocalAppData): Promise<void> {
-  return writeJson(STORAGE_KEYS.localData, data);
+export function writeLocalData(data: LocalAppData, ownerId?: string | null): Promise<void> {
+  return writeJson(localDataKey(ownerId), data);
 }

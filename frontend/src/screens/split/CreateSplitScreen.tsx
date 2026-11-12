@@ -27,12 +27,15 @@ type Props = NativeStackScreenProps<SplitStackParamList, 'CreateSplit'>;
 
 const STEPS = 4;
 
-export function CreateSplitScreen({ navigation }: Props) {
+export function CreateSplitScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const { friends, addSplit } = useApp();
+  const { friends, splitGroups, addSplit } = useApp();
 
   const [step, setStep] = useState(1);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => {
+    const groupId = route.params?.groupId;
+    return splitGroups.find((group) => group.id === groupId)?.friendIds ?? [];
+  });
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState('Today');
@@ -93,7 +96,7 @@ export function CreateSplitScreen({ navigation }: Props) {
       }
     }
     if (step === 3 && method === 'custom') {
-      if (customTotal !== amount) {
+      if (Math.round(customTotal * 100) !== Math.round(amount * 100)) {
         setError(`Shares must total ${formatINR(amount)}`);
         return;
       }

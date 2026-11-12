@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 export const STORAGE_KEYS = {
   session: 'expensio_session',
@@ -27,11 +28,26 @@ export class CorruptStoredDataError extends Error {
   }
 }
 
-const secureStoreAdapter: KeyValueStorage = {
-  get: (key) => SecureStore.getItemAsync(key),
-  set: (key, value) => SecureStore.setItemAsync(key, value),
-  remove: (key) => SecureStore.deleteItemAsync(key),
-};
+const secureStoreAdapter: KeyValueStorage = Platform.OS === 'web'
+  ? {
+    async get(key) {
+      if (typeof globalThis.localStorage === 'undefined') throw new Error('Browser storage is unavailable.');
+      return globalThis.localStorage.getItem(key);
+    },
+    async set(key, value) {
+      if (typeof globalThis.localStorage === 'undefined') throw new Error('Browser storage is unavailable.');
+      globalThis.localStorage.setItem(key, value);
+    },
+    async remove(key) {
+      if (typeof globalThis.localStorage === 'undefined') throw new Error('Browser storage is unavailable.');
+      globalThis.localStorage.removeItem(key);
+    },
+  }
+  : {
+    get: (key) => SecureStore.getItemAsync(key),
+    set: (key, value) => SecureStore.setItemAsync(key, value),
+    remove: (key) => SecureStore.deleteItemAsync(key),
+  };
 
 let storage: KeyValueStorage = secureStoreAdapter;
 

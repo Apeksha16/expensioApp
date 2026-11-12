@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useFonts } from 'expo-font';
@@ -44,6 +44,8 @@ export function ProfileSetupScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const firstNameDraft = useRef(onboardingDraft.firstName);
+  const lastNameDraft = useRef(onboardingDraft.lastName);
 
   const setStep = (nextStep: number) => {
     setStepState(nextStep);
@@ -58,7 +60,10 @@ export function ProfileSetupScreen() {
   const next = async () => {
     setError('');
     if (step === 1) {
-      if (!onboardingDraft.firstName.trim() || !onboardingDraft.lastName.trim()) {
+      const firstName = firstNameDraft.current.trim();
+      const lastName = lastNameDraft.current.trim();
+      updateOnboardingDraft({ firstName, lastName });
+      if (!firstName || !lastName) {
         setError('Enter your first and last name');
         return;
       }
@@ -167,16 +172,17 @@ export function ProfileSetupScreen() {
       ? `${countryCode} ${localPhone.slice(0, 5)} ${localPhone.slice(5)}`
       : '';
     const emailValue = onboardingDraft.email || (verificationChannel === 'email' ? verificationTarget : '');
-    const canContinue = Boolean(onboardingDraft.firstName.trim() && onboardingDraft.lastName.trim());
+    const canContinue = true;
 
     return (
       <KeyboardAvoidingView style={styles.profileScreen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View pointerEvents="none" style={styles.decoration}>
-          <View style={styles.outerRing} />
-          <View style={styles.middleRing} />
-        </View>
         <View style={styles.profileFrame}>
-          <View style={[styles.profileTop, { paddingTop: insets.top + 8 }]}>
+          <ScrollView
+            style={styles.profileFormScroll}
+            contentContainerStyle={[styles.profileContent, { paddingTop: insets.top + 10 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.profileHeader}>
               <Pressable
                 onPress={goBack}
@@ -185,7 +191,7 @@ export function ProfileSetupScreen() {
                 hitSlop={8}
                 style={styles.profileBackButton}
               >
-                <Ionicons name="chevron-back" size={22} color="#F3F1E7" />
+                <Ionicons name="chevron-back" size={21} color="#0B2B1F" />
               </Pressable>
               <View style={styles.brandLockup}>
                 <View style={styles.brandMark}>
@@ -193,7 +199,11 @@ export function ProfileSetupScreen() {
                 </View>
                 <Text style={styles.brandText}>expensio</Text>
               </View>
-              <View style={styles.headerSpacer} />
+              <View style={styles.stepCount}>
+                <Text style={styles.stepCountText}>01</Text>
+                <Text style={styles.stepCountDivider}>/</Text>
+                <Text style={styles.stepCountMuted}>04</Text>
+              </View>
             </View>
 
             <View
@@ -201,30 +211,17 @@ export function ProfileSetupScreen() {
               accessibilityRole="progressbar"
               accessibilityLabel={`Onboarding steps, step ${step} of 4: ${['Profile', 'Work', 'Money', 'Review'][step - 1]}`}
             >
-              <View style={styles.progressDots}>
-                {['Profile', 'Work', 'Money', 'Review'].map((label, index) => {
-                  const stepNumber = index + 1;
-                  const complete = stepNumber < step;
-                  const active = stepNumber === step;
-                  return (
-                    <React.Fragment key={label}>
-                      <View style={[
-                        styles.progressNode,
-                        active && styles.progressNodeActive,
-                        complete && styles.progressNodeComplete,
-                      ]}>
-                        {complete ? (
-                          <Ionicons name="checkmark" size={15} color="#0B2B1F" />
-                        ) : (
-                          <Text style={[styles.progressNumber, active && styles.progressNumberActive]}>
-                            {stepNumber}
-                          </Text>
-                        )}
-                      </View>
-                      {index < 3 ? <View style={[styles.progressConnector, complete && styles.progressConnectorComplete]} /> : null}
-                    </React.Fragment>
-                  );
-                })}
+              <View style={styles.progressMeta}>
+                <Text style={styles.progressEyebrow}>YOUR SETUP</Text>
+                <Text style={styles.progressCurrent}>PROFILE</Text>
+              </View>
+              <View style={styles.progressSegments}>
+                {['Profile', 'Work', 'Money', 'Review'].map((label, index) => (
+                  <View
+                    key={label}
+                    style={[styles.progressSegment, index < step && styles.progressSegmentActive]}
+                  />
+                ))}
               </View>
               <View style={styles.progressLabels}>
                 {['Profile', 'Work', 'Money', 'Review'].map((label, index) => (
@@ -236,104 +233,107 @@ export function ProfileSetupScreen() {
             </View>
 
             <View style={styles.profileHero}>
-              <View style={styles.profileHeadline}>
-                <Text style={styles.profileTitle}>Let&apos;s make it</Text>
-                <View style={styles.titleHighlight}>
-                  <Text style={styles.profileTitleHighlight}>yours.</Text>
-                </View>
+              <View style={styles.heroAccent}>
+                <Ionicons name="sparkles" size={13} color="#0B2B1F" />
+                <Text style={styles.heroAccentText}>A FRESH START</Text>
               </View>
+              <Text style={styles.profileTitle}>First, the basics.</Text>
               <Text style={styles.profileSubtitle}>
-                Takes under a minute. Verified contacts stay locked for your security.
+                A few details help us make your money space feel like yours.
               </Text>
             </View>
-          </View>
 
-          <View style={styles.profilePanel}>
-            <View style={styles.profileAvatarArea}>
-              <View style={styles.avatar}>
-                {profilePhotoUri ? (
-                  <Image source={{ uri: profilePhotoUri }} style={styles.avatarImage} />
-                ) : (
-                  <Text style={styles.avatarLetter}>
-                    {(onboardingDraft.firstName.trim()[0] || 'A').toUpperCase()}
-                  </Text>
-                )}
+            <View style={styles.profileCard}>
+              <View style={styles.photoRow}>
+                <View style={styles.avatar}>
+                  {profilePhotoUri ? (
+                    <Image source={{ uri: profilePhotoUri }} style={styles.avatarImage} />
+                  ) : (
+                    <Text style={styles.avatarLetter}>
+                      {(onboardingDraft.firstName.trim()[0] || 'A').toUpperCase()}
+                    </Text>
+                  )}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add or edit profile photo"
+                    onPress={chooseProfilePhoto}
+                    style={styles.cameraBadge}
+                  >
+                    <Ionicons name="camera" size={16} color="#0B2B1F" />
+                  </Pressable>
+                </View>
+                <View style={styles.photoCopy}>
+                  <Text style={styles.photoTitle}>Your profile photo</Text>
+                  <Text style={styles.photoHint}>Add a little personality to your account.</Text>
+                </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Add or edit profile photo"
+                  accessibilityLabel="Choose a profile photo"
                   onPress={chooseProfilePhoto}
-                  style={styles.cameraBadge}
+                  style={styles.photoAction}
                 >
-                  <View style={styles.cameraBadgeIcon}>
-                    <Ionicons name="camera-outline" size={14} color="#0B2B1F" />
-                  </View>
+                  <Ionicons name="add" size={19} color="#0B2B1F" />
                 </Pressable>
               </View>
-              <Text style={styles.photoHint}>Add a profile photo</Text>
-            </View>
 
-            <ScrollView
-              style={styles.profileFormScroll}
-              contentContainerStyle={[styles.profileForm, { paddingBottom: Math.max(insets.bottom, 24) }]}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
+              <View style={styles.formDivider} />
+              <Text style={styles.formSectionTitle}>What should we call you?</Text>
               <View style={styles.nameRow}>
                 <ProfileNameField
                   label="First name"
                   value={onboardingDraft.firstName}
                   placeholder="Apeksha"
                   accessibilityLabel="First name"
-                  onChangeText={(value) => {
-                    updateOnboardingDraft({ firstName: value });
-                    setError('');
-                  }}
+                  onChangeText={(value) => { firstNameDraft.current = value; }}
+                  onCommit={(value) => updateOnboardingDraft({ firstName: value })}
                 />
                 <ProfileNameField
                   label="Last name"
                   value={onboardingDraft.lastName}
                   placeholder="Doe"
                   accessibilityLabel="Last name"
-                  onChangeText={(value) => {
-                    updateOnboardingDraft({ lastName: value });
-                    setError('');
-                  }}
+                  onChangeText={(value) => { lastNameDraft.current = value; }}
+                  onCommit={(value) => updateOnboardingDraft({ lastName: value })}
                 />
               </View>
 
+              <View style={styles.contactSectionHeading}>
+                <Text style={styles.formSectionTitle}>Verified contacts</Text>
+                <Text style={styles.contactSectionHint}>Locked for your security</Text>
+              </View>
               <View style={styles.verifiedFields}>
                 <ContactField label="EMAIL" value={emailValue} />
                 <ContactField label="MOBILE NUMBER" value={phoneValue} />
               </View>
+            </View>
+          </ScrollView>
 
-              {error ? <Text style={styles.profileError}>{error}</Text> : null}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Continue to Work"
-                accessibilityState={{ disabled: !canContinue, busy: loading }}
-                disabled={!canContinue || loading}
-                onPress={() => void next()}
-                style={({ pressed }) => [
-                  styles.profileContinue,
-                  canContinue && styles.profileContinueEnabled,
-                  pressed && canContinue && styles.profileContinuePressed,
-                ]}
-              >
-                {loading ? (
-                  <ActivityIndicator color={canContinue ? '#0B2B1F' : '#8FA698'} />
-                ) : (
-                  <View style={styles.continueContents}>
-                    <Text style={[styles.profileContinueText, canContinue && styles.profileContinueTextEnabled]}>
-                      Continue
-                    </Text>
-                    <Ionicons name="arrow-forward" size={20} color={canContinue ? '#0B2B1F' : '#8FA698'} />
-                  </View>
-                )}
-              </Pressable>
-              <Text style={styles.profileFooterHint}>
-                You can change this anytime in Settings.
-              </Text>
-            </ScrollView>
+          <View style={[styles.profileFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            {error ? <Text accessibilityRole="alert" style={styles.profileError}>{error}</Text> : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Continue to Work"
+              accessibilityState={{ disabled: !canContinue, busy: loading }}
+              disabled={!canContinue || loading}
+              onPress={() => void next()}
+              style={({ pressed }) => [
+                styles.profileContinue,
+                canContinue && styles.profileContinueEnabled,
+                pressed && canContinue && styles.profileContinuePressed,
+              ]}
+            >
+              {loading ? (
+                <ActivityIndicator color={canContinue ? '#0B2B1F' : '#8FA698'} />
+              ) : (
+                <View style={styles.continueContents}>
+                  <Text style={[styles.profileContinueText, canContinue && styles.profileContinueTextEnabled]}>
+                    Continue to Work
+                  </Text>
+                  <Ionicons name="arrow-forward" size={20} color={canContinue ? '#0B2B1F' : '#8FA698'} />
+                </View>
+              )}
+            </Pressable>
+            <Text style={styles.profileFooterHint}>Your details stay private and secure.</Text>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -399,72 +399,75 @@ export function ProfileSetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  fontLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B2B1F' },
-  profileScreen: { flex: 1, backgroundColor: '#0B2B1F' },
-  decoration: { position: 'absolute', width: 340, height: 340, top: 10, right: -170 },
-  outerRing: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 170, borderWidth: 1.5, borderColor: 'rgba(200,241,105,0.14)' },
-  middleRing: { position: 'absolute', width: 240, height: 240, borderRadius: 120, borderWidth: 1.5, borderColor: 'rgba(200,241,105,0.1)', left: 50, top: 50 },
-  profileFrame: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center', boxSizing: 'border-box' },
-  profileTop: { paddingHorizontal: 20, gap: 22, paddingBottom: 22 },
-  profileHeader: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  profileBackButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: '#2B5644', alignItems: 'center', justifyContent: 'center' },
-  headerSpacer: { width: 44, height: 44 },
-  brandLockup: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  brandMark: { width: 30, height: 30, borderRadius: 9, backgroundColor: '#C8F169', alignItems: 'center', justifyContent: 'center' },
-  brandMarkText: { color: '#0B2B1F', fontSize: 17, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  brandText: { color: '#F3F1E7', fontSize: 19, fontWeight: '700', letterSpacing: -0.3, fontFamily: 'PlusJakartaSans_700Bold' },
+  fontLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  profileScreen: { flex: 1, backgroundColor: '#F4F3EC' },
+  profileFrame: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center' },
+  profileContent: { flexGrow: 1, paddingHorizontal: 22, paddingBottom: 18, gap: 24 },
+  profileHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  profileBackButton: { width: 44, height: 44, borderRadius: 15, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E8DE', alignItems: 'center', justifyContent: 'center' },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandMark: { width: 28, height: 28, borderRadius: 9, backgroundColor: '#C8F169', alignItems: 'center', justifyContent: 'center' },
+  brandMarkText: { color: '#0B2B1F', fontSize: 16, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  brandText: { color: '#0B2B1F', fontSize: 17, fontWeight: '800', letterSpacing: -0.5, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  stepCount: { minWidth: 56, height: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: 12, backgroundColor: '#E8EDDF' },
+  stepCountText: { color: '#0B2B1F', fontSize: 12, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  stepCountDivider: { color: '#9AA99B', fontSize: 12 },
+  stepCountMuted: { color: '#849187', fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
   progressWrap: { gap: 10 },
-  progressDots: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  progressNode: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#132E22', borderWidth: 1.5, borderColor: '#2B5644', alignItems: 'center', justifyContent: 'center' },
-  progressNodeActive: { backgroundColor: '#C8F169', borderColor: '#C8F169', shadowColor: '#C8F169', shadowOpacity: 0.65, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 4 },
-  progressNodeComplete: { backgroundColor: '#C8F169', borderColor: '#C8F169' },
-  progressConnector: { flex: 1, height: 2, marginHorizontal: 6, backgroundColor: '#2B5644' },
-  progressConnectorComplete: { backgroundColor: '#C8F169' },
-  progressNumber: { color: '#7D9387', fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
-  progressNumberActive: { color: '#0B2B1F', fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  progressMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  progressEyebrow: { color: '#718177', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  progressCurrent: { color: '#1F6B3D', fontSize: 10, fontWeight: '800', letterSpacing: 0.8, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  progressSegments: { flexDirection: 'row', gap: 6 },
+  progressSegment: { flex: 1, height: 5, borderRadius: 5, backgroundColor: '#DDE3D8' },
+  progressSegmentActive: { backgroundColor: '#1F6B3D' },
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressLabel: { color: '#5D7266', fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
-  progressLabelActive: { color: '#C8F169', fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  profileHero: { gap: 10 },
-  profileHeadline: { alignItems: 'flex-start' },
-  profileTitle: { color: '#F3F1E7', fontSize: 34, lineHeight: 39, fontWeight: '800', letterSpacing: -1.2, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  titleHighlight: { alignSelf: 'flex-start', marginTop: -1, paddingHorizontal: 10, paddingVertical: 2, borderRadius: 8, backgroundColor: '#C8F169', transform: [{ rotate: '-2deg' }] },
-  profileTitleHighlight: { color: '#0B2B1F', fontSize: 34, lineHeight: 39, fontWeight: '800', letterSpacing: -1.2, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  profileSubtitle: { color: '#B7C9BC', fontSize: 15, lineHeight: 22, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-  profilePanel: { flex: 1, minHeight: 0, backgroundColor: '#F3F1E7', borderTopLeftRadius: 28, borderTopRightRadius: 28, shadowColor: '#000000', shadowOffset: { width: 0, height: -18 }, shadowOpacity: 0.35, shadowRadius: 25, elevation: 14 },
-  profileAvatarArea: { height: 38, zIndex: 2, alignItems: 'center' },
-  avatar: { position: 'absolute', top: -38, width: 76, height: 76, borderRadius: 38, backgroundColor: '#0B2B1F', borderWidth: 3, borderColor: '#C8F169', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
-  avatarImage: { width: '100%', height: '100%', borderRadius: 38 },
-  avatarLetter: { color: '#C8F169', fontSize: 30, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  cameraBadge: { position: 'absolute', right: -11, bottom: -11, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  cameraBadgeIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#C8F169', borderWidth: 3, borderColor: '#F3F1E7', alignItems: 'center', justifyContent: 'center' },
-  photoHint: { position: 'absolute', top: 43, color: '#1F6B3D', fontSize: 13, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  progressLabel: { color: '#89958B', fontSize: 10, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  progressLabelActive: { color: '#0B2B1F', fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  profileHero: { gap: 9 },
+  heroAccent: { alignSelf: 'flex-start', height: 25, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, borderRadius: 9, backgroundColor: '#DDF3A4' },
+  heroAccentText: { color: '#31532B', fontSize: 9, fontWeight: '800', letterSpacing: 0.8, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  profileTitle: { color: '#0B2B1F', fontSize: 32, lineHeight: 39, fontWeight: '800', letterSpacing: -1.1, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  profileSubtitle: { maxWidth: 330, color: '#68766D', fontSize: 14, lineHeight: 21, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
+  profileCard: { padding: 18, borderRadius: 25, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E7EAE1', gap: 17, shadowColor: '#143A2C', shadowOffset: { width: 0, height: 9 }, shadowOpacity: 0.06, shadowRadius: 18, elevation: 3 },
+  photoRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 13 },
+  avatar: { width: 68, height: 68, borderRadius: 23, backgroundColor: '#0B2B1F', borderWidth: 2, borderColor: '#C8F169', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
+  avatarImage: { width: '100%', height: '100%', borderRadius: 21 },
+  avatarLetter: { color: '#C8F169', fontSize: 27, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  cameraBadge: { position: 'absolute', right: -7, bottom: -7, width: 34, height: 34, borderRadius: 12, borderWidth: 3, borderColor: '#FFFFFF', backgroundColor: '#C8F169', alignItems: 'center', justifyContent: 'center' },
+  photoCopy: { flex: 1, minWidth: 0, gap: 4 },
+  photoTitle: { color: '#0B2B1F', fontSize: 14, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  photoHint: { color: '#7A887F', fontSize: 11, lineHeight: 16, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
+  photoAction: { width: 38, height: 38, borderRadius: 13, backgroundColor: '#EFF3E9', alignItems: 'center', justifyContent: 'center' },
+  formDivider: { height: 1, backgroundColor: '#EEF0E9' },
+  formSectionTitle: { color: '#173B2C', fontSize: 14, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  contactSectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  contactSectionHint: { color: '#8B978D', fontSize: 10, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  profileFooter: { paddingHorizontal: 22, paddingTop: 12, gap: 10, backgroundColor: '#F4F3EC', borderTopWidth: 1, borderTopColor: '#E7E9E1' },
   profileFormScroll: { flex: 1, minHeight: 0 },
-  profileForm: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 46, paddingBottom: 24, gap: 18 },
-  nameRow: { flexDirection: 'row', gap: 12 },
-  nameFieldWrap: { flex: 1, minWidth: 0, gap: 8 },
-  nameLabel: { color: '#0B2B1F', fontSize: 13, lineHeight: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  nameInputWrap: { height: 56, justifyContent: 'center', borderRadius: 16, borderWidth: 1.5, borderColor: '#CBD2C2', backgroundColor: '#FFFFFF' },
-  nameInputWrapFocused: { borderColor: '#0B2B1F', shadowColor: '#C8F169', shadowOpacity: 0.9, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 3 },
-  nameInputIcon: { position: 'absolute', left: 16, zIndex: 1 },
-  nameInput: { flex: 1, height: '100%', paddingLeft: 44, paddingRight: 10, color: '#0B2B1F', fontSize: 16, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  nameRow: { flexDirection: 'row', gap: 10 },
+  nameFieldWrap: { flex: 1, minWidth: 0, gap: 7 },
+  nameLabel: { color: '#44584B', fontSize: 11, lineHeight: 16, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  nameInputWrap: { height: 54, justifyContent: 'center', borderRadius: 14, borderWidth: 1, borderColor: '#E0E5DC', backgroundColor: '#F9FAF7' },
+  nameInputWrapFocused: { borderColor: '#1F6B3D', shadowColor: '#C8F169', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 2 },
+  nameInputIcon: { position: 'absolute', left: 12, zIndex: 1 },
+  nameInput: { flex: 1, height: '100%', paddingLeft: 36, paddingRight: 8, color: '#0B2B1F', fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
   nameInputPlaceholder: { fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-  verifiedFields: { gap: 10 },
-  contactField: { minHeight: 64, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E6E9DB', flexDirection: 'row', alignItems: 'center', gap: 12 },
-  contactIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#E6EADA', alignItems: 'center', justifyContent: 'center' },
+  verifiedFields: { gap: 8 },
+  contactField: { minHeight: 58, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 14, backgroundColor: '#F9FAF7', borderWidth: 1, borderColor: '#E8ECE4', flexDirection: 'row', alignItems: 'center', gap: 10 },
+  contactIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: '#E8F0E2', alignItems: 'center', justifyContent: 'center' },
   contactCopy: { flex: 1, minWidth: 0, gap: 1 },
-  contactLabel: { color: '#74837A', fontSize: 11.5, lineHeight: 15, fontWeight: '700', letterSpacing: 0.6, fontFamily: 'PlusJakartaSans_700Bold' },
-  contactValue: { color: '#0B2B1F', fontSize: 15, lineHeight: 20, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  verifiedBadge: { height: 24, borderRadius: 999, backgroundColor: 'rgba(31,107,61,0.1)', flexDirection: 'row', alignItems: 'center', gap: 3, paddingLeft: 7, paddingRight: 9 },
-  verifiedText: { color: '#1F6B3D', fontSize: 11.5, lineHeight: 16, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  contactLabel: { color: '#87938A', fontSize: 9, lineHeight: 13, fontWeight: '800', letterSpacing: 0.7, fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  contactValue: { color: '#173B2C', fontSize: 13, lineHeight: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  verifiedBadge: { height: 23, borderRadius: 999, backgroundColor: '#E5F3DC', flexDirection: 'row', alignItems: 'center', gap: 3, paddingLeft: 7, paddingRight: 8 },
+  verifiedText: { color: '#1F6B3D', fontSize: 10, lineHeight: 14, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
   profileError: { color: '#B3261E', fontSize: 12, lineHeight: 17, fontFamily: 'PlusJakartaSans_500Medium' },
-  profileContinue: { height: 60, borderRadius: 30, backgroundColor: '#1E4132', alignItems: 'center', justifyContent: 'center' },
-  profileContinueEnabled: { backgroundColor: '#C8F169' },
+  profileContinue: { height: 56, borderRadius: 18, backgroundColor: '#DCE3D9', alignItems: 'center', justifyContent: 'center' },
+  profileContinueEnabled: { backgroundColor: '#0B3D2B' },
   profileContinuePressed: { opacity: 0.9 },
   continueContents: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  profileContinueText: { color: '#8FA698', fontSize: 17, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  profileContinueTextEnabled: { color: '#0B2B1F' },
-  profileFooterHint: { color: '#8C9A8F', fontSize: 12, lineHeight: 17, textAlign: 'center', fontFamily: 'PlusJakartaSans_400Regular' },
+  profileContinueText: { color: '#8A958B', fontSize: 15, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  profileContinueTextEnabled: { color: '#F4F3EC' },
+  profileFooterHint: { color: '#87938A', fontSize: 10, lineHeight: 15, textAlign: 'center', fontFamily: 'PlusJakartaSans_500Medium' },
   flex: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, paddingHorizontal: spacing.lg, maxWidth: 520, width: '100%', alignSelf: 'center' },
   back: { ...typography.bodyMedium, color: colors.accent, marginBottom: spacing.lg },
@@ -519,6 +522,7 @@ interface ProfileNameFieldProps {
   placeholder: string;
   accessibilityLabel: string;
   onChangeText: (value: string) => void;
+  onCommit: (value: string) => void;
 }
 
 function ProfileNameField({
@@ -527,8 +531,11 @@ function ProfileNameField({
   placeholder,
   accessibilityLabel,
   onChangeText,
+  onCommit,
 }: ProfileNameFieldProps) {
   const [focused, setFocused] = useState(false);
+  const [text, setText] = useState(value);
+  const textRef = useRef(value);
 
   return (
     <View style={styles.nameFieldWrap}>
@@ -538,19 +545,27 @@ function ProfileNameField({
           name="person-outline"
           size={16}
           color="#74837A"
+          pointerEvents="none"
           style={styles.nameInputIcon}
         />
         <TextInput
-          value={value}
-          onChangeText={onChangeText}
+          value={text}
+          onChangeText={(nextValue) => {
+            textRef.current = nextValue;
+            setText(nextValue);
+            onChangeText(nextValue);
+          }}
           placeholder={placeholder}
           placeholderTextColor="#74837A"
           autoCapitalize="words"
           autoCorrect={false}
           accessibilityLabel={accessibilityLabel}
-          style={[styles.nameInput, !value && styles.nameInputPlaceholder]}
+          style={[styles.nameInput, !text && styles.nameInputPlaceholder]}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => {
+            setFocused(false);
+            onCommit(textRef.current);
+          }}
         />
       </View>
     </View>

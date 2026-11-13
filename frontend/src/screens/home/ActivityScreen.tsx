@@ -1,114 +1,128 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CurrencyInput } from '../../components/CurrencyInput';
-import { InputField } from '../../components/InputField';
-import { TransactionItem } from '../../components/TransactionItem';
 import { useApp } from '../../context/AppContext';
+import { CURRENT_USER_ID } from '../../data/splits';
+import type { MainTabParamList } from '../../navigation/MainTabs';
+import { getDefaultBudgetIconId } from '../../services/budgetIconService';
+import { createExpenseService, getCurrentLocalMonth, getPaymentModeLabel } from '../../services/expenseService';
 import { colors, radius, spacing, typography } from '../../theme';
 import type { Transaction } from '../../types';
-import { validateDate } from '../../services/moneyService';
+import { formatINR } from '../../utils/format';
+import { getFriendMeta } from '../../utils/splits';
 
-const filters = ['All', 'Expenses', 'Income'] as const;
+type Props = BottomTabScreenProps<MainTabParamList, 'Activity'>;
+const PAGE_SIZE = 20;
+const filters = ['Expenses', 'Income', 'All'] as const;
 
-export function ActivityScreen() {
+function monthLabel(month: string): string {
+  const [year, value] = month.split('-').map(Number);
+  return new Date(year, value - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+export function ActivityScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { transactions: savedTransactions, updateTransaction, removeTransaction, showToast } = useApp();
-  const [filter, setFilter] = useState<(typeof filters)[number]>('All');
+  const {
+    transactions,
+    budgets,
+    splits,
+    friends,
+    addTransaction,
+    updateTransaction,
+    authPhase,
+    restoreError,
+    retryRestore,
+    removeTransaction,
+    showToast,
+  } = useApp();
+  const expenseService = useMemo(() => createExpenseService({
+    create: addTransaction,
+    update: updateTransaction,
+    delete: removeTransaction,
+  }), [addTransaction, updateTransaction, removeTransaction]);
+  const [filter, setFilter] = useState<(typeof filters)[number]>('Expenses');
   const [query, setQuery] = useState('');
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [draftMerchant, setDraftMerchant] = useState('');
-  const [draftCategory, setDraftCategory] = useState('');
-  const [draftAmount, setDraftAmount] = useState(0);
-  const [draftType, setDraftType] = useState<'expense' | 'income'>('expense');
-  const [draftDate, setDraftDate] = useState('');
-  const [rangeStart, setRangeStart] = useState('');
-  const [rangeEnd, setRangeEnd] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const filteredTransactions = useMemo(
-    () =>
-      (filter === 'All'
-        ? savedTransactions
-        : savedTransactions.filter((item) => item.type === (filter === 'Income' ? 'income' : 'expense')))
-        .filter((item) => `${item.merchant} ${item.category}`.toLowerCase().includes(query.trim().toLowerCase()))
-        .filter((item) => {
-          if (!rangeStart && !rangeEnd) return true;
-          const date = typeof item.occurredAt === 'number'
-            ? new Date(item.occurredAt)
-            : item.date === 'Today' || item.date === 'Yesterday'
-              ? new Date(Date.now())
-              : new Date(item.date);
-          if (item.date === 'Yesterday' && item.occurredAt === undefined) date.setDate(date.getDate() - 1);
-          if (Number.isNaN(date.getTime())) return false;
-          const dateValue = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          return (!rangeStart || dateValue >= rangeStart) && (!rangeEnd || dateValue <= rangeEnd);
-        }),
-    [filter, query, rangeStart, rangeEnd, savedTransactions],
-  );
-  const rangeError = (() => {
-    try {
-      if (rangeStart) validateDate(rangeStart, 'start date');
-      if (rangeEnd) validateDate(rangeEnd, 'end date');
-      if (rangeStart && rangeEnd && rangeStart > rangeEnd) return 'Start date must be on or before end date.';
-      return '';
-    } catch (validationError) {
-      return validationError instanceof Error ? validationError.message : 'Choose a valid date range.';
-    }
-  })();
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentLocalMonth);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const loadingRef = useRef(false);
+  const deleteRef = useRef(false);
 
-  const openEditor = (item: Transaction) => {
-    setSelectedTransaction(item);
-    setDraftMerchant(item.merchant);
-    setDraftCategory(item.category);
-    setDraftAmount(item.amount);
-    setDraftType(item.type);
-    const date = typeof item.occurredAt === 'number' ? new Date(item.occurredAt) : new Date();
-    setDraftDate(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
-    setConfirmDelete(false);
-    setError('');
+  useFocusEffect(useCallback(() => {
+    setSelectedMonth(getCurrentLocalMonth());
+    setVisibleCount(PAGE_SIZE);
+    setQuery('');
+    setFilter('Expenses');
+  }, []));
+
+  const type = filter === 'Expenses' ? 'expense' : filter === 'Income' ? 'income' : 'all';
+  const allFiltered = useMemo(() => expenseService.getExpenses({
+    transactions,
+    month: selectedMonth,
+    type,
+    query,
+    pageSize: Math.max(transactions.length, PAGE_SIZE),
+  }).items, [expenseService, transactions, selectedMonth, type, query]);
+  const visiblePage = useMemo(() => expenseService.getExpenses({
+    transactions,
+    month: selectedMonth,
+    type,
+    query,
+    pageSize: visibleCount,
+  }), [expenseService, transactions, selectedMonth, type, query, visibleCount]);
+  const monthlyTotal = useMemo(() => expenseService.getMonthlySummary(transactions, selectedMonth), [expenseService, transactions, selectedMonth]);
+  const isRestoring = authPhase === 'restoring';
+
+  const changeMonth = (delta: number) => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const next = new Date(year, month - 1 + delta, 1);
+    setSelectedMonth(getCurrentLocalMonth(next));
+    setVisibleCount(PAGE_SIZE);
+    loadingRef.current = false;
   };
 
-  const saveEdit = async () => {
-    if (!selectedTransaction || saving) return;
-    setSaving(true);
-    setError('');
-    try {
-      await updateTransaction(selectedTransaction.id, {
-        merchant: draftMerchant,
-        category: draftCategory,
-        amount: draftAmount,
-        type: draftType,
-        date: draftDate,
-      });
-      setSelectedTransaction(null);
-      showToast('success', 'Transaction updated.');
-    } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : 'Unable to update this transaction.';
-      setError(message);
-      showToast('error', message);
-    } finally {
-      setSaving(false);
-    }
+  const loadNextPage = () => {
+    if (loadingRef.current || !visiblePage.hasMore || loadingMore) return;
+    loadingRef.current = true;
+    setLoadingMore(true);
+    requestAnimationFrame(() => {
+      setVisibleCount((count) => count + PAGE_SIZE);
+      setLoadingMore(false);
+      loadingRef.current = false;
+    });
   };
 
-  const deleteSelected = async () => {
-    if (!selectedTransaction || saving) return;
-    setSaving(true);
+  const removeSelected = async () => {
+    if (!deleteTarget || deleteRef.current || deleteTarget.canDelete === false) return;
+    deleteRef.current = true;
+    setDeleting(true);
     try {
-      await removeTransaction(selectedTransaction.id);
-      setSelectedTransaction(null);
-      setConfirmDelete(false);
-      showToast('success', 'Transaction removed.');
+      await expenseService.deleteExpense(deleteTarget.id);
+      setDeleteTarget(null);
+      showToast('success', deleteTarget.splitExpenseId
+        ? 'Split expense removed from your activity.'
+        : 'Expense deleted.');
     } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : 'Unable to remove this transaction.';
-      setError(message);
+      const message = deleteError instanceof Error ? deleteError.message : 'Unable to delete this expense. Retry when you’re back online.';
       showToast('error', message);
     } finally {
-      setSaving(false);
+      deleteRef.current = false;
+      setDeleting(false);
     }
+  };
+
+  const confirmDelete = (transaction: Transaction) => {
+    setDeleteTarget(transaction);
+  };
+
+  const scrollIsNearEnd = (event: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 260) loadNextPage();
   };
 
   return (
@@ -116,181 +130,156 @@ export function ActivityScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.kicker}>YOUR MONEY TRAIL</Text>
-          <Text style={styles.title}>Transactions</Text>
-          <Text style={styles.subtitle}>Your activity, organized in one place.</Text>
+          <Text style={styles.title}>Expenses</Text>
+          <Text style={styles.subtitle}>Monthly spending, one clear view.</Text>
         </View>
-        <View style={styles.iconTile}>
-          <Ionicons name="pulse-outline" size={22} color={colors.accent} />
-        </View>
+        <View style={styles.iconTile}><Ionicons name="receipt-outline" size={22} color={colors.accent} /></View>
       </View>
+
       <ScrollView
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
+        onScroll={scrollIsNearEnd}
+        scrollEventThrottle={300}
       >
+        <View style={styles.monthSelector}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => changeMonth(-1)} style={styles.monthArrow}>
+            <Ionicons name="chevron-back" size={20} color={colors.accent} />
+          </Pressable>
+          <View style={styles.monthCopy}>
+            <Text style={styles.monthTitle}>{monthLabel(selectedMonth)}</Text>
+            <Text style={styles.monthHint}>Personal expenses and your split shares</Text>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Next month" onPress={() => changeMonth(1)} style={styles.monthArrow}>
+            <Ionicons name="chevron-forward" size={20} color={colors.accent} />
+          </Pressable>
+        </View>
+
+        <View style={styles.totalCard}>
+          <View style={styles.totalTop}>
+            <Text style={styles.totalLabel}>TOTAL EXPENSES</Text>
+            <View style={styles.totalIcon}><Ionicons name="trending-down-outline" size={17} color={colors.white} /></View>
+          </View>
+          {isRestoring ? (
+            <View style={styles.totalLoading}><ActivityIndicator color={colors.white} /><Text style={styles.totalHint}>Loading this month…</Text></View>
+          ) : restoreError ? (
+            <View style={styles.loadError}>
+              <Text style={styles.totalValue}>Unavailable</Text>
+              <Text style={styles.totalHint}>{restoreError}</Text>
+              <Pressable accessibilityRole="button" onPress={retryRestore} style={styles.retryButton}><Text style={styles.retryText}>Retry</Text></Pressable>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.totalValue}>{formatINR(monthlyTotal)}</Text>
+              <Text style={styles.totalHint}>{monthlyTotal === 0 ? 'No expenses recorded this month.' : 'Includes only expenses from this month.'}</Text>
+            </>
+          )}
+        </View>
+
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Add', { type: 'expense' })} style={styles.addButton}>
+          <Ionicons name="add" size={20} color={colors.white} />
+          <Text style={styles.addButtonText}>Add expense</Text>
+        </Pressable>
+
         <View style={styles.searchBox}>
           <Ionicons name="search" size={18} color={colors.textSecondary} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search transactions"
-            placeholderTextColor={colors.textTertiary}
-            accessibilityLabel="Search transactions"
-            returnKeyType="search"
-            style={styles.searchInput}
-          />
-          {query ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-              onPress={() => setQuery('')}
-              hitSlop={8}
-            >
-              <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
-            </Pressable>
-          ) : null}
+          <TextInput value={query} onChangeText={(value) => { setQuery(value); setVisibleCount(PAGE_SIZE); }} placeholder="Search expenses" placeholderTextColor={colors.textTertiary} accessibilityLabel="Search expenses" returnKeyType="search" style={styles.searchInput} />
+          {query ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => { setQuery(''); setVisibleCount(PAGE_SIZE); }} hitSlop={8}><Ionicons name="close-circle" size={18} color={colors.textTertiary} /></Pressable> : null}
         </View>
-        <View style={styles.dateRange}>
-          <TextInput
-            accessibilityLabel="Transactions from date"
-            value={rangeStart}
-            onChangeText={setRangeStart}
-            placeholder="From YYYY-MM-DD"
-            placeholderTextColor={colors.textTertiary}
-            style={styles.rangeInput}
-          />
-          <Text style={styles.rangeDivider}>to</Text>
-          <TextInput
-            accessibilityLabel="Transactions through date"
-            value={rangeEnd}
-            onChangeText={setRangeEnd}
-            placeholder="To YYYY-MM-DD"
-            placeholderTextColor={colors.textTertiary}
-            style={styles.rangeInput}
-          />
-        </View>
-        {rangeError ? <Text style={styles.error}>{rangeError}</Text> : null}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
           {filters.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setFilter(item)}
-              style={[styles.filter, filter === item && styles.filterActive]}
-            >
-              <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
-                {item}
-              </Text>
+            <Pressable key={item} accessibilityRole="radio" accessibilityState={{ checked: filter === item }} onPress={() => { setFilter(item); setVisibleCount(PAGE_SIZE); }} style={[styles.filter, filter === item && styles.filterActive]}>
+              <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text>
             </Pressable>
           ))}
         </ScrollView>
+
         <View style={styles.listHeading}>
-          <Text style={styles.sectionTitle}>{filter === 'All' ? 'Recent transactions' : filter}</Text>
-          <Text style={styles.count}>{filteredTransactions.length}</Text>
+          <Text style={styles.sectionTitle}>{filter === 'Income' ? 'Income' : 'Expenses'}</Text>
+          <Text style={styles.count}>{allFiltered.length}</Text>
         </View>
-        <View style={styles.list}>
-          {filteredTransactions.length ? (
-            filteredTransactions.map((item) => (
-              <View key={item.id} style={styles.transactionRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Edit ${item.merchant}`}
-                  onPress={() => openEditor(item)}
-                  style={styles.transactionItem}
-                >
-                  <TransactionItem item={item} />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Edit transaction ${item.merchant}`}
-                  onPress={() => openEditor(item)}
-                  hitSlop={8}
-                  style={styles.editAction}
-                >
-                  <Ionicons name="pencil-outline" size={16} color={colors.accent} />
-                </Pressable>
-              </View>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={24} color={colors.accent} />
-              <Text style={styles.empty}>
-                {query
-                  ? 'No transactions match your search.'
-                  : filter === 'All'
-                    ? 'No transactions yet. Add one to see it here.'
-                    : `No ${filter.toLowerCase()} recorded yet.`}
-              </Text>
-            </View>
-          )}
-        </View>
+        {isRestoring ? (
+          <View style={styles.emptyState}><ActivityIndicator color={colors.accent} /><Text style={styles.empty}>Loading transactions…</Text></View>
+        ) : restoreError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.empty}>Couldn’t load your expenses.</Text>
+            <Pressable accessibilityRole="button" onPress={retryRestore} style={styles.retryButtonLight}><Text style={styles.retryTextLight}>Retry</Text></Pressable>
+          </View>
+        ) : visiblePage.items.length ? (
+          <View style={styles.list}>
+            {visiblePage.items.map((item) => {
+              const linkedSplit = splits.find((split) =>
+                split.id === item.splitExpenseId || split.ledgerTransactionId === item.id);
+              const ownShare = linkedSplit?.shares.find((share) => share.friendId === CURRENT_USER_ID)?.amount ?? item.amount;
+              const creatorId = linkedSplit?.createdById;
+              const creatorName = linkedSplit?.createdByName
+                ?? item.createdByName
+                ?? (creatorId && creatorId !== CURRENT_USER_ID ? getFriendMeta(creatorId, friends).name : undefined);
+              const canEdit = item.canEdit !== false && (!linkedSplit || !creatorId || creatorId === CURRENT_USER_ID);
+              const canDelete = item.canDelete !== false && (!linkedSplit || !creatorId || creatorId === CURRENT_USER_ID);
+              const budget = budgets.find((entry) => entry.id === item.budgetId);
+              const iconId = budget?.iconId || getDefaultBudgetIconId(item.category);
+              return (
+                <View key={item.id} style={styles.transactionRow}>
+                  <View style={[styles.rowIcon, { backgroundColor: `${item.iconColor || colors.accent}18` }]}>
+                    <Ionicons name={iconId as keyof typeof Ionicons.glyphMap} size={19} color={item.iconColor || colors.accent} />
+                  </View>
+                  <View style={styles.transactionCopy}>
+                    <Text style={styles.merchant} numberOfLines={1}>{item.merchant}</Text>
+                    <Text style={styles.transactionSub} numberOfLines={1}>{item.category} · {item.date}</Text>
+                    <Text style={styles.transactionSub}>{getPaymentModeLabel(item.paymentMode)}</Text>
+                    {linkedSplit ? (
+                      <View style={styles.splitMeta}>
+                        <Text style={styles.splitBadge}>SPLIT</Text>
+                        <Text style={styles.transactionSub}>Your share {formatINR(ownShare)}</Text>
+                        {creatorName && creatorId !== CURRENT_USER_ID ? <Text style={styles.transactionSub}>Created by {creatorName}</Text> : null}
+                        {!canEdit && !item.budgetId ? (
+                          <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Budgets')}>
+                            <Text style={styles.assignmentLink}>Assign your share in Budgets</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    ) : null}
+                    {linkedSplit && !canEdit ? <Text style={styles.readOnlyText}>Only the creator can change this expense.</Text> : null}
+                  </View>
+                  <View style={styles.amountAndActions}>
+                    <Text style={[styles.amount, item.type === 'income' && styles.incomeAmount]}>{item.type === 'income' ? '+' : '-'}{formatINR(ownShare)}</Text>
+                    {canEdit || canDelete ? (
+                      <View style={styles.rowActions}>
+                        {canEdit ? <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${item.merchant}`} onPress={() => navigation.navigate('Add', { transactionId: item.id })} hitSlop={8} style={styles.actionButton}><Ionicons name="pencil-outline" size={15} color={colors.accent} /></Pressable> : null}
+                        {canDelete ? <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${item.merchant}`} onPress={() => confirmDelete(item)} hitSlop={8} style={styles.actionButton}><Ionicons name="trash-outline" size={15} color={colors.expense} /></Pressable> : null}
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}><Ionicons name="receipt-outline" size={22} color={colors.accent} /></View>
+            <Text style={styles.emptyTitle}>{query ? 'No matches' : `No ${filter.toLowerCase()} this month`}</Text>
+            <Text style={styles.empty}>{query ? 'Try another name or category.' : 'Your monthly total is ₹0. Add an expense when you’re ready.'}</Text>
+            {!query ? <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Add', { type: 'expense' })} style={styles.emptyAdd}><Text style={styles.emptyAddText}>Add expense</Text></Pressable> : null}
+          </View>
+        )}
+
+        {loadingMore ? <View style={styles.pageStatus}><ActivityIndicator size="small" color={colors.accent} /><Text style={styles.pageStatusText}>Loading more…</Text></View> : null}
+        {!visiblePage.hasMore && visiblePage.items.length ? <Text style={styles.endState}>You’re all caught up for {monthLabel(selectedMonth)}.</Text> : null}
       </ScrollView>
 
-      <Modal
-        visible={selectedTransaction !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => { setSelectedTransaction(null); setConfirmDelete(false); }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.editorCard}>
-            <View style={styles.editorHeader}>
-              <View style={styles.editorHeadingCopy}>
-                <Text style={styles.editorTitle}>{confirmDelete ? 'Remove transaction?' : 'Edit transaction'}</Text>
-                <Text style={styles.editorSubtitle}>
-                  {confirmDelete ? 'This entry will be removed from this device.' : 'Changes update your local money history.'}
-                </Text>
-              </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Close editor" onPress={() => { setSelectedTransaction(null); setConfirmDelete(false); }} hitSlop={8}>
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-            {confirmDelete ? (
-              <View style={styles.deletePrompt}>
-                <Text style={styles.deleteText}>{selectedTransaction?.merchant}</Text>
-                <Text style={styles.deleteAmount}>{selectedTransaction ? `₹${selectedTransaction.amount.toLocaleString('en-IN')}` : ''}</Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.typeOptions}>
-                  {(['expense', 'income'] as const).map((type) => (
-                    <Pressable key={type} accessibilityRole="radio" accessibilityState={{ checked: draftType === type }} onPress={() => setDraftType(type)} style={[styles.typeOption, draftType === type && styles.typeOptionActive]}>
-                      <Text style={[styles.typeOptionText, draftType === type && styles.typeOptionTextActive]}>{type === 'expense' ? 'Expense' : 'Income'}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <InputField label="Name" value={draftMerchant} onChangeText={setDraftMerchant} />
-                <InputField label="Category" value={draftCategory} onChangeText={setDraftCategory} />
-                <CurrencyInput label="Amount" value={draftAmount} onChangeValue={setDraftAmount} variant="card" />
-                <InputField label="Date" value={draftDate} onChangeText={setDraftDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
-                {error ? <Text style={styles.error}>{error}</Text> : null}
-              </>
-            )}
-            <View style={styles.editorActions}>
-              {confirmDelete ? (
-                <>
-                  <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(false)} style={styles.cancelButton}>
-                    <Text style={styles.cancelText}>Keep it</Text>
-                  </Pressable>
-                  <Pressable accessibilityRole="button" disabled={saving} onPress={() => void deleteSelected()} style={styles.deleteButton}>
-                    <Text style={styles.deleteButtonText}>{saving ? 'Removing…' : 'Remove'}</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(true)} style={styles.removeLink}>
-                    <Ionicons name="trash-outline" size={17} color={colors.expense} />
-                    <Text style={styles.removeLinkText}>Remove</Text>
-                  </Pressable>
-                  <Pressable accessibilityRole="button" disabled={saving} onPress={() => void saveEdit()} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>{saving ? 'Saving…' : 'Save changes'}</Text>
-                  </Pressable>
-                </>
-              )}
+      <Modal visible={deleteTarget !== null} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
+        <View style={styles.deleteOverlay}>
+          <View style={styles.deleteCard}>
+            <Text style={styles.deleteTitle}>Confirm deletion</Text>
+            <Text style={styles.deleteMessage}>{deleteTarget && splits.some((split) => split.id === deleteTarget.splitExpenseId || split.ledgerTransactionId === deleteTarget.id)
+              ? 'This split will be deleted from this device. Participant copies cannot be updated in the local-only version.'
+              : 'This expense will be removed from your local activity.'}</Text>
+            <View style={styles.deleteActions}>
+              <Pressable accessibilityRole="button" disabled={deleting} onPress={() => setDeleteTarget(null)} style={styles.cancelButton}><Text style={styles.cancelText}>Cancel</Text></Pressable>
+              <Pressable accessibilityRole="button" disabled={deleting} onPress={() => void removeSelected()} style={styles.confirmDeleteButton}><Text style={styles.confirmDeleteText}>{deleting ? 'Deleting…' : 'Delete'}</Text></Pressable>
             </View>
           </View>
         </View>
@@ -305,58 +294,69 @@ const styles = StyleSheet.create({
   kicker: { ...typography.label, color: colors.accent, letterSpacing: 1.4 },
   title: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.xs },
   subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
-  iconTile: {
-    width: 46, height: 46, borderRadius: radius.lg, backgroundColor: colors.accentSoft,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  scroll: { paddingTop: spacing.xl, paddingBottom: 160, gap: spacing.lg },
+  iconTile: { width: 46, height: 46, borderRadius: radius.lg, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  scroll: { paddingTop: spacing.lg, paddingBottom: 160, gap: spacing.md },
+  monthSelector: { minHeight: 66, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xs, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  monthArrow: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  disabledArrow: { backgroundColor: colors.background },
+  monthCopy: { flex: 1, alignItems: 'center', gap: 2 },
+  monthTitle: { ...typography.bodySemibold, color: colors.textPrimary },
+  monthHint: { ...typography.micro, color: colors.textTertiary },
+  totalCard: { padding: spacing.lg, borderRadius: radius.xl, backgroundColor: colors.accentDark, gap: spacing.xs },
+  totalTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalLabel: { ...typography.micro, color: colors.surprise, fontWeight: '700', letterSpacing: 1 },
+  totalIcon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.12)' },
+  totalValue: { ...typography.h1, color: colors.white },
+  totalHint: { ...typography.caption, color: 'rgba(255,255,255,0.72)' },
+  totalLoading: { minHeight: 45, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  loadError: { gap: spacing.xs },
+  retryButton: { alignSelf: 'flex-start', paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: colors.white },
+  retryText: { ...typography.captionMedium, color: colors.accentDark },
+  retryButtonLight: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  retryTextLight: { ...typography.captionMedium, color: colors.accentDark },
+  addButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radius.full, backgroundColor: colors.accent },
+  addButtonText: { ...typography.captionMedium, color: colors.white },
   searchBox: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, minWidth: 0, ...typography.caption, color: colors.textPrimary, paddingVertical: spacing.xs },
-  dateRange: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  rangeInput: { flex: 1, minWidth: 0, height: 42, borderRadius: radius.md, paddingHorizontal: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...typography.caption, color: colors.textPrimary },
-  rangeDivider: { ...typography.caption, color: colors.textTertiary },
   filters: { gap: spacing.xs },
-  filter: {
-    minHeight: 44, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-  },
+  filter: { minHeight: 40, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   filterActive: { backgroundColor: colors.accent },
   filterText: { ...typography.captionMedium, color: colors.textSecondary },
   filterTextActive: { color: colors.textInverse },
   listHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   count: { ...typography.captionMedium, color: colors.accent, paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, borderRadius: radius.full, backgroundColor: colors.accentSoft },
-  list: {
-    backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1,
-    borderColor: colors.border, paddingHorizontal: spacing.md,
-  },
-  transactionRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  transactionItem: { flex: 1 },
-  editAction: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
-  empty: { ...typography.body, color: colors.textSecondary, paddingVertical: spacing.xl },
-  emptyState: { alignItems: 'center', gap: spacing.xs },
-  modalOverlay: { flex: 1, justifyContent: 'center', padding: spacing.lg, backgroundColor: colors.overlay },
-  editorCard: { width: '100%', maxWidth: 480, alignSelf: 'center', padding: spacing.lg, gap: spacing.md, borderRadius: radius.xl, backgroundColor: colors.background },
-  editorHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  editorHeadingCopy: { flex: 1, gap: 3 },
-  editorTitle: { ...typography.h3, color: colors.textPrimary },
-  editorSubtitle: { ...typography.caption, color: colors.textSecondary },
-  typeOptions: { flexDirection: 'row', gap: spacing.xs },
-  typeOption: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  typeOptionActive: { backgroundColor: colors.accent },
-  typeOptionText: { ...typography.captionMedium, color: colors.textSecondary, textTransform: 'capitalize' },
-  typeOptionTextActive: { color: colors.white },
-  deletePrompt: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, gap: spacing.xs },
-  deleteText: { ...typography.bodySemibold, color: colors.textPrimary },
-  deleteAmount: { ...typography.body, color: colors.textSecondary },
-  editorActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  cancelButton: { minHeight: 46, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.surface },
+  list: { paddingHorizontal: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  transactionRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  rowIcon: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
+  transactionCopy: { flex: 1, minWidth: 0, gap: 2 },
+  merchant: { ...typography.bodyMedium, color: colors.textPrimary },
+  transactionSub: { ...typography.micro, color: colors.textTertiary },
+  assignmentLink: { ...typography.micro, color: colors.accent, textDecorationLine: 'underline' },
+  splitMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
+  splitBadge: { ...typography.micro, color: colors.accentDark, fontWeight: '700', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  readOnlyText: { ...typography.micro, color: colors.warning },
+  amountAndActions: { alignItems: 'flex-end', gap: spacing.xs },
+  amount: { ...typography.captionMedium, color: colors.expense },
+  incomeAmount: { color: colors.income },
+  rowActions: { flexDirection: 'row', gap: spacing.xxs },
+  actionButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.background },
+  emptyState: { alignItems: 'center', gap: spacing.xs, padding: spacing.lg, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  emptyIcon: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  emptyTitle: { ...typography.bodySemibold, color: colors.textPrimary },
+  empty: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  emptyAdd: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  emptyAddText: { ...typography.captionMedium, color: colors.accentDark },
+  pageStatus: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.md },
+  pageStatusText: { ...typography.caption, color: colors.textSecondary },
+  endState: { ...typography.micro, textAlign: 'center', color: colors.textTertiary, paddingVertical: spacing.md },
+  deleteOverlay: { flex: 1, justifyContent: 'center', padding: spacing.lg, backgroundColor: colors.overlay },
+  deleteCard: { width: '100%', maxWidth: 420, alignSelf: 'center', padding: spacing.lg, gap: spacing.md, borderRadius: radius.xl, backgroundColor: colors.background },
+  deleteTitle: { ...typography.h3, color: colors.textPrimary },
+  deleteMessage: { ...typography.caption, color: colors.textSecondary, lineHeight: 20 },
+  deleteActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm },
+  cancelButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.surface },
   cancelText: { ...typography.captionMedium, color: colors.textSecondary },
-  deleteButton: { minHeight: 46, justifyContent: 'center', paddingHorizontal: spacing.lg, borderRadius: radius.full, backgroundColor: colors.expense },
-  deleteButtonText: { ...typography.captionMedium, color: colors.white },
-  removeLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xs },
-  removeLinkText: { ...typography.captionMedium, color: colors.expense },
-  saveButton: { minHeight: 46, justifyContent: 'center', paddingHorizontal: spacing.lg, borderRadius: radius.full, backgroundColor: colors.accent },
-  saveButtonText: { ...typography.captionMedium, color: colors.white },
-  error: { ...typography.caption, color: colors.expense },
+  confirmDeleteButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.lg, borderRadius: radius.full, backgroundColor: colors.expense },
+  confirmDeleteText: { ...typography.captionMedium, color: colors.white },
 });

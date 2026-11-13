@@ -13,7 +13,7 @@ import { SplitStack } from './SplitStack';
 export type MainTabParamList = {
   Home: undefined;
   Activity: undefined;
-  Add: { type?: 'expense' | 'income' } | undefined;
+  Add: { type?: 'expense' | 'income'; transactionId?: string } | undefined;
   Split: undefined;
   Budgets: undefined;
   Reports: undefined;

@@ -1,18 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { InputField } from '../../components/InputField';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { profileAvatars, getProfileAvatar } from '../../data/avatars';
+import { DEFAULT_AVATAR_ID, profileAvatars, getProfileAvatar } from '../../data/avatars';
 import { type AppModuleId, PREFERRED_MODULE_LIMIT } from '../../data/modules';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import type { ReportDayOfWeek, ReportFrequency } from '../../core/storage/preferences';
 import { formatLocalReportDate, getNextReportDates } from '../../services/reportScheduleService';
 import type { ReportPreferenceChanges } from '../../services/reportPreferenceService';
+import { employmentOptions, type EmploymentType } from '../../services/employmentService';
+import { financialProfileService, type FinancialField } from '../../services/financialProfileService';
+import { maskEmail } from '../../utils/format';
 import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
@@ -39,7 +42,9 @@ export function ProfileScreen({ navigation }: Props) {
     saveAvatarPreference,
     saveReportPreferences,
     savePreferredModules,
-    updateProfileDetails,
+    employment,
+    financialProfile,
+    updateFinancialProfile,
     logout,
   } = useApp();
   const {
@@ -65,8 +70,12 @@ export function ProfileScreen({ navigation }: Props) {
   const [reportSaving, setReportSaving] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [draftFirstName, setDraftFirstName] = useState(savedFirstName);
-  const [draftLastName, setDraftLastName] = useState(savedLastName);
+  const [editingField, setEditingField] = useState<FinancialField | 'employment' | null>(null);
+  const [draftAmount, setDraftAmount] = useState('');
+  const [draftEmploymentType, setDraftEmploymentType] = useState<EmploymentType | null>(employment?.type ?? null);
+  const [incomeMasked, setIncomeMasked] = useState(true);
+  const [cashMasked, setCashMasked] = useState(true);
+  const [savingsMasked, setSavingsMasked] = useState(true);
   const [reportDraft, setReportDraft] = useState<ReportPreferenceChanges>({
     reportFrequency,
     reportsEnabled,
@@ -81,10 +90,12 @@ export function ProfileScreen({ navigation }: Props) {
   useEffect(() => {
     setDraftAvatarId(avatarId);
   }, [avatarId]);
-  useEffect(() => {
-    setDraftFirstName(savedFirstName);
-    setDraftLastName(savedLastName);
-  }, [savedFirstName, savedLastName]);
+  useEffect(() => setDraftEmploymentType(employment?.type ?? null), [employment?.type]);
+  useFocusEffect(useCallback(() => {
+    setIncomeMasked(true);
+    setCashMasked(true);
+    setSavingsMasked(true);
+  }, []));
   useEffect(() => {
     setReportDraft({ reportFrequency, reportsEnabled, reportDayOfWeek, reportDayOfMonth, reportEmail });
   }, [reportFrequency, reportsEnabled, reportDayOfWeek, reportDayOfMonth, reportEmail]);
@@ -94,6 +105,12 @@ export function ProfileScreen({ navigation }: Props) {
   const firstName = savedFirstName || 'Not added yet';
   const lastName = savedLastName || 'Not added yet';
   const email = savedEmail || 'Email not added';
+  const maskedEmail = email === 'Email not added' ? email : maskEmail(email);
+  const monthlyIncome = financialProfileService.fromMinorUnits(financialProfile.monthlyIncomeMinor);
+  const cashBalance = financialProfileService.fromMinorUnits(financialProfile.cashBalanceMinor);
+  const savingsBalance = financialProfileService.fromMinorUnits(financialProfile.savingsAmountMinor);
+  const employmentOption = employmentOptions.find((item) => item.type === employment?.type);
+  const incomeLabel = employmentOption?.incomeLabel ?? 'Monthly income';
   const mobileLabel = mobile
     ? `${countryCode || '+91'} ${mobile.length > 4 ? `••••••${mobile.slice(-4)}` : mobile}`
     : 'Mobile number not added';
@@ -208,8 +225,25 @@ export function ProfileScreen({ navigation }: Props) {
   };
 
   const openAvatarPicker = () => {
-    setDraftAvatarId(avatarId);
+    setDraftAvatarId(avatarId ?? DEFAULT_AVATAR_ID);
     setAvatarPickerOpen(true);
+  };
+
+  const openFinancialEditor = (field: FinancialField | 'employment') => {
+    setEditingField(field);
+    setDraftEmploymentType(employment?.type ?? null);
+    const value = field === 'monthlyIncome' || field === 'employment'
+      ? monthlyIncome
+      : field === 'cashBalance' ? cashBalance : savingsBalance;
+    setDraftAmount(value === null ? '' : String(value));
+    setError('');
+    setProfileEditorOpen(true);
+  };
+
+  const updateDraftAmount = (value: string) => {
+    if (!/^\d*\.?\d{0,2}$/.test(value)) return;
+    setDraftAmount(value);
+    setError('');
   };
 
   const saveProfileDetails = async () => {
@@ -217,10 +251,24 @@ export function ProfileScreen({ navigation }: Props) {
     setProfileSaving(true);
     setError('');
     try {
-      await updateProfileDetails({ firstName: draftFirstName, lastName: draftLastName });
+      if (draftAmount.trim() === '' || !Number.isFinite(Number(draftAmount))) {
+        throw new Error('Enter a valid amount. Zero is allowed.');
+      }
+      const amount = Number(draftAmount);
+      financialProfileService.toMinorUnits(amount);
+      if (editingField === 'employment') {
+        if (!draftEmploymentType) throw new Error('Choose an employment type.');
+        await updateFinancialProfile({ monthlyIncome: amount }, draftEmploymentType);
+      } else if (editingField) {
+        await updateFinancialProfile({
+          [editingField]: amount,
+        });
+      } else {
+        throw new Error('Choose a profile value to update.');
+      }
       setProfileEditorOpen(false);
       setMessage('Profile details updated.');
-      showToast('success', 'Profile updated.');
+      showToast('success', 'Profile balances updated.');
     } catch (saveError) {
       const notice = saveError instanceof Error ? saveError.message : 'Unable to update your profile.';
       setError(notice);
@@ -263,7 +311,7 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        <SectionHeading title="Personal information" subtitle="Edit your name here. Email and mobile verification use their dedicated flows." />
+        <SectionHeading title="Personal information" subtitle="Name and mobile are read-only. Verify a new email before it replaces the current one." />
         <View style={styles.infoCard}>
           <InfoRow icon="person-outline" label="First name" value={firstName} />
           <InfoRow icon="person-outline" label="Last name" value={lastName} />
@@ -272,7 +320,7 @@ export function ProfileScreen({ navigation }: Props) {
             <View style={styles.infoIcon}><Ionicons name="mail-outline" size={19} color={colors.accent} /></View>
             <View style={styles.infoCopy}>
               <Text style={styles.infoLabel}>EMAIL ADDRESS</Text>
-              <Text numberOfLines={1} style={styles.infoValue}>{email}</Text>
+              <Text numberOfLines={1} style={styles.infoValue}>{maskedEmail}</Text>
             </View>
             <Pressable
               accessibilityRole="button"
@@ -282,10 +330,52 @@ export function ProfileScreen({ navigation }: Props) {
               <Text style={styles.editEmailText}>Edit</Text>
             </Pressable>
           </View>
-          <Pressable accessibilityRole="button" onPress={() => setProfileEditorOpen(true)} style={styles.editProfileButton}>
-            <Ionicons name="pencil-outline" size={17} color={colors.accent} />
-            <Text style={styles.editProfileButtonText}>Edit name</Text>
-          </Pressable>
+        </View>
+
+        <SectionHeading title="Employment" subtitle="Your income type and monthly amount." />
+        <View style={styles.moneyCard}>
+          <View style={styles.employmentHeading}>
+            <View style={styles.moneyIcon}><Ionicons name={(employmentOption?.icon ?? 'briefcase-outline') as keyof typeof Ionicons.glyphMap} size={20} color={colors.accent} /></View>
+            <View style={styles.employmentCopy}>
+              <Text style={styles.infoLabel}>EMPLOYMENT TYPE</Text>
+              <Text style={styles.infoValue}>{employmentOption?.label ?? 'Not provided'}</Text>
+              <Text style={styles.moneyHint}>{employmentOption?.description ?? 'Add your employment type and income amount.'}</Text>
+            </View>
+            <Pressable accessibilityRole="button" onPress={() => openFinancialEditor('employment')} style={styles.editEmailButton}>
+              <Text style={styles.editEmailText}>Edit</Text>
+            </Pressable>
+          </View>
+          <MoneyProfileRow
+            icon="trending-up-outline"
+            label={incomeLabel}
+            amount={monthlyIncome}
+            masked={incomeMasked}
+            updatedAt={financialProfile.updatedAt.monthlyIncome}
+            onToggle={() => setIncomeMasked((value) => !value)}
+            onEdit={() => openFinancialEditor('monthlyIncome')}
+          />
+        </View>
+
+        <SectionHeading title="Account balances" subtitle="These are user-declared amounts, not bank-verified." />
+        <View style={styles.moneyCard}>
+          <MoneyProfileRow
+            icon="cash-outline"
+            label="Cash balance"
+            amount={cashBalance}
+            masked={cashMasked}
+            updatedAt={financialProfile.updatedAt.cashBalance}
+            onToggle={() => setCashMasked((value) => !value)}
+            onEdit={() => openFinancialEditor('cashBalance')}
+          />
+          <MoneyProfileRow
+            icon="wallet-outline"
+            label="Savings amount"
+            amount={savingsBalance}
+            masked={savingsMasked}
+            updatedAt={financialProfile.updatedAt.savings}
+            onToggle={() => setSavingsMasked((value) => !value)}
+            onEdit={() => openFinancialEditor('savings')}
+          />
         </View>
 
         <SectionHeading title="Preferred modules" subtitle={`Choose and order exactly ${PREFERRED_MODULE_LIMIT} navbar destinations.`} />
@@ -500,16 +590,64 @@ export function ProfileScreen({ navigation }: Props) {
         <View style={styles.modalBackdrop}>
           <View style={[styles.profileModal, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Edit your name</Text>
-            <InputField label="First name" value={draftFirstName} onChangeText={setDraftFirstName} autoCapitalize="words" />
-            <InputField label="Last name" value={draftLastName} onChangeText={setDraftLastName} autoCapitalize="words" />
-            <Text style={styles.modalSubtitle}>Your verified mobile number and email are managed separately.</Text>
+            <Text style={styles.modalTitle}>
+              {editingField === 'employment'
+                ? 'Edit employment'
+                : editingField === 'cashBalance' ? 'Update cash balance'
+                  : editingField === 'savings' ? 'Update savings' : `Update ${incomeLabel.toLowerCase()}`}
+            </Text>
+            {editingField === 'employment' ? (
+              <View style={styles.employmentOptions}>
+                {employmentOptions.map((option) => (
+                  <Pressable
+                    key={option.type}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: draftEmploymentType === option.type }}
+                    onPress={() => {
+                      if (draftEmploymentType !== option.type) setDraftAmount('0');
+                      setDraftEmploymentType(option.type);
+                    }}
+                    style={[styles.employmentOption, draftEmploymentType === option.type && styles.employmentOptionSelected]}
+                  >
+                    <Ionicons name={option.icon as keyof typeof Ionicons.glyphMap} size={19} color={draftEmploymentType === option.type ? colors.accent : colors.textSecondary} />
+                    <Text style={[styles.employmentOptionText, draftEmploymentType === option.type && styles.employmentOptionTextSelected]}>{option.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+            <View style={styles.amountInputWrap}>
+              <Text style={styles.amountInputLabel}>
+                {editingField === 'employment'
+                  ? employmentOptions.find((option) => option.type === draftEmploymentType)?.incomeLabel ?? 'Monthly income'
+                  : editingField === 'cashBalance' ? 'Cash balance'
+                    : editingField === 'savings' ? 'Savings amount' : incomeLabel}
+              </Text>
+              <View style={styles.amountInputRow}>
+                <Text style={styles.amountCurrency}>₹</Text>
+                <TextInput
+                  accessibilityLabel="Profile amount"
+                  value={draftAmount}
+                  onChangeText={updateDraftAmount}
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textTertiary}
+                  style={styles.amountInput}
+                />
+              </View>
+            </View>
+            <Text style={styles.modalSubtitle}>Values update your profile and this month’s budget availability. No transactions are created.</Text>
             {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
             <View style={styles.modalActions}>
-              <Pressable accessibilityRole="button" onPress={() => { setProfileEditorOpen(false); setDraftFirstName(savedFirstName); setDraftLastName(savedLastName); }} style={styles.cancelButton}>
+              <Pressable accessibilityRole="button" onPress={() => {
+                setProfileEditorOpen(false);
+                setEditingField(null);
+                setDraftEmploymentType(employment?.type ?? null);
+                setError('');
+              }} style={styles.cancelButton}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
-              <PrimaryButton title={profileSaving ? 'Saving…' : 'Save name'} onPress={() => void saveProfileDetails()} loading={profileSaving} style={styles.profileSaveButton} />
+              <PrimaryButton title={profileSaving ? 'Saving…' : 'Save'} onPress={() => void saveProfileDetails()} loading={profileSaving} style={styles.profileSaveButton} />
             </View>
           </View>
         </View>
@@ -538,7 +676,7 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
             <View style={styles.avatarGrid}>
               {profileAvatars.map((item) => {
-                const selected = draftAvatarId === item.id;
+                const selected = (draftAvatarId ?? DEFAULT_AVATAR_ID) === item.id;
                 return (
                   <Pressable
                     key={item.id}
@@ -591,6 +729,54 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap;
   );
 }
 
+function MoneyProfileRow({
+  icon,
+  label,
+  amount,
+  masked,
+  updatedAt,
+  onToggle,
+  onEdit,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  amount: number | null;
+  masked: boolean;
+  updatedAt?: number;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  const displayAmount = amount === null
+    ? 'Not provided'
+    : masked ? '••••••' : new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  const updatedLabel = updatedAt
+    ? `Last updated ${new Date(updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : 'Last updated date unavailable';
+  return (
+    <View style={styles.moneyRow}>
+      <View style={styles.moneyIcon}><Ionicons name={icon} size={19} color={colors.accent} /></View>
+      <View style={styles.moneyCopy}>
+        <Text style={styles.moneyLabel}>{label}</Text>
+        <Text style={styles.moneyAmount}>{displayAmount}</Text>
+        <Text style={styles.moneyHint}>{updatedLabel}</Text>
+      </View>
+      {amount !== null ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`${masked ? 'Show' : 'Hide'} ${label}`} onPress={onToggle} style={styles.moneyAction}>
+          <Ionicons name={masked ? 'eye-outline' : 'eye-off-outline'} size={18} color={colors.textSecondary} />
+        </Pressable>
+      ) : null}
+      <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${label}`} onPress={onEdit} style={styles.moneyAction}>
+        <Ionicons name="pencil-outline" size={17} color={colors.accent} />
+      </Pressable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg },
   scroll: { paddingBottom: 150, gap: spacing.sm },
@@ -610,8 +796,26 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   sectionSubtitle: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
   infoCard: { paddingHorizontal: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  editProfileButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  editProfileButtonText: { ...typography.captionMedium, color: colors.accent },
+  moneyCard: { paddingHorizontal: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  employmentHeading: { minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  employmentCopy: { flex: 1, gap: 2 },
+  moneyIcon: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  moneyRow: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  moneyCopy: { flex: 1, minWidth: 0, gap: 2 },
+  moneyLabel: { ...typography.captionMedium, color: colors.textPrimary },
+  moneyAmount: { ...typography.bodySemibold, color: colors.textPrimary },
+  moneyHint: { ...typography.micro, color: colors.textTertiary },
+  moneyAction: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
+  employmentOptions: { gap: spacing.xs, maxHeight: 250 },
+  employmentOption: { minHeight: 44, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  employmentOptionSelected: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+  employmentOptionText: { ...typography.captionMedium, color: colors.textSecondary },
+  employmentOptionTextSelected: { color: colors.accentDark },
+  amountInputWrap: { minHeight: 68, paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  amountInputLabel: { ...typography.micro, color: colors.textTertiary, marginTop: spacing.xs },
+  amountInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  amountCurrency: { ...typography.h3, color: colors.accent },
+  amountInput: { flex: 1, paddingVertical: spacing.xxs, ...typography.h3, color: colors.textPrimary },
   profileModal: { width: '100%', maxWidth: 460, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, alignSelf: 'center', gap: spacing.md, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.background },
   profileSaveButton: { flex: 1 },
   infoRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },

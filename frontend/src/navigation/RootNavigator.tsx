@@ -10,6 +10,7 @@ import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { ProfileSetupScreen } from '../screens/setup/ProfileSetupScreen';
 import { MainTabs } from './MainTabs';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BalanceConfirmationPrompt } from '../components/BalanceConfirmationPrompt';
 
 const styles = StyleSheet.create({
   restoring: {
@@ -86,21 +87,24 @@ export function RootNavigator() {
       return <ProfileSetupScreen />;
     case 'main':
       return (
-        <NavigationContainer
-          theme={{
-            ...DarkTheme,
-            colors: {
-              ...DarkTheme.colors,
-              background: colors.background,
-              card: colors.surface,
-              text: colors.textPrimary,
-              border: colors.border,
-              primary: colors.accent,
-            },
-          }}
-        >
-          <MainTabs />
-        </NavigationContainer>
+        <>
+          <NavigationContainer
+            theme={{
+              ...DarkTheme,
+              colors: {
+                ...DarkTheme.colors,
+                background: colors.background,
+                card: colors.surface,
+                text: colors.textPrimary,
+                border: colors.border,
+                primary: colors.accent,
+              },
+            }}
+          >
+            <MainTabs />
+          </NavigationContainer>
+          <BalanceConfirmationPrompt />
+        </>
       );
     case 'onboarding':
     default:

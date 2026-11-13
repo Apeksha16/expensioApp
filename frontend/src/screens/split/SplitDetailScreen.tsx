@@ -8,6 +8,7 @@ import { CURRENT_USER_ID } from '../../data/splits';
 import type { SplitStackParamList } from '../../navigation/SplitStack';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { formatINR } from '../../utils/format';
+import type { ExpenseSource } from '../../types';
 import {
   getFriendMeta,
   isSplitSettled,
@@ -21,6 +22,7 @@ export function SplitDetailScreen({ navigation, route }: Props) {
   const { friends, splits, settleShare, settleMyShare } = useApp();
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [settlementSource, setSettlementSource] = useState<ExpenseSource>('salary');
   const split = splits.find((item) => item.id === route.params.splitId);
   const settle = async (friendId?: string) => {
     if (!split) return;
@@ -28,7 +30,7 @@ export function SplitDetailScreen({ navigation, route }: Props) {
     setError('');
     try {
       if (friendId) await settleShare(split.id, friendId);
-      else await settleMyShare(split.id);
+      else await settleMyShare(split.id, settlementSource);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save settlement on this device');
     } finally {
@@ -128,11 +130,21 @@ export function SplitDetailScreen({ navigation, route }: Props) {
         </View>
 
         {!settled && status.tone === 'owe' && myShare && !myShare.settled ? (
-          <PrimaryButton
-            title="Mark my share settled"
-            onPress={() => void settle()}
-            loading={settlingId === CURRENT_USER_ID}
-          />
+          <View style={styles.settlementSourceSection}>
+            <Text style={styles.sectionTitle}>Paid from</Text>
+            <View style={styles.sourceOptions}>
+              {(['salary', 'cash'] as const).map((source) => (
+                <Pressable key={source} accessibilityRole="radio" accessibilityState={{ checked: settlementSource === source }} onPress={() => setSettlementSource(source)} style={[styles.sourceOption, settlementSource === source && styles.sourceOptionActive]}>
+                  <Text style={[styles.sourceText, settlementSource === source && styles.sourceTextActive]}>{source === 'salary' ? 'Salary' : 'Cash'}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <PrimaryButton
+              title="Mark my share settled"
+              onPress={() => void settle()}
+              loading={settlingId === CURRENT_USER_ID}
+            />
+          </View>
         ) : null}
 
         {!settled && split.paidById === CURRENT_USER_ID ? (
@@ -209,6 +221,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.expense,
   },
+  settlementSourceSection: { gap: spacing.sm },
+  sourceOptions: { flexDirection: 'row', gap: spacing.xs },
+  sourceOption: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  sourceOptionActive: { backgroundColor: colors.accentSoft, borderColor: colors.accentMuted },
+  sourceText: { ...typography.captionMedium, color: colors.textSecondary },
+  sourceTextActive: { color: colors.accentDark },
   scroll: {
     paddingHorizontal: spacing.lg,
     gap: spacing.md,

@@ -1,11 +1,12 @@
 import { CorruptStoredDataError, readJson, removeValue, STORAGE_KEYS, writeJson } from './localPersistence';
-import type { CategoryBudget, Friend, RecurringPayment, SavingsGoal, SplitExpense, Transaction } from '../../types';
+import type { CategoryBudget, Friend, MonthlyBudgetAvailability, RecurringPayment, SavingsGoal, SplitExpense, Transaction } from '../../types';
 
 export interface LocalAppData {
   transactions: Transaction[];
   friends: Friend[];
   splits: SplitExpense[];
   budgets: CategoryBudget[];
+  budgetAvailability?: MonthlyBudgetAvailability[];
   goals: SavingsGoal[];
   recurringPayments: RecurringPayment[];
 }
@@ -15,6 +16,7 @@ const emptyData = (): LocalAppData => ({
   friends: [],
   splits: [],
   budgets: [],
+  budgetAvailability: [],
   goals: [],
   recurringPayments: [],
 });
@@ -36,7 +38,14 @@ function isTransaction(value: unknown): value is Transaction {
     && value.amount >= 0
     && typeof value.date === 'string'
     && typeof value.time === 'string'
-    && (value.occurredAt === undefined || (typeof value.occurredAt === 'number' && Number.isFinite(value.occurredAt)));
+    && (value.budgetId === undefined || typeof value.budgetId === 'string')
+    && (value.occurredAt === undefined || (typeof value.occurredAt === 'number' && Number.isFinite(value.occurredAt)))
+    && (value.source === undefined || value.source === 'salary' || value.source === 'cash')
+    && (value.paymentMode === undefined || value.paymentMode === 'cash' || value.paymentMode === 'debit_card' || value.paymentMode === 'credit_card')
+    && (value.splitExpenseId === undefined || typeof value.splitExpenseId === 'string')
+    && (value.createdByName === undefined || typeof value.createdByName === 'string')
+    && (value.canEdit === undefined || typeof value.canEdit === 'boolean')
+    && (value.canDelete === undefined || typeof value.canDelete === 'boolean');
 }
 
 function isFriend(value: unknown): value is Friend {
@@ -56,6 +65,12 @@ function isSplit(value: unknown): value is SplitExpense {
     && Number.isFinite(value.amount)
     && typeof value.paidById === 'string'
     && typeof value.date === 'string'
+    && (value.source === undefined || value.source === 'salary' || value.source === 'cash')
+    && (value.category === undefined || typeof value.category === 'string')
+    && (value.iconId === undefined || typeof value.iconId === 'string')
+    && (value.paymentMode === undefined || value.paymentMode === 'cash' || value.paymentMode === 'debit_card' || value.paymentMode === 'credit_card')
+    && (value.createdById === undefined || typeof value.createdById === 'string')
+    && (value.createdByName === undefined || typeof value.createdByName === 'string')
     && (value.method === 'equal' || value.method === 'custom')
     && (value.ledgerTransactionId === undefined || typeof value.ledgerTransactionId === 'string')
     && Array.isArray(value.shares)
@@ -70,11 +85,35 @@ function isBudget(value: unknown): value is CategoryBudget {
   return isRecord(value)
     && typeof value.id === 'string'
     && typeof value.category === 'string'
+    && (value.name === undefined || typeof value.name === 'string')
+    && (value.categoryId === undefined || typeof value.categoryId === 'string')
+    && (value.iconId === undefined || typeof value.iconId === 'string')
     && typeof value.limit === 'number'
     && Number.isFinite(value.limit)
     && value.limit > 0
     && typeof value.createdAt === 'number'
+    && (value.updatedAt === undefined || (typeof value.updatedAt === 'number' && Number.isFinite(value.updatedAt)))
+    && (value.month === undefined || (typeof value.month === 'string' && /^\d{4}-\d{2}$/.test(value.month)))
+    && (value.year === undefined || (typeof value.year === 'number' && Number.isInteger(value.year)))
+    && (value.source === undefined || value.source === 'salary' || value.source === 'cash')
+    && (value.carryForward === undefined || typeof value.carryForward === 'boolean')
+    && (value.originalBudgetId === undefined || typeof value.originalBudgetId === 'string')
+    && (value.budgetType === undefined || value.budgetType === 'category')
     && (value.alertThreshold === undefined || (typeof value.alertThreshold === 'number' && value.alertThreshold > 0 && value.alertThreshold <= 1));
+}
+
+function isBudgetAvailability(value: unknown): value is MonthlyBudgetAvailability {
+  return isRecord(value)
+    && typeof value.month === 'string'
+    && /^\d{4}-(0[1-9]|1[0-2])$/.test(value.month)
+    && typeof value.salary === 'number'
+    && Number.isFinite(value.salary)
+    && value.salary >= 0
+    && typeof value.cash === 'number'
+    && Number.isFinite(value.cash)
+    && value.cash >= 0
+    && typeof value.updatedAt === 'number'
+    && Number.isFinite(value.updatedAt);
 }
 
 function isGoal(value: unknown): value is SavingsGoal {
@@ -110,6 +149,7 @@ function isRecurringPayment(value: unknown): value is RecurringPayment {
     && typeof value.nextDueDate === 'string'
     && typeof value.category === 'string'
     && typeof value.active === 'boolean'
+    && (value.source === undefined || value.source === 'salary' || value.source === 'cash')
     && (value.completed === undefined || typeof value.completed === 'boolean')
     && (value.outstandingBalance === undefined || (typeof value.outstandingBalance === 'number' && Number.isFinite(value.outstandingBalance) && value.outstandingBalance >= 0))
     && (value.remainingInstallments === undefined || (typeof value.remainingInstallments === 'number' && Number.isInteger(value.remainingInstallments) && value.remainingInstallments >= 0));
@@ -161,6 +201,7 @@ export async function readLocalData(ownerId?: string | null): Promise<LocalAppDa
     friends: (record.friends ?? []).filter(isFriend),
     splits: (record.splits ?? []).filter(isSplit),
     budgets: Array.isArray(record.budgets) ? record.budgets.filter(isBudget) : [],
+    budgetAvailability: Array.isArray(record.budgetAvailability) ? record.budgetAvailability.filter(isBudgetAvailability) : [],
     goals: Array.isArray(record.goals) ? record.goals.filter(isGoal) : [],
     recurringPayments: Array.isArray(record.recurringPayments) ? record.recurringPayments.filter(isRecurringPayment) : [],
   };

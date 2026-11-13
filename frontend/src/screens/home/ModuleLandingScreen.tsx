@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import React, { useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurrencyInput } from '../../components/CurrencyInput';
 import { GoalCard } from '../../components/GoalCard';
@@ -11,15 +11,25 @@ import type { AppModule } from '../../data/modules';
 import { useApp } from '../../context/AppContext';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
+import { calculateBudgetAllocation } from '../../services/budgetAllocationService';
+import { calculateBudgetSourceSummary } from '../../services/budgetCalculationService';
+import { budgetCategories, getBudgetCategoryId } from '../../services/budgetCategoryService';
+import { budgetIconOptions, getDefaultBudgetIconId } from '../../services/budgetIconService';
+import { getBudgetMonthKey, getTransactionMonthKey } from '../../services/budgetService';
+import { getUnallocatedExpenses } from '../../services/budgetUnallocatedService';
 import { localDateString, validateDate } from '../../services/moneyService';
 import { colors, radius, spacing, typography } from '../../theme';
-import type { PaymentCadence, PaymentKind, RecurringPayment } from '../../types';
-import { formatINR, progressRatio } from '../../utils/format';
+import type { ExpenseSource, PaymentCadence, PaymentKind, RecurringPayment } from '../../types';
+import { formatINR } from '../../utils/format';
 
 type Props = BottomTabScreenProps<MainTabParamList>;
 type PaymentFormKind = PaymentKind;
 
-const budgetCategories = ['Food & Dining', 'Shopping', 'Transport', 'Bills & Utilities', 'Health', 'Other'];
+const budgetSources: ExpenseSource[] = ['salary', 'cash'];
+
+function monthKey(date: Date): string {
+  return getBudgetMonthKey(date);
+}
 
 function isCompletedPayment(payment: RecurringPayment): boolean {
   return payment.completed === true
@@ -33,13 +43,18 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const {
     preferredModuleIds,
+    profile,
+    budgetAvailability,
     transactions,
     budgets,
+    assignTransactionToBudget,
     goals,
     recurringPayments,
     addBudget,
     updateBudget,
     removeBudget,
+    processBudgetCarryForward,
+    saveBudgetAvailability,
     addGoal,
     removeGoal,
     contributeToGoal,
@@ -61,6 +76,7 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
   );
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [error, setError] = useState('');
   const [category, setCategory] = useState(budgetCategories[0]);
   const [title, setTitle] = useState('');
@@ -76,9 +92,21 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [customCategory, setCustomCategory] = useState('');
+  const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(() => monthKey(new Date()));
+  const [budgetFormMonth, setBudgetFormMonth] = useState(() => monthKey(new Date()));
+  const [budgetSource, setBudgetSource] = useState<ExpenseSource>('salary');
+  const [budgetIconId, setBudgetIconId] = useState(getDefaultBudgetIconId(budgetCategories[0]));
+  const [carryForward, setCarryForward] = useState(false);
+  const [recurringSource, setRecurringSource] = useState<ExpenseSource>('salary');
+  const [paymentSources, setPaymentSources] = useState<Record<string, ExpenseSource>>({});
   const [reportStart, setReportStart] = useState(() => localDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
   const [reportEnd, setReportEnd] = useState(() => localDateString(new Date()));
   const [reportError, setReportError] = useState('');
+  const [availabilityEditorOpen, setAvailabilityEditorOpen] = useState(false);
+  const [availabilitySalary, setAvailabilitySalary] = useState(0);
+  const [availabilityCash, setAvailabilityCash] = useState(0);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
+  const processedCarryForwardMonths = useRef(new Set<string>());
 
   const openModule = (module: AppModule) => {
     if (module.route === 'Add') {
@@ -88,21 +116,20 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     navigation.navigate(module.route);
   };
 
-  const isCurrentMonth = (transaction: (typeof transactions)[number]) => {
-    if (typeof transaction.occurredAt === 'number') {
-      const date = new Date(transaction.occurredAt);
-      const now = new Date();
-      return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-    }
-    if (transaction.date === 'Today' || transaction.date === 'Yesterday') return true;
-    const date = new Date(`${transaction.date} ${new Date().getFullYear()}`);
-    return !Number.isNaN(date.getTime()) && date.getMonth() === new Date().getMonth();
-  };
-
-  const thisMonthTransactions = transactions.filter(isCurrentMonth);
-  const monthIncome = thisMonthTransactions
-    .filter((transaction) => transaction.type === 'income')
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const currentMonth = monthKey(new Date());
+  useEffect(() => {
+    if (currentModule?.id !== 'budgets'
+      || !budgetAvailability.some((entry) => entry.month === selectedBudgetMonth)
+      || processedCarryForwardMonths.current.has(selectedBudgetMonth)) return;
+    processedCarryForwardMonths.current.add(selectedBudgetMonth);
+    void processBudgetCarryForward(selectedBudgetMonth)
+      .then(({ created, warnings }) => {
+        if (created.length) showToast('success', `${created.length} budget${created.length === 1 ? '' : 's'} carried forward.`);
+        if (warnings.length) showToast('error', warnings.join(' '));
+      })
+      .catch((carryError: unknown) => showToast('error', carryError instanceof Error ? carryError.message : 'Carry forward could not be completed.'));
+  }, [currentModule?.id, selectedBudgetMonth, budgetAvailability, processBudgetCarryForward, showToast]);
+  const thisMonthTransactions = transactions.filter((transaction) => getTransactionMonthKey(transaction) === currentMonth);
   const monthExpenses = thisMonthTransactions
     .filter((transaction) => transaction.type === 'expense')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -146,8 +173,64 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     return Math.round((due.getTime() - today.getTime()) / 86400000) <= 7;
   });
 
-  const monthlyBudgetSpent = (budgetCategory: string) => thisMonthTransactions
-    .filter((transaction) => transaction.type === 'expense' && transaction.category.toLowerCase() === budgetCategory.toLowerCase())
+  const monthTransactions = transactions.filter((transaction) => getTransactionMonthKey(transaction) === selectedBudgetMonth);
+  const monthExpensesTransactions = monthTransactions.filter((transaction) => transaction.type === 'expense');
+  const selectedBudgets = budgets.filter((budget) =>
+    (budget.month ?? getBudgetMonthKey(new Date(budget.createdAt))) === selectedBudgetMonth);
+  const budgetMonthDate = new Date(`${selectedBudgetMonth}-01T00:00:00`);
+  const budgetMonthLabel = Number.isNaN(budgetMonthDate.getTime())
+    ? selectedBudgetMonth
+    : budgetMonthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const budgetFormMonthDate = new Date(`${budgetFormMonth}-01T00:00:00`);
+  const budgetFormMonthLabel = Number.isNaN(budgetFormMonthDate.getTime())
+    ? budgetFormMonth
+    : budgetFormMonthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const selectedAvailability = budgetAvailability.find((entry) => entry.month === selectedBudgetMonth);
+  const budgetSourceSummaries = budgetSources.map((source) => calculateBudgetSourceSummary(
+    source,
+    selectedBudgetMonth,
+    budgets,
+    transactions,
+    selectedAvailability ? (source === 'salary' ? selectedAvailability.salary : selectedAvailability.cash) : null,
+  ));
+  const candidateBudgetCategory = (category === 'Custom' ? customCategory : category).trim();
+  const editedBudget = budgets.find((budget) => budget.id === editingBudgetId);
+  const formAvailability = budgetAvailability.find((entry) => entry.month === budgetFormMonth);
+  const sourceAvailableForForm = formAvailability
+    ? budgetSource === 'salary' ? formAvailability.salary : formAvailability.cash
+    : null;
+  const budgetAllocation = calculateBudgetAllocation({
+    budgets,
+    transactions,
+    month: budgetFormMonth,
+    source: budgetSource,
+    category: candidateBudgetCategory,
+    amount,
+    available: sourceAvailableForForm,
+    editingBudgetId,
+  });
+  const {
+    availableForBudget,
+    allocatedElsewhere: otherSourceAllocations,
+    unallocatedExpenses: candidateOthersExpense,
+    error: budgetAmountError,
+  } = budgetAllocation;
+  const unassignedSourceExpenses = monthExpensesTransactions.filter((transaction) =>
+    !transaction.source || !budgetSources.includes(transaction.source));
+  const combinedAvailable = budgetSourceSummaries.every((summary) => summary.available !== null)
+    ? budgetSourceSummaries.reduce((sum, summary) => sum + (summary.available ?? 0), 0)
+    : null;
+  const combinedUnallocated = budgetSourceSummaries.every((summary) => summary.unallocatedAmount !== null)
+    ? budgetSourceSummaries.reduce((sum, summary) => sum + (summary.unallocatedAmount ?? 0), 0)
+    : null;
+  const combinedAllocated = selectedBudgets.reduce((sum, budget) => sum + budget.limit, 0);
+  const combinedAssignedSpent = budgetSourceSummaries.reduce((sum, summary) => sum + summary.spentAssigned, 0);
+  const combinedOthers = budgetSourceSummaries.reduce((sum, summary) => sum + summary.unallocatedExpenses, 0);
+  const legacyUnassignedSpend = unassignedSourceExpenses.reduce((sum, transaction) => sum + transaction.amount, 0);
+  const allUnallocatedExpenses = getUnallocatedExpenses(transactions, budgets, selectedBudgetMonth);
+  const sourceDiscrepancy = budgetSourceSummaries.reduce((sum, summary) => sum + summary.discrepancy, 0);
+  const monthlyBudgetSpent = (budgetId: string) => monthExpensesTransactions
+    .filter((transaction) => transaction.budgetId === budgetId)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const clearForm = () => {
@@ -160,8 +243,26 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     setRemainingInstallments('');
     setError('');
     setEditingBudgetId(null);
+    setBudgetSource('salary');
+    setBudgetIconId(getDefaultBudgetIconId(budgetCategories[0]));
+    setCarryForward(false);
     setEditingPaymentId(null);
+    setRecurringSource('salary');
     setCustomCategory('');
+  };
+
+  const saveMonthlyAvailability = async () => {
+    if (availabilitySaving) return;
+    setAvailabilitySaving(true);
+    try {
+      await saveBudgetAvailability(selectedBudgetMonth, availabilitySalary, availabilityCash);
+      setAvailabilityEditorOpen(false);
+      showToast('success', `${budgetMonthLabel} Salary and Cash amounts saved.`);
+    } catch (saveError) {
+      showToast('error', saveError instanceof Error ? saveError.message : 'Unable to save this month’s amounts.');
+    } finally {
+      setAvailabilitySaving(false);
+    }
   };
 
   const exportReport = async () => {
@@ -200,18 +301,58 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
   };
 
   const saveForm = async () => {
+    if (savingRef.current) return;
     setError('');
+    if (currentModule?.id === 'budgets') {
+      if (budgetAmountError) {
+        setError(budgetAmountError);
+        showToast('error', budgetAmountError);
+        return;
+      }
+    }
+    savingRef.current = true;
     setSaving(true);
     try {
       if (currentModule?.id === 'budgets') {
         const selectedCategory = category === 'Custom' ? customCategory.trim() : category;
-        if (!selectedCategory) throw new Error('Enter a budget category.');
         if (editingBudgetId) {
-          await updateBudget(editingBudgetId, { category: selectedCategory, limit: amount });
-          showToast('success', 'Budget updated.');
+          const carryForwardChanged = editedBudget?.carryForward !== carryForward;
+          const movedExpenseCount = transactions.filter((transaction) =>
+            transaction.budgetId === editingBudgetId
+            && (transaction.category.trim().toLowerCase() !== selectedCategory.toLowerCase()
+              || transaction.source !== budgetSource
+              || getTransactionMonthKey(transaction) !== budgetFormMonth)).length;
+          await updateBudget(editingBudgetId, {
+            category: selectedCategory,
+            name: selectedCategory,
+            categoryId: getBudgetCategoryId(selectedCategory),
+            iconId: budgetIconId,
+            limit: amount,
+            source: budgetSource,
+            month: budgetFormMonth,
+            year: Number(budgetFormMonth.slice(0, 4)),
+            carryForward,
+          });
+          const moveNotice = movedExpenseCount
+            ? ` ${movedExpenseCount} associated expense${movedExpenseCount === 1 ? '' : 's'} moved to Others.`
+            : '';
+          const carryNotice = carryForwardChanged
+            ? ` Carry forward ${carryForward ? 'enabled' : 'disabled'}.`
+            : '';
+          showToast('success', `Budget updated.${moveNotice}${carryNotice}`);
         } else {
-          await addBudget({ category: selectedCategory, limit: amount });
-          showToast('success', 'Budget saved.');
+          await addBudget({
+            category: selectedCategory,
+            name: selectedCategory,
+            categoryId: getBudgetCategoryId(selectedCategory),
+            iconId: budgetIconId,
+            limit: amount,
+            source: budgetSource,
+            month: budgetFormMonth,
+            year: Number(budgetFormMonth.slice(0, 4)),
+            carryForward,
+          });
+          showToast('success', carryForward ? 'Budget saved. Carry forward enabled.' : 'Budget saved.');
         }
       } else if (currentModule?.id === 'goals' && contributionGoalId) {
         await contributeToGoal(contributionGoalId, amount);
@@ -227,6 +368,7 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
           cadence,
           nextDueDate: dueDate,
           category: paymentCategory,
+          source: recurringSource,
           outstandingBalance: paymentKind === 'emi' && outstandingBalance > 0 ? outstandingBalance : undefined,
           remainingInstallments: paymentKind === 'emi' && remainingInstallments ? Number(remainingInstallments) : undefined,
         };
@@ -244,23 +386,28 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
       setError(message);
       showToast('error', message);
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
 
-  const confirmRemove = (label: string, remove: () => Promise<void>) => {
+  const confirmRemove = (
+    label: string,
+    remove: () => Promise<void>,
+    confirmationMessage = 'This only removes it from your device. Your transaction history is not changed.',
+    successMessage = `${label} removed.`,
+  ) => {
     const performRemove = () => {
-      void remove().then(() => showToast('success', `${label} removed.`)).catch((removeError: unknown) => {
+      void remove().then(() => showToast('success', successMessage)).catch((removeError: unknown) => {
         const message = removeError instanceof Error ? removeError.message : 'Unable to remove this item.';
         showToast('error', message);
       });
     };
-    const message = 'This only removes it from your device. Your transaction history is not changed.';
     if (Platform.OS === 'web' && typeof globalThis.confirm === 'function') {
-      if (globalThis.confirm(`Remove ${label}? ${message}`)) performRemove();
+      if (globalThis.confirm(`Remove ${label}? ${confirmationMessage}`)) performRemove();
       return;
     }
-    Alert.alert(`Remove ${label}?`, message, [
+    Alert.alert(`Remove ${label}?`, confirmationMessage, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: performRemove },
     ]);
@@ -319,58 +466,341 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
 
         {currentModule.id === 'budgets' ? (
           <View style={styles.moduleList}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>SPENDING THIS MONTH</Text>
-              <Text style={styles.summaryValue}>{formatINR(monthExpenses)}</Text>
-              <Text style={styles.summaryHint}>{thisMonthTransactions.filter((item) => item.type === 'expense').length} recorded expense{thisMonthTransactions.filter((item) => item.type === 'expense').length === 1 ? '' : 's'}</Text>
+            <View style={styles.monthSelector}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Previous budget month"
+                onPress={() => {
+                  const [year, month] = selectedBudgetMonth.split('-').map(Number);
+                  setSelectedBudgetMonth(monthKey(new Date(year, month - 2, 1)));
+                }}
+                style={styles.monthArrow}
+              >
+                <Ionicons name="chevron-back" size={20} color={colors.accent} />
+              </Pressable>
+              <View style={styles.monthLabelWrap}>
+                <Text style={styles.monthLabel}>{budgetMonthLabel}</Text>
+                <Text style={styles.monthCaption}>Budgets and spending for this month</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Next budget month"
+                onPress={() => {
+                  const [year, month] = selectedBudgetMonth.split('-').map(Number);
+                  setSelectedBudgetMonth(monthKey(new Date(year, month, 1)));
+                }}
+                style={styles.monthArrow}
+              >
+                <Ionicons name="chevron-forward" size={20} color={colors.accent} />
+              </Pressable>
             </View>
-            <SectionHeading title="Category budgets" subtitle="Compare your real expenses with limits you set." />
-            {budgets.map((budget) => {
-              const spent = monthlyBudgetSpent(budget.category);
-              const ratio = progressRatio(spent, budget.limit);
+            <PrimaryButton title={formOpen ? 'Close form' : 'Add Budget'} onPress={() => {
+              if (formOpen) clearForm();
+              else { setEditingBudgetId(null); setAmount(0); setBudgetFormMonth(selectedBudgetMonth); setFormOpen(true); }
+              setError('');
+            }} variant={formOpen ? 'secondary' : 'primary'} />
+
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>COMBINED MONTHLY OVERVIEW</Text>
+              <Text style={styles.summaryValue}>{combinedAvailable === null ? 'Unavailable' : formatINR(combinedAvailable)}</Text>
+              <Text style={styles.summaryHint}>Total available across Salary and Cash for this month</Text>
+              <View style={styles.budgetMetricGrid}>
+                <BudgetMetric label="Allocated" value={formatINR(combinedAllocated)} light />
+                <BudgetMetric label="Assigned spend" value={formatINR(combinedAssignedSpent)} light />
+                <BudgetMetric label="Others spend" value={formatINR(combinedOthers)} light />
+                <BudgetMetric label="Unallocated" value={combinedUnallocated === null ? 'Unavailable' : formatINR(combinedUnallocated)} light />
+              </View>
+              {sourceDiscrepancy > 0 ? (
+                <Text style={styles.discrepancyBanner}>
+                  Allocation discrepancy: {formatINR(sourceDiscrepancy)} over available funds. Reduce existing allocations or assign expenses before adding budgets.
+                </Text>
+              ) : null}
+              {combinedAvailable === null ? <Text style={styles.summaryHint}>No saved Salary and Cash amounts are available for this month.</Text> : null}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  if (selectedBudgetMonth === currentMonth) {
+                    navigation.navigate('Profile');
+                    return;
+                  }
+                  setAvailabilitySalary(selectedAvailability?.salary ?? (selectedBudgetMonth === currentMonth ? profile?.monthlyIncome ?? 0 : 0));
+                  setAvailabilityCash(selectedAvailability?.cash ?? (selectedBudgetMonth === currentMonth ? profile?.cashInHand ?? 0 : 0));
+                  setAvailabilityEditorOpen(true);
+                }}
+                style={styles.editAvailabilityButton}
+              >
+                <Ionicons name="create-outline" size={16} color={colors.accent} />
+                <Text style={styles.editAvailabilityText}>{selectedBudgetMonth === currentMonth ? 'Edit current amounts in Profile' : selectedAvailability ? 'Edit monthly amounts' : 'Set monthly amounts'}</Text>
+              </Pressable>
+            </View>
+            <SectionHeading title="Salary and Cash" subtitle="Each source has its own available amount, allocations, and unbudgeted spending." />
+            {budgetSourceSummaries.map((summary) => (
+              <View key={summary.source} style={styles.sourceSummaryCard}>
+                <View style={styles.sourceSummaryHeading}>
+                  <Text style={styles.sourceSummaryTitle}>{summary.source === 'salary' ? 'Monthly Income / Salary' : 'Cash'}</Text>
+                  <Text style={styles.sourceAvailable}>{summary.available === null ? 'Unavailable' : formatINR(summary.available)}</Text>
+                </View>
+                <View style={styles.sourceMetricGrid}>
+                  <BudgetMetric label="Allocated" value={formatINR(summary.allocated)} />
+                  <BudgetMetric label="Assigned spend" value={formatINR(summary.spentAssigned)} />
+                  <BudgetMetric label="Others spend" value={formatINR(summary.unallocatedExpenses)} />
+                  <BudgetMetric label="Unallocated amount" value={summary.unallocatedAmount === null ? 'Unavailable' : formatINR(summary.unallocatedAmount)} />
+                </View>
+                {summary.available === null ? <Text style={styles.rowSub}>No historical or future {summary.source === 'salary' ? 'Salary' : 'Cash'} snapshot is available for this month.</Text> : null}
+              </View>
+            ))}
+
+            <SectionHeading title="Category budgets" subtitle="Your month- and source-specific spending limits." />
+            {selectedBudgets.map((budget) => {
+              const source = budget.source ?? 'salary';
+              const spent = monthlyBudgetSpent(budget.id);
+              const ratio = budget.limit > 0 ? spent / budget.limit : 0;
+              const status = spent > budget.limit ? 'Overspent' : spent === budget.limit ? 'Budget Exhausted' : ratio >= 0.8 ? 'Near Limit' : 'Within Budget';
+              const statusColor = status === 'Overspent' || status === 'Budget Exhausted'
+                ? colors.expense
+                : status === 'Near Limit' ? colors.warning : colors.income;
+              const remaining = budget.limit - spent;
               return (
                 <View key={budget.id} style={styles.itemCard}>
                   <View style={styles.itemTop}>
-                    <View style={styles.rowIcon}><Ionicons name="pie-chart-outline" size={19} color={colors.accent} /></View>
+                    <View style={styles.rowIcon}>
+                      <Ionicons
+                        name={(budget.iconId || getDefaultBudgetIconId(budget.category)) as keyof typeof Ionicons.glyphMap}
+                        size={19}
+                        color={colors.accent}
+                      />
+                    </View>
                     <View style={styles.rowCopy}>
-                      <Text style={styles.rowTitle}>{budget.category}</Text>
-                      <Text style={styles.rowSub}>{formatINR(spent)} spent of {formatINR(budget.limit)}</Text>
+                      <Text style={styles.rowTitle}>{budget.name || budget.category}</Text>
+                      <Text style={styles.rowSub}>{source === 'salary' ? 'Salary' : 'Cash'} · {formatINR(budget.limit)} allocated</Text>
                     </View>
                     <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${budget.category} budget`} onPress={() => {
                       setEditingBudgetId(budget.id);
                       setCategory(budgetCategories.includes(budget.category) ? budget.category : 'Custom');
                       setCustomCategory(budgetCategories.includes(budget.category) ? '' : budget.category);
                       setAmount(budget.limit);
+                      setBudgetSource(source);
+                      setBudgetIconId(budget.iconId ?? getDefaultBudgetIconId(budget.category));
+                      setCarryForward(budget.carryForward ?? false);
+                      setBudgetFormMonth(budget.month ?? currentMonth);
                       setFormOpen(true);
                       setError('');
                     }} hitSlop={8}>
                       <Ionicons name="pencil-outline" size={18} color={colors.accent} />
                     </Pressable>
-                    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${budget.category} budget`} onPress={() => confirmRemove(`${budget.category} budget`, () => removeBudget(budget.id))} hitSlop={8}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${budget.category} budget`} onPress={() => confirmRemove(
+                      `${budget.category} budget`,
+                      () => removeBudget(budget.id),
+                      'The budget will be removed. Its associated expenses will remain in your transaction history and move to Others.',
+                      'Budget deleted. Associated expenses moved to Others.',
+                    )} hitSlop={8}>
                       <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
                     </Pressable>
                   </View>
-                  <View style={styles.track}><View style={[styles.trackFill, { width: `${Math.min(ratio * 100, 100)}%`, backgroundColor: ratio > 1 ? colors.expense : colors.accent }]} /></View>
-                  <Text style={styles.remainingText}>{spent > budget.limit ? `${formatINR(spent - budget.limit)} over limit` : `${formatINR(budget.limit - spent)} remaining`}</Text>
+                  {budget.carryForward ? (
+                    <View style={styles.carryIndicator}>
+                      <Ionicons name="repeat-outline" size={13} color={colors.accentDark} />
+                      <Text style={styles.carryIndicatorText}>Carries forward</Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.budgetAmountRow}>
+                    <Text style={styles.budgetSpent}>{formatINR(spent)} spent</Text>
+                    <Text style={[styles.budgetStatus, { color: statusColor }]}>{status}</Text>
+                  </View>
+                  <View style={styles.track}><View style={[styles.trackFill, { width: `${Math.min(Math.max(ratio * 100, 0), 100)}%`, backgroundColor: statusColor }]} /></View>
+                  <View style={styles.budgetAmountRow}>
+                    <Text style={styles.remainingText}>{remaining < 0 ? `${formatINR(Math.abs(remaining))} over limit` : `${formatINR(remaining)} remaining`}</Text>
+                    <Text style={styles.remainingText}>{Math.round(ratio * 100)}%</Text>
+                  </View>
                 </View>
               );
             })}
-            {!budgets.length ? <EmptyState icon="pie-chart-outline" title="No budgets yet" message="Set a monthly limit for a category. Spending updates from transactions you record." /> : null}
-            <PrimaryButton title={formOpen ? 'Close form' : 'Create a budget'} onPress={() => { if (formOpen) clearForm(); else { setEditingBudgetId(null); setAmount(0); setFormOpen(true); } setError(''); }} variant={formOpen ? 'secondary' : 'primary'} />
-            {formOpen ? (
+            {!selectedBudgets.length ? <EmptyState icon="pie-chart-outline" title="No budgets this month" message="Add a source-specific monthly limit to start tracking assigned spending." /> : null}
+            <View style={styles.othersCard}>
+              <View style={styles.itemTop}>
+                <View style={[styles.rowIcon, styles.orangeIcon]}><Ionicons name="ellipsis-horizontal-circle-outline" size={19} color={colors.warning} /></View>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowTitle}>Others</Text>
+                  <Text style={styles.rowSub}>Expenses not yet assigned to a budget</Text>
+                </View>
+                <Text style={styles.othersAmount}>{formatINR(combinedOthers)}</Text>
+              </View>
+              {budgetSourceSummaries.map((summary) => (
+                <View key={summary.source} style={styles.othersSourceBlock}>
+                  <View style={styles.othersSourceRow}>
+                    <Text style={styles.rowSub}>{summary.source === 'salary' ? 'Salary · Unallocated Amount' : 'Cash · Unallocated Amount'}</Text>
+                    <Text style={styles.rowTitle}>{summary.unallocatedAmount === null ? 'Unavailable' : formatINR(summary.unallocatedAmount)}</Text>
+                  </View>
+                  <View style={styles.othersSourceRow}>
+                    <Text style={styles.rowSub}>{summary.source === 'salary' ? 'Salary · Unallocated Expenses' : 'Cash · Unallocated Expenses'}</Text>
+                    <Text style={styles.rowTitle}>{formatINR(summary.unallocatedExpenses)}</Text>
+                  </View>
+                  {summary.discrepancy > 0 ? (
+                    <Text style={styles.error}>{(summary.source === 'salary' ? 'Salary' : 'Cash')} is over-allocated by {formatINR(summary.discrepancy)}.</Text>
+                  ) : null}
+                </View>
+              ))}
+              {legacyUnassignedSpend > 0 ? (
+                <Text style={styles.formHint}>{formatINR(legacyUnassignedSpend)} in legacy expenses have no source and are excluded from Salary, Cash, and Others totals until assigned.</Text>
+              ) : null}
+              {allUnallocatedExpenses.length ? (
+                <View style={styles.unallocatedList}>
+                  <Text style={styles.unallocatedHeading}>Unallocated expenses</Text>
+                  {allUnallocatedExpenses.map((transaction) => {
+                    const transactionMonth = getTransactionMonthKey(transaction);
+                    const eligibleBudgets = transaction.source
+                      ? selectedBudgets.filter((budget) =>
+                        (budget.source ?? 'salary') === transaction.source)
+                      : [];
+                    return (
+                      <View key={transaction.id} style={styles.unallocatedExpense}>
+                        <View style={styles.rowCopy}>
+                          <Text style={styles.rowTitle}>{transaction.merchant}</Text>
+                          <Text style={styles.rowSub}>
+                            {formatINR(transaction.amount)} · {transaction.category} · {transaction.source ? transaction.source === 'salary' ? 'Salary' : 'Cash' : 'Source not set'}
+                          </Text>
+                        </View>
+                        {eligibleBudgets.length ? (
+                          <View style={styles.assignOptions}>
+                            {eligibleBudgets.map((budget) => (
+                              <Pressable
+                                key={budget.id}
+                                accessibilityRole="button"
+                                onPress={() => {
+                                  void assignTransactionToBudget(transaction.id, budget.id)
+                                    .then(() => showToast('success', `${transaction.merchant} assigned to ${budget.name || budget.category}.`))
+                                    .catch((assignmentError: unknown) => showToast('error', assignmentError instanceof Error ? assignmentError.message : 'Unable to assign this expense.'));
+                                }}
+                                style={styles.assignButton}
+                              >
+                                <Text style={styles.assignButtonText}>Assign to {budget.name || budget.category}</Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        ) : transaction.source ? (
+                          <Text style={styles.rowSub}>{transactionMonth === selectedBudgetMonth ? 'Create a matching budget to assign' : 'No matching budget for this month'}</Text>
+                        ) : (
+                          <Text style={styles.rowSub}>Set its source in Transactions before assigning</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Text style={styles.formHint}>No unallocated expenses for this month.</Text>
+              )}
+            </View>
+            <Modal
+              visible={formOpen}
+              transparent
+              animationType="slide"
+              onRequestClose={clearForm}
+            >
+              <View style={styles.budgetModalOverlay}>
+                <View style={styles.budgetModalSheet}>
+                  <View style={styles.budgetModalHeader}>
+                    <Text style={styles.formTitle}>{editingBudgetId ? 'Edit category budget' : 'New category budget'}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Close budget form" onPress={clearForm} hitSlop={8}>
+                      <Ionicons name="close" size={22} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
+                  <ScrollView
+                    keyboardShouldPersistTaps="always"
+                    keyboardDismissMode="none"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.budgetModalScroll}
+                  >
               <View style={styles.formCard}>
-                <Text style={styles.formTitle}>{editingBudgetId ? 'Edit category budget' : 'New category budget'}</Text>
+                <Text style={styles.fieldLabel}>Budget month</Text>
+                <Text style={styles.rowSub}>{budgetFormMonthLabel}</Text>
+                <Text style={styles.fieldLabel}>Funding source</Text>
+                <View style={styles.chipList}>
+                  {budgetSources.map((source) => <ChoiceChip key={source} label={source === 'salary' ? 'Salary' : 'Cash'} selected={budgetSource === source} onPress={() => setBudgetSource(source)} />)}
+                </View>
                 <Text style={styles.fieldLabel}>Category</Text>
                 <View style={styles.chipList}>
-                  {[...budgetCategories, 'Custom'].map((item) => <ChoiceChip key={item} label={item} selected={category === item} onPress={() => setCategory(item)} />)}
+                  {[...budgetCategories, 'Custom'].map((item) => <ChoiceChip key={item} label={item} selected={category === item} onPress={() => {
+                    setCategory(item);
+                    if (item !== 'Custom') setBudgetIconId(getDefaultBudgetIconId(item));
+                    setError('');
+                  }} />)}
                 </View>
-                {category === 'Custom' ? <InputField label="Custom category" value={customCategory} onChangeText={setCustomCategory} placeholder="e.g. Pet care" /> : null}
+                {category === 'Custom' ? <InputField label="Budget name / category" value={customCategory} onChangeText={(value) => { setCustomCategory(value); setError(''); }} placeholder="e.g. Pet care" /> : null}
+                <Text style={styles.fieldLabel}>Icon</Text>
+                <View style={styles.budgetIconOptions}>
+                  {budgetIconOptions.map((option) => (
+                    <Pressable
+                      key={option.id}
+                      accessibilityRole="radio"
+                      accessibilityLabel={`${option.label} budget icon`}
+                      accessibilityState={{ checked: budgetIconId === option.id }}
+                      onPress={() => setBudgetIconId(option.id)}
+                      style={[styles.budgetIconOption, budgetIconId === option.id && styles.budgetIconOptionSelected]}
+                    >
+                      <Ionicons name={option.icon} size={19} color={budgetIconId === option.id ? colors.accentDark : colors.textSecondary} />
+                    </Pressable>
+                  ))}
+                </View>
                 <CurrencyInput label="Monthly limit" value={amount} onChangeValue={setAmount} variant="card" icon="wallet-outline" />
+                <View style={styles.availableCard}>
+                  <View style={styles.availableHeading}>
+                    <Text style={styles.fieldLabel}>Available for this budget</Text>
+                    <Text style={styles.availableValue}>{availableForBudget === null ? 'Unavailable' : formatINR(availableForBudget)}</Text>
+                  </View>
+                  <Text style={styles.formHint}>
+                    {availableForBudget === null
+                      ? 'Set this month’s Salary and Cash amounts to calculate available funds.'
+                      : `${formatINR(otherSourceAllocations)} allocated elsewhere · ${formatINR(candidateOthersExpense)} in Others`}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: carryForward }}
+                  onPress={() => setCarryForward((value) => !value)}
+                  style={styles.carryForwardRow}
+                >
+                  <View style={styles.carryForwardCopy}>
+                    <Text style={styles.rowTitle}>Carry forward</Text>
+                    <Text style={styles.formHint}>Create the same budget for the following month when that month’s available amount is set.</Text>
+                  </View>
+                  <View style={[styles.toggleTrack, carryForward && styles.toggleTrackActive]}>
+                    <View style={[styles.toggleThumb, carryForward && styles.toggleThumbActive]} />
+                  </View>
+                </Pressable>
                 <Text style={styles.formHint}>You’ll see an in-app alert at 80% and when you exceed the limit.</Text>
-                {error ? <Text style={styles.error}>{error}</Text> : null}
-                <PrimaryButton title={editingBudgetId ? 'Save changes' : 'Save budget'} onPress={() => void saveForm()} loading={saving} />
+                {error || budgetAmountError ? <Text style={styles.error}>{error || budgetAmountError}</Text> : null}
+                <PrimaryButton
+                  title={editingBudgetId ? 'Save changes' : 'Save budget'}
+                  onPress={() => void saveForm()}
+                  loading={saving}
+                  disabled={Boolean(budgetAmountError) || saving}
+                />
               </View>
-            ) : null}
+                  </ScrollView>
+                </View>
+              </View>
+            </Modal>
+            <Modal
+              visible={availabilityEditorOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setAvailabilityEditorOpen(false)}
+            >
+              <View style={styles.availabilityOverlay}>
+                <View style={styles.availabilitySheet}>
+                  <Text style={styles.formTitle}>{budgetMonthLabel} available money</Text>
+                  <Text style={styles.formHint}>These values are saved for this month only. Editing a different month will not change this one.</Text>
+                  <CurrencyInput label="Monthly Salary / Income" value={availabilitySalary} onChangeValue={setAvailabilitySalary} variant="card" icon="trending-up-outline" />
+                  <CurrencyInput label="Cash" value={availabilityCash} onChangeValue={setAvailabilityCash} variant="card" icon="cash-outline" />
+                  <View style={styles.modalActions}>
+                    <Pressable accessibilityRole="button" onPress={() => setAvailabilityEditorOpen(false)} style={styles.cancelButton}>
+                      <Text style={styles.cancelText}>Cancel</Text>
+                    </Pressable>
+                    <PrimaryButton title={availabilitySaving ? 'Saving…' : 'Save amounts'} onPress={() => void saveMonthlyAvailability()} loading={availabilitySaving} style={styles.profileSaveButton} />
+                  </View>
+                </View>
+              </View>
+            </Modal>
           </View>
         ) : null}
 
@@ -460,7 +890,12 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                   </View>
                   {payment.active ? (
                     <Pressable accessibilityRole="button" onPress={() => {
-                      void markRecurringPaymentPaid(payment.id)
+                      const source = payment.source ?? paymentSources[payment.id];
+                      if (!source) {
+                        showToast('error', 'Choose whether this payment came from Salary or Cash.');
+                        return;
+                      }
+                      void markRecurringPaymentPaid(payment.id, source)
                         .then(() => showToast('success', `${payment.name} marked paid and added to expenses.`))
                         .catch((paymentError: unknown) => showToast('error', paymentError instanceof Error ? paymentError.message : 'Unable to mark payment as paid.'));
                     }} style={styles.paidButton}>
@@ -482,6 +917,7 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                     setCadence(payment.cadence);
                     setDueDate(payment.nextDueDate);
                     setPaymentCategory(payment.category);
+                    setRecurringSource(payment.source ?? 'salary');
                     setOutstandingBalance(payment.outstandingBalance ?? 0);
                     setRemainingInstallments(payment.remainingInstallments?.toString() ?? '');
                     setFormOpen(true);
@@ -499,6 +935,14 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                     {payment.outstandingBalance !== undefined && payment.remainingInstallments !== undefined ? ' · ' : ''}
                     {payment.remainingInstallments !== undefined ? `${payment.remainingInstallments} installments left` : ''}
                   </Text>
+                ) : null}
+                {!payment.source ? (
+                  <View style={styles.paymentSourcePicker}>
+                    <Text style={styles.fieldLabel}>Paid from</Text>
+                    <View style={styles.chipList}>
+                      {budgetSources.map((source) => <ChoiceChip key={source} label={source === 'salary' ? 'Salary' : 'Cash'} selected={paymentSources[payment.id] === source} onPress={() => setPaymentSources((current) => ({ ...current, [payment.id]: source }))} />)}
+                    </View>
+                  </View>
                 ) : null}
               </View>
             ))}
@@ -537,6 +981,10 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                 </View>
                 <InputField label="Next due date" value={dueDate} onChangeText={setDueDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
                 <InputField label="Expense category" value={paymentCategory} onChangeText={setPaymentCategory} placeholder="Bills & Utilities" />
+                <Text style={styles.fieldLabel}>Paid from</Text>
+                <View style={styles.chipList}>
+                  {budgetSources.map((source) => <ChoiceChip key={source} label={source === 'salary' ? 'Salary' : 'Cash'} selected={recurringSource === source} onPress={() => setRecurringSource(source)} />)}
+                </View>
                 {paymentKind === 'emi' ? (
                   <>
                     <CurrencyInput label="Outstanding loan balance (optional)" value={outstandingBalance} onChangeValue={setOutstandingBalance} variant="card" icon="business-outline" />
@@ -635,6 +1083,15 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle: string }
   );
 }
 
+function BudgetMetric({ label, value, light = false }: { label: string; value: string; light?: boolean }) {
+  return (
+    <View style={styles.budgetMetric}>
+      <Text style={[styles.budgetMetricLabel, light && styles.budgetMetricLabelLight]}>{label}</Text>
+      <Text style={[styles.budgetMetricValue, light && styles.budgetMetricValueLight]}>{value}</Text>
+    </View>
+  );
+}
+
 function EmptyState({ icon, title, message }: { icon: keyof typeof Ionicons.glyphMap; title: string; message: string }) {
   return (
     <View style={styles.emptyCard}>
@@ -679,6 +1136,62 @@ const styles = StyleSheet.create({
   summaryLabel: { ...typography.micro, color: colors.surprise, letterSpacing: 0.8, fontWeight: '700' },
   summaryValue: { ...typography.h1, color: colors.white },
   summaryHint: { ...typography.caption, color: 'rgba(255,255,255,0.72)' },
+  monthSelector: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  monthArrow: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  monthLabelWrap: { flex: 1, alignItems: 'center', gap: 2 },
+  monthLabel: { ...typography.bodySemibold, color: colors.textPrimary },
+  monthCaption: { ...typography.micro, color: colors.textTertiary },
+  budgetMetricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  budgetMetric: { flexGrow: 1, flexBasis: '40%', gap: 3 },
+  budgetMetricLabel: { ...typography.micro, color: colors.textTertiary },
+  budgetMetricValue: { ...typography.captionMedium, color: colors.textPrimary },
+  budgetMetricLabelLight: { color: 'rgba(255,255,255,0.68)' },
+  budgetMetricValueLight: { color: colors.white },
+  sourceSummaryCard: { padding: spacing.md, gap: spacing.sm, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  sourceSummaryHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  sourceSummaryTitle: { ...typography.bodySemibold, color: colors.textPrimary },
+  sourceAvailable: { ...typography.captionMedium, color: colors.accentDark },
+  sourceMetricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  editAvailabilityButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs },
+  editAvailabilityText: { ...typography.captionMedium, color: colors.accentDark },
+  carryIndicator: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  carryIndicatorText: { ...typography.micro, color: colors.accentDark, fontWeight: '700' },
+  budgetAmountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
+  budgetSpent: { ...typography.captionMedium, color: colors.textPrimary },
+  budgetStatus: { ...typography.micro, fontWeight: '700' },
+  othersCard: { padding: spacing.md, gap: spacing.sm, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  othersAmount: { ...typography.bodySemibold, color: colors.warning },
+  othersSourceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  othersSourceBlock: { gap: spacing.xs },
+  discrepancyBanner: { ...typography.captionMedium, color: colors.expense, marginTop: spacing.sm },
+  unallocatedList: { gap: spacing.xs, marginTop: spacing.sm },
+  unallocatedHeading: { ...typography.captionMedium, color: colors.textPrimary },
+  unallocatedExpense: { gap: spacing.xs, paddingVertical: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  assignButton: { alignSelf: 'flex-start', minHeight: 34, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  assignButtonText: { ...typography.micro, fontWeight: '700', color: colors.accentDark },
+  assignOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  paymentSourcePicker: { gap: spacing.xs, paddingTop: spacing.xs },
+  budgetIconOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  budgetIconOption: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+  budgetIconOptionSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accentMuted },
+  budgetModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
+  availabilityOverlay: { flex: 1, justifyContent: 'center', padding: spacing.md, backgroundColor: colors.overlay },
+  availabilitySheet: { width: '100%', maxWidth: 520, alignSelf: 'center', padding: spacing.lg, gap: spacing.md, borderRadius: radius.xl, backgroundColor: colors.background },
+  modalActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  cancelButton: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.surface },
+  profileSaveButton: { flex: 1 },
+  budgetModalSheet: { width: '100%', maxWidth: 760, maxHeight: '90%', alignSelf: 'center', paddingTop: spacing.lg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.background },
+  budgetModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
+  budgetModalScroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  availableCard: { padding: spacing.sm, gap: spacing.xs, borderRadius: radius.lg, backgroundColor: colors.background },
+  availableHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.xs },
+  availableValue: { ...typography.captionMedium, color: colors.accentDark },
+  carryForwardRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  carryForwardCopy: { flex: 1, gap: 3 },
+  toggleTrack: { width: 46, height: 26, justifyContent: 'center', padding: 3, borderRadius: radius.full, backgroundColor: colors.surfaceMuted },
+  toggleTrackActive: { backgroundColor: colors.accent },
+  toggleThumb: { width: 20, height: 20, borderRadius: radius.full, backgroundColor: colors.white },
+  toggleThumbActive: { alignSelf: 'flex-end' },
   moduleRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   rowIcon: { width: 42, height: 42, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },
   orangeIcon: { backgroundColor: colors.warningSoft },

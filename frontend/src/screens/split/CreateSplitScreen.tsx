@@ -19,7 +19,7 @@ import { useApp } from '../../context/AppContext';
 import { CURRENT_USER_ID } from '../../data/splits';
 import type { SplitStackParamList } from '../../navigation/SplitStack';
 import { colors, radius, spacing, typography } from '../../theme';
-import type { SplitMethod } from '../../types';
+import type { ExpenseSource, SplitMethod } from '../../types';
 import { formatINR } from '../../utils/format';
 import { buildEqualShares, getFriendMeta } from '../../utils/splits';
 
@@ -41,6 +41,7 @@ export function CreateSplitScreen({ navigation, route }: Props) {
   const [date, setDate] = useState('Today');
   const [note, setNote] = useState('');
   const [paidById, setPaidById] = useState(CURRENT_USER_ID);
+  const [expenseSource, setExpenseSource] = useState<ExpenseSource>('salary');
   const [method, setMethod] = useState<SplitMethod>('equal');
   const [customShares, setCustomShares] = useState<Record<string, number>>({});
   const [error, setError] = useState('');
@@ -113,6 +114,7 @@ export function CreateSplitScreen({ navigation, route }: Props) {
         title,
         amount,
         paidById,
+        source: paidById === CURRENT_USER_ID ? expenseSource : undefined,
         date: date.trim() || 'Today',
         method,
         participantIds: participants,
@@ -234,6 +236,18 @@ export function CreateSplitScreen({ navigation, route }: Props) {
                   </Pressable>
                 ))}
               </View>
+              {paidById === CURRENT_USER_ID ? (
+                <>
+                  <Text style={styles.fieldLabel}>Paid from</Text>
+                  <View style={styles.chips}>
+                    {(['salary', 'cash'] as const).map((source) => (
+                      <Pressable key={source} accessibilityRole="radio" accessibilityState={{ checked: expenseSource === source }} onPress={() => setExpenseSource(source)} style={[styles.chip, expenseSource === source && styles.chipActive]}>
+                        <Text style={[styles.chipText, expenseSource === source && styles.chipTextActive]}>{source === 'salary' ? 'Salary' : 'Cash'}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              ) : null}
             </View>
           ) : null}
 

@@ -14,6 +14,7 @@ export interface AuthUser {
   phone?: string;
   email?: string;
   salary?: number;
+  employmentType?: 'salaried' | 'business' | 'student' | 'retired' | 'homemaker';
   incomeAmountMinor?: string;
   cashBalanceMinor?: string;
   savingsAmountMinor?: string;
@@ -291,6 +292,7 @@ export async function completeOnboarding(input: CompleteOnboardingInput): Promis
     username: email || input.phone,
     email,
     phone: input.phone,
+    employmentType: input.employmentType,
     incomeAmountMinor: input.incomeAmountMinor,
     cashBalanceMinor: input.cashBalanceMinor,
     savingsAmountMinor: input.savingsAmountMinor ?? '0',

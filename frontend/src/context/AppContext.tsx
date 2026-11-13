@@ -17,7 +17,9 @@ import type {
   AuthPhase,
   CategoryBudget,
   CreateSplitInput,
+  ExpenseSource,
   Friend,
+  MonthlyBudgetAvailability,
   RecurringPayment,
   SavingsGoal,
   SplitExpense,
@@ -36,6 +38,22 @@ import { advancePaymentDate, localDateString, validateDate, validatePositiveAmou
 import { colors } from '../theme';
 import { formatINR, formatTransactionDate } from '../utils/format';
 import { getSplitGroups, saveSplitGroups } from '../services/splitGroupService';
+import { getBudgetMonthKey } from '../services/budgetService';
+import { calculateBudgetAllocation } from '../services/budgetAllocationService';
+import { processCarryForward } from '../services/budgetCarryForwardService';
+import { validateExpenseBudgetAssociation } from '../services/budgetExpenseAssociationService';
+import { getBudgetCategoryId, validateBudgetCategory } from '../services/budgetCategoryService';
+import { employmentService, type EmploymentRecord, type EmploymentType } from '../services/employmentService';
+import {
+  financialProfileService,
+  type FinancialProfileChanges,
+  type FinancialProfileRecord,
+  fromMinorUnits,
+} from '../services/financialProfileService';
+import {
+  balanceConfirmationService,
+  type BalanceConfirmationEntries,
+} from '../services/balanceConfirmationService';
 
 interface AppState {
   authPhase: AuthPhase;
@@ -57,7 +75,16 @@ interface AppState {
   updateOnboardingDraft: (draft: Partial<OnboardingDraft>) => void;
   setOnboardingStep: (step: number) => void;
   profile: UserProfile | null;
+  budgetAvailability: MonthlyBudgetAvailability[];
+  saveBudgetAvailability: (month: string, salary: number, cash: number) => Promise<void>;
   profileState: AppProfileState;
+  employment: EmploymentRecord | null;
+  financialProfile: FinancialProfileRecord;
+  balanceConfirmationEntries: BalanceConfirmationEntries;
+  isBalanceConfirmationDue: boolean;
+  updateFinancialProfile: (changes: FinancialProfileChanges, employmentType?: EmploymentType) => Promise<void>;
+  confirmMonthlyBalances: () => Promise<void>;
+  snoozeMonthlyBalances: () => Promise<void>;
   preferredModuleIds: AppModuleId[];
   avatarId: string | null;
   reportFrequency: ReportFrequency;
@@ -65,7 +92,6 @@ interface AppState {
   reportDayOfWeek: ReportDayOfWeek;
   reportDayOfMonth: number;
   reportEmail: string;
-  updateProfileDetails: (changes: Pick<ProfileRecord, 'firstName' | 'lastName'>) => Promise<void>;
   saveAvatarPreference: (avatarId: string | null) => Promise<void>;
   saveReportPreferences: (changes: Partial<ReportPreferenceChanges>) => Promise<void>;
   savePreferredModules: (moduleIds: unknown) => Promise<void>;
@@ -83,23 +109,27 @@ interface AppState {
   goals: SavingsGoal[];
   recurringPayments: RecurringPayment[];
   addTransaction: (input: Omit<Transaction, 'id'>) => Promise<void>;
-  updateTransaction: (id: string, changes: Pick<Transaction, 'merchant' | 'category' | 'amount' | 'type' | 'date' | 'occurredAt'>) => Promise<void>;
+  updateTransaction: (id: string, changes: Pick<Transaction, 'merchant' | 'category' | 'amount' | 'type' | 'date' | 'occurredAt' | 'source'> & Partial<Pick<Transaction, 'paymentMode' | 'icon' | 'iconColor'>> & {
+    splitDetails?: { method: SplitExpense['method']; shares: SplitExpense['shares']; fullAmount: number };
+  }) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
-  addBudget: (input: Pick<CategoryBudget, 'category' | 'limit'>) => Promise<void>;
-  updateBudget: (budgetId: string, changes: Pick<CategoryBudget, 'category' | 'limit'>) => Promise<void>;
+  assignTransactionToBudget: (transactionId: string, budgetId: string) => Promise<void>;
+  addBudget: (input: Pick<CategoryBudget, 'category' | 'limit' | 'month' | 'year' | 'source' | 'name' | 'categoryId' | 'iconId' | 'carryForward' | 'originalBudgetId'>) => Promise<void>;
+  updateBudget: (budgetId: string, changes: Pick<CategoryBudget, 'category' | 'limit' | 'month' | 'year' | 'source' | 'name' | 'categoryId' | 'iconId' | 'carryForward' | 'originalBudgetId'>) => Promise<void>;
   removeBudget: (budgetId: string) => Promise<void>;
+  processBudgetCarryForward: (month: string) => Promise<{ created: CategoryBudget[]; warnings: string[] }>;
   addGoal: (input: Pick<SavingsGoal, 'title' | 'target' | 'targetDate'>) => Promise<void>;
   removeGoal: (goalId: string) => Promise<void>;
   contributeToGoal: (goalId: string, amount: number) => Promise<void>;
-  addRecurringPayment: (input: Pick<RecurringPayment, 'name' | 'amount' | 'kind' | 'cadence' | 'nextDueDate' | 'category' | 'outstandingBalance' | 'remainingInstallments'>) => Promise<void>;
-  updateRecurringPayment: (paymentId: string, changes: Pick<RecurringPayment, 'name' | 'amount' | 'kind' | 'cadence' | 'nextDueDate' | 'category' | 'outstandingBalance' | 'remainingInstallments'>) => Promise<void>;
+  addRecurringPayment: (input: Pick<RecurringPayment, 'name' | 'amount' | 'kind' | 'cadence' | 'nextDueDate' | 'category' | 'outstandingBalance' | 'remainingInstallments' | 'source'>) => Promise<void>;
+  updateRecurringPayment: (paymentId: string, changes: Pick<RecurringPayment, 'name' | 'amount' | 'kind' | 'cadence' | 'nextDueDate' | 'category' | 'outstandingBalance' | 'remainingInstallments' | 'source'>) => Promise<void>;
   setRecurringPaymentActive: (paymentId: string, active: boolean) => Promise<void>;
   removeRecurringPayment: (paymentId: string) => Promise<void>;
-  markRecurringPaymentPaid: (paymentId: string) => Promise<void>;
+  markRecurringPaymentPaid: (paymentId: string, source: ExpenseSource) => Promise<void>;
   addFriend: (input: Pick<Friend, 'name' | 'userId'>) => Promise<void>;
   addSplit: (input: CreateSplitInput) => Promise<SplitExpense>;
   settleShare: (splitId: string, friendId: string) => Promise<void>;
-  settleMyShare: (splitId: string) => Promise<void>;
+  settleMyShare: (splitId: string, source: ExpenseSource) => Promise<void>;
   applyAuthSession: (response: AuthResponse) => Promise<void>;
   beginVerification: (response: AuthResponse, channel: 'phone' | 'email', target: string) => Promise<void>;
 }
@@ -112,6 +142,7 @@ export interface AppProfileState extends ProfileRecord {
   reportDayOfWeek: ReportDayOfWeek;
   reportDayOfMonth: number;
   reportEmail: string;
+  employmentType: EmploymentType | null;
 }
 
 export interface OnboardingDraft {
@@ -132,6 +163,35 @@ const AppContext = createContext<AppState | null>(null);
 function getAccountDataOwner(user: Pick<UserProfile, 'email' | 'phone'> | null | undefined): string | null {
   const identity = user?.phone?.trim() || user?.email?.trim().toLowerCase();
   return identity || null;
+}
+
+function currentMonthKey(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function amountFromMinor(value: string | undefined, fallback = 0): number {
+  if (value === undefined || !/^\d+$/.test(value)) return fallback;
+  const minor = Number(value);
+  return Number.isSafeInteger(minor) ? minor / 100 : fallback;
+}
+
+function isMonthKey(value: string | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) return false;
+  const month = Number(value.slice(5, 7));
+  return month >= 1 && month <= 12;
+}
+
+function getBudgetMonth(budget: CategoryBudget): string {
+  return isMonthKey(budget.month) ? budget.month : currentMonthKey(new Date(budget.createdAt));
+}
+
+function getTransactionMonth(transaction: Transaction): string | null {
+  if (typeof transaction.occurredAt === 'number') return currentMonthKey(new Date(transaction.occurredAt));
+  if (transaction.date === 'Today' || transaction.date === 'Yesterday') return currentMonthKey();
+  const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(transaction.date);
+  if (isoDate) return `${isoDate[1]}-${isoDate[2]}`;
+  const parsedDate = new Date(`${transaction.date} ${new Date().getFullYear()}`);
+  return Number.isNaN(parsedDate.getTime()) ? null : currentMonthKey(parsedDate);
 }
 
 function isInCurrentMonth(transaction: Transaction, now = new Date()): boolean {
@@ -172,6 +232,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reportDayOfMonth: 1,
     reportEmail: '',
   });
+  const [employment, setEmployment] = useState<EmploymentRecord | null>(null);
+  const [financialProfile, setFinancialProfile] = useState<FinancialProfileRecord>({
+    monthlyIncomeMinor: null,
+    cashBalanceMinor: null,
+    savingsAmountMinor: null,
+    updatedAt: {},
+  });
+  const [balanceConfirmationEntries, setBalanceConfirmationEntries] = useState<BalanceConfirmationEntries>({});
   const [profileState, setProfileState] = useState<AppProfileState>({
     firstName: '',
     lastName: '',
@@ -185,19 +253,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reportDayOfWeek: 1,
     reportDayOfMonth: 1,
     reportEmail: '',
+    employmentType: null,
   });
   const [friends, setFriends] = useState<Friend[]>([]);
   const [splitGroups, setSplitGroups] = useState<SplitGroup[]>([]);
   const [splits, setSplits] = useState<SplitExpense[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
+  const [budgetAvailability, setBudgetAvailability] = useState<MonthlyBudgetAvailability[]>([]);
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
   const localDataOwnerRef = useRef<string | null>(null);
   const operationLocksRef = useRef(new Set<string>());
 
   const persistLocalData = useCallback((data: Parameters<typeof writeLocalData>[0]) =>
-    writeLocalData(data, localDataOwnerRef.current), []);
+    writeLocalData({ ...data, budgetAvailability: data.budgetAvailability ?? budgetAvailability }, localDataOwnerRef.current), [budgetAvailability]);
 
   const runWithLocalLock = useCallback(async (key: string, operation: () => Promise<void>) => {
     if (operationLocksRef.current.has(key)) return;
@@ -216,6 +286,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setFriends(localData.friends);
     setSplits(localData.splits);
     setBudgets(localData.budgets);
+    setBudgetAvailability(localData.budgetAvailability ?? []);
     setGoals(localData.goals);
     setRecurringPayments(localData.recurringPayments);
     setSplitGroups(groups);
@@ -232,9 +303,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getLocalPreferences(ownerId),
         profileService.getProfile(ownerId),
       ]);
+      const [savedEmployment, savedFinancialProfile, savedBalanceConfirmations] = await Promise.all([
+        employmentService.getEmployment(ownerId),
+        financialProfileService.getFinancialProfile(ownerId),
+        balanceConfirmationService.getBalanceConfirmations(ownerId),
+      ]);
       await restoreAccountData(ownerId);
       setPreferences(savedPreferences);
       const user = sessionUser;
+      const seededFinancialProfile = await financialProfileService.seedFinancialProfile({
+        ...(typeof user?.monthlyIncome === 'number' ? { monthlyIncome: user.monthlyIncome } : {}),
+        ...(typeof user?.cashInHand === 'number' ? { cashBalance: user.cashInHand } : {}),
+        ...(typeof user?.savings === 'number' ? { savings: user.savings } : {}),
+        ...(user?.incomeAmountMinor && Number.isFinite(Number(user.incomeAmountMinor))
+          ? { monthlyIncome: Number(user.incomeAmountMinor) / 100 }
+          : {}),
+        ...(user?.cashBalanceMinor && Number.isFinite(Number(user.cashBalanceMinor))
+          ? { cashBalance: Number(user.cashBalanceMinor) / 100 }
+          : {}),
+        ...(user?.savingsAmountMinor && Number.isFinite(Number(user.savingsAmountMinor))
+          ? { savings: Number(user.savingsAmountMinor) / 100 }
+          : {}),
+      }, ownerId);
+      const savedEmploymentRecord = savedEmployment
+        ?? (user?.employmentType ? await employmentService.saveEmployment(user.employmentType, ownerId) : null);
       const draft = session?.onboardingDraft as Partial<OnboardingDraft> | undefined;
       const sessionName = user?.name?.trim().split(/\s+/) ?? [];
       const firstName = storedProfile.firstName || draft?.firstName || sessionName[0] || '';
@@ -261,7 +353,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         reportDayOfWeek: nextPreferences.reportDayOfWeek,
         reportDayOfMonth: nextPreferences.reportDayOfMonth,
         reportEmail: nextPreferences.reportEmail,
+        employmentType: savedEmploymentRecord?.type ?? null,
       });
+      setEmployment(savedEmploymentRecord);
+      setFinancialProfile(seededFinancialProfile);
+      setBalanceConfirmationEntries(savedBalanceConfirmations);
       if (!session?.user || !user) {
         setAuthPhase('onboarding');
         return;
@@ -269,9 +365,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setProfile({
         ...user,
-        monthlyIncome: Number(user.monthlyIncome) || 0,
-        cashInHand: Number(user.cashInHand) || 0,
-        savings: Number(user.savings) || 0,
+        monthlyIncome: fromMinorUnits(seededFinancialProfile.monthlyIncomeMinor) ?? (Number(user.monthlyIncome) || 0),
+        cashInHand: fromMinorUnits(seededFinancialProfile.cashBalanceMinor) ?? (Number(user.cashInHand) || 0),
+        savings: fromMinorUnits(seededFinancialProfile.savingsAmountMinor) ?? (Number(user.savings) || 0),
+        employmentType: savedEmploymentRecord?.type,
         phone: user.phone || '',
         countryCode: user.countryCode || '+91',
         email: nextProfileRecord.email,
@@ -314,13 +411,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toastTimer.current = setTimeout(() => setToast((current) => current?.id === id ? null : current), 3200);
   }, []);
 
+  useEffect(() => {
+    if (authPhase !== 'main' || !profile) return;
+    const month = getBudgetMonthKey(new Date());
+    const current = budgetAvailability.find((entry) => entry.month === month);
+    if (current?.salary === profile.monthlyIncome && current.cash === profile.cashInHand) return;
+
+    void runWithLocalLock(`budget-availability:${month}`, async () => {
+      const nextAvailability = [
+        ...budgetAvailability.filter((entry) => entry.month !== month),
+        { month, salary: profile.monthlyIncome, cash: profile.cashInHand, updatedAt: Date.now() },
+      ];
+      await persistLocalData({
+        transactions, friends, splits, budgets, goals, recurringPayments,
+        budgetAvailability: nextAvailability,
+      });
+      setBudgetAvailability(nextAvailability);
+    }).catch((error: unknown) => {
+      showToast('error', error instanceof Error ? error.message : 'Unable to save this month’s Salary and Cash amounts.');
+    });
+  }, [authPhase, profile, budgetAvailability, runWithLocalLock, persistLocalData, transactions, friends, splits, budgets, goals, recurringPayments, showToast]);
+
   const notifyBudgetThresholds = useCallback((nextTransactions: Transaction[]) => {
     const now = new Date();
     for (const budget of budgets) {
+      const nowMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      if (getBudgetMonth(budget) !== nowMonth) continue;
       const spendFor = (items: Transaction[]) => items
         .filter((transaction) => transaction.type === 'expense'
           && isInCurrentMonth(transaction, now)
-          && transaction.category.toLowerCase() === budget.category.toLowerCase())
+          && transaction.source === (budget.source ?? 'salary')
+          && transaction.budgetId === budget.id)
         .reduce((sum, transaction) => sum + transaction.amount, 0);
       const spent = spendFor(nextTransactions);
       const oldSpent = spendFor(transactions);
@@ -332,6 +453,117 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [budgets, showToast, transactions]);
+
+  const updateFinancialProfile = useCallback(async (
+    changes: FinancialProfileChanges,
+    employmentType?: EmploymentType,
+  ) => {
+    for (const amount of Object.values(changes)) financialProfileService.toMinorUnits(amount);
+    await runWithLocalLock('profile-financial', async () => {
+      const ownerId = localDataOwnerRef.current;
+      const previousFinancial = await financialProfileService.getFinancialProfile(ownerId);
+      const previousEmployment = await employmentService.getEmployment(ownerId);
+      const previousSession = await readSession();
+      const currentMonth = getBudgetMonthKey(new Date());
+      const previousAvailability = budgetAvailability;
+      let nextFinancial = previousFinancial;
+      let nextEmployment = previousEmployment;
+      let nextSessionSaved = false;
+      let nextLocalDataSaved = false;
+      let nextAvailability = previousAvailability;
+      let nextBalanceEntries = balanceConfirmationEntries;
+      const nextProfile = profile ? { ...profile } : null;
+
+      try {
+        if (Object.keys(changes).length) {
+          nextFinancial = await financialProfileService.saveFinancialProfile(changes, ownerId);
+        }
+        if (employmentType !== undefined) {
+          nextEmployment = await employmentService.saveEmployment(employmentType, ownerId);
+        }
+        if (nextProfile) {
+          const monthlyIncome = changes.monthlyIncome ?? fromMinorUnits(nextFinancial.monthlyIncomeMinor) ?? nextProfile.monthlyIncome;
+          const cashInHand = changes.cashBalance ?? fromMinorUnits(nextFinancial.cashBalanceMinor) ?? nextProfile.cashInHand;
+          const savings = changes.savings ?? fromMinorUnits(nextFinancial.savingsAmountMinor) ?? nextProfile.savings;
+          Object.assign(nextProfile, {
+            monthlyIncome,
+            cashInHand,
+            savings,
+            employmentType: nextEmployment?.type,
+          });
+          nextAvailability = [
+            ...budgetAvailability.filter((entry) => entry.month !== currentMonth),
+            { month: currentMonth, salary: monthlyIncome, cash: cashInHand, updatedAt: Date.now() },
+          ];
+          if (previousSession) {
+            await writeSession({
+              ...previousSession,
+              user: {
+                ...(previousSession.user ?? {}),
+                ...nextProfile,
+                incomeAmountMinor: String(financialProfileService.toMinorUnits(monthlyIncome)),
+                cashBalanceMinor: String(financialProfileService.toMinorUnits(cashInHand)),
+                savingsAmountMinor: String(financialProfileService.toMinorUnits(savings)),
+              },
+            });
+            nextSessionSaved = true;
+          }
+          await persistLocalData({
+            transactions, friends, splits, budgets, goals, recurringPayments,
+            budgetAvailability: nextAvailability,
+          });
+          nextLocalDataSaved = true;
+        }
+        nextBalanceEntries = await balanceConfirmationService.confirmBalanceMonth(currentMonth, ownerId);
+      } catch (error) {
+        const rollbackErrors: string[] = [];
+        try { await financialProfileService.replaceFinancialProfile(previousFinancial, ownerId); }
+        catch (rollbackError) { rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : 'Financial profile could not be restored.'); }
+        if (employmentType !== undefined) {
+          try { await employmentService.replaceEmployment(previousEmployment, ownerId); }
+          catch (rollbackError) { rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : 'Employment details could not be restored.'); }
+        }
+        if (nextSessionSaved && previousSession) {
+          try { await writeSession(previousSession); }
+          catch (rollbackError) { rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : 'The saved session could not be restored.'); }
+        }
+        if (nextLocalDataSaved) {
+          try {
+            await persistLocalData({
+              transactions, friends, splits, budgets, goals, recurringPayments,
+              budgetAvailability: previousAvailability,
+            });
+          } catch (rollbackError) {
+            rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : 'Previous budget availability could not be restored.');
+          }
+        }
+        if (rollbackErrors.length) throw new Error(`Profile update failed. ${rollbackErrors.join(' ')}`);
+        throw error;
+      }
+
+      setFinancialProfile(nextFinancial);
+      setEmployment(nextEmployment);
+      setProfileState((current) => ({ ...current, employmentType: nextEmployment?.type ?? null }));
+      setProfile(nextProfile);
+      setBudgetAvailability(nextAvailability);
+      setBalanceConfirmationEntries(nextBalanceEntries);
+    });
+  }, [
+    budgetAvailability, budgets, friends, goals, persistLocalData, profile, recurringPayments,
+    balanceConfirmationEntries, runWithLocalLock, splits, transactions,
+  ]);
+
+  const confirmMonthlyBalances = useCallback(async () => {
+    const monthKey = balanceConfirmationService.getMonthKey();
+    const entries = await balanceConfirmationService.confirmBalanceMonth(monthKey, localDataOwnerRef.current);
+    setBalanceConfirmationEntries(entries);
+  }, []);
+
+  const snoozeMonthlyBalances = useCallback(async () => {
+    const monthKey = balanceConfirmationService.getMonthKey();
+    const entries = await balanceConfirmationService.snoozeBalanceMonth(monthKey, localDataOwnerRef.current);
+    setBalanceConfirmationEntries(entries);
+  }, []);
 
   const value = useMemo<AppState>(
     () => ({
@@ -381,7 +613,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .catch((error: unknown) => showToast('error', error instanceof Error ? error.message : 'Unable to save onboarding progress locally.'));
       },
       profile,
+      budgetAvailability,
+      saveBudgetAvailability: async (month, salary, cash) => {
+        if (!isMonthKey(month)) throw new Error('Choose a valid budget month.');
+        if (![salary, cash].every((amount) => Number.isFinite(amount) && amount >= 0)) {
+          throw new Error('Enter valid non-negative Salary and Cash amounts.');
+        }
+        const nextAvailability = [
+          ...budgetAvailability.filter((entry) => entry.month !== month),
+          { month, salary: Math.trunc(salary), cash: Math.trunc(cash), updatedAt: Date.now() },
+        ];
+        await persistLocalData({
+          transactions, friends, splits, budgets, goals, recurringPayments,
+          budgetAvailability: nextAvailability,
+        });
+        setBudgetAvailability(nextAvailability);
+      },
       profileState,
+      employment,
+      financialProfile,
+      balanceConfirmationEntries,
+      isBalanceConfirmationDue: balanceConfirmationService.isBalanceConfirmationDue(
+        balanceConfirmationEntries,
+        balanceConfirmationService.getMonthKey(),
+      ),
+      updateFinancialProfile,
+      confirmMonthlyBalances,
+      snoozeMonthlyBalances,
       preferredModuleIds: preferences.preferredModuleIds,
       avatarId: preferences.avatarId,
       reportFrequency: preferences.reportFrequency,
@@ -394,30 +652,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const savedAvatarId = await avatarPreferenceService.saveSelectedAvatarId(nextAvatarId, ownerId);
         setPreferences((current) => ({ ...current, avatarId: savedAvatarId }));
         setProfileState((current) => ({ ...current, avatarId: savedAvatarId }));
-      },
-      updateProfileDetails: async (changes) => {
-        const firstName = changes.firstName.trim();
-        const lastName = changes.lastName.trim();
-        if (!firstName || !lastName) throw new Error('Enter both your first and last name.');
-        const ownerId = localDataOwnerRef.current;
-        const previous = await profileService.getProfile(ownerId);
-        const updated = await profileService.saveProfile({ ...previous, firstName, lastName }, ownerId);
-        const session = await readSession();
-        try {
-          if (session) {
-            const user = session.user ?? {};
-            await writeSession({
-              ...session,
-              user: { ...user, name: `${firstName} ${lastName}`.trim() },
-            });
-          }
-        } catch (error) {
-          await profileService.saveProfile(previous, ownerId);
-          throw error;
-        }
-        setProfileState((current) => ({ ...current, ...updated }));
-        setOnboardingDraft((current) => ({ ...current, firstName, lastName }));
-        setProfile((current) => current ? { ...current, name: `${firstName} ${lastName}`.trim() } : current);
       },
       saveReportPreferences: async (changes) => {
         const updated = await reportPreferenceService.saveReportPreferences(changes, localDataOwnerRef.current);
@@ -494,6 +728,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const nextProfile = { ...data, phone, countryCode };
         const ownerId = localDataOwnerRef.current ?? getAccountDataOwner(nextProfile);
         if (ownerId !== localDataOwnerRef.current) await restoreAccountData(ownerId);
+        const [savedEmployment, savedFinancialProfile] = await Promise.all([
+          nextProfile.employmentType
+            ? employmentService.saveEmployment(nextProfile.employmentType, ownerId)
+            : employmentService.getEmployment(ownerId),
+          financialProfileService.saveFinancialProfile({
+            monthlyIncome: nextProfile.monthlyIncome,
+            cashBalance: nextProfile.cashInHand,
+            savings: nextProfile.savings,
+          }, ownerId),
+        ]);
         const [firstName = '', ...lastNameParts] = nextProfile.name.trim().split(/\s+/);
         const storedProfile = await profileService.saveProfile({
           firstName,
@@ -508,8 +752,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const session = await readSession();
         if (session) await writeSession({ ...session, user: nextProfile, isProfileComplete: true, dataOwnerId: ownerId ?? undefined });
         setProfile(nextProfile);
+        setEmployment(savedEmployment);
+        setFinancialProfile(savedFinancialProfile);
         setPreferences(nextPreferences);
-        setProfileState((current) => ({ ...current, ...storedProfile, ...nextPreferences }));
+        setProfileState((current) => ({
+          ...current,
+          ...storedProfile,
+          ...nextPreferences,
+          employmentType: savedEmployment?.type ?? null,
+        }));
         setAuthPhase('main');
       },
       logout: async () => {
@@ -521,6 +772,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         setProfile(null);
         localDataOwnerRef.current = null;
+        setEmployment(null);
+        setFinancialProfile({
+          monthlyIncomeMinor: null,
+          cashBalanceMinor: null,
+          savingsAmountMinor: null,
+          updatedAt: {},
+        });
+        setBalanceConfirmationEntries({});
         setTransactions([]);
         setFriends([]);
         setSplitGroups([]);
@@ -535,6 +794,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           mobile: '',
           countryCode: '+91',
           email: '',
+          employmentType: null,
         }));
         setPhone('');
         setCountryCode('+91');
@@ -587,6 +847,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       goals,
       recurringPayments,
       addTransaction: async (input) => {
+        if (input.type === 'expense' && !input.source) {
+          throw new Error('Choose whether this expense came from Salary or Cash.');
+        }
         const transaction: Transaction = { ...input, id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
         const nextTransactions = [transaction, ...transactions];
         await persistLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments });
@@ -597,6 +860,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const merchant = changes.merchant.trim();
         if (!merchant) throw new Error('Enter a name for this transaction.');
         validatePositiveAmount(changes.amount, 'transaction amount');
+        if (changes.type === 'expense' && !changes.source) {
+          throw new Error('Choose whether this expense came from Salary or Cash.');
+        }
         validateDate(changes.date, 'transaction date');
         const selectedDate = new Date(`${changes.date}T12:00:00`);
         const occurredAt = typeof changes.occurredAt === 'number' && Number.isFinite(changes.occurredAt)
@@ -605,64 +871,195 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!transactions.some((transaction) => transaction.id === id)) {
           throw new Error('This transaction is no longer available.');
         }
+        const existingTransaction = transactions.find((transaction) => transaction.id === id);
+        if (!existingTransaction) throw new Error('This transaction is no longer available.');
+        if (existingTransaction.canEdit === false) throw new Error('Only the creator can change this expense.');
+        const linkedSplit = existingTransaction?.splitExpenseId
+          ? splits.find((item) => item.id === existingTransaction.splitExpenseId)
+          : splits.find((item) => item.ledgerTransactionId === existingTransaction.id);
+        if (linkedSplit?.createdById && linkedSplit.createdById !== CURRENT_USER_ID) {
+          throw new Error('Only the creator can change this split expense.');
+        }
+        if (linkedSplit && !changes.splitDetails) {
+          throw new Error('Review the split shares before updating this expense.');
+        }
+        const splitShare = changes.splitDetails?.shares.find((share) => share.friendId === CURRENT_USER_ID);
+        if (changes.splitDetails && !splitShare) throw new Error('Include your own share in this split.');
         const nextTransactions = transactions.map((transaction) => transaction.id === id
-          ? {
-            ...transaction,
-            merchant,
-            category: changes.category.trim() || transaction.category,
-            amount: Math.trunc(changes.amount),
-            type: changes.type,
-            date: formatTransactionDate(new Date(occurredAt)),
-            occurredAt,
-          }
+          ? (() => {
+            const updated: Transaction = {
+              ...transaction,
+              merchant,
+              category: changes.category.trim() || transaction.category,
+              amount: changes.splitDetails ? splitShare!.amount : changes.amount,
+              type: changes.type,
+              source: changes.type === 'expense' ? changes.source : undefined,
+              paymentMode: changes.type === 'expense' ? changes.paymentMode : undefined,
+              icon: changes.icon ?? transaction.icon,
+              iconColor: changes.iconColor ?? transaction.iconColor,
+              date: formatTransactionDate(new Date(occurredAt)),
+              occurredAt,
+            };
+            const assignedBudget = budgets.find((budget) => budget.id === transaction.budgetId);
+            return assignedBudget
+              && (updated.type !== 'expense'
+                || updated.category.toLowerCase() !== assignedBudget.category.toLowerCase()
+                || updated.source !== (assignedBudget.source ?? 'salary')
+                || getTransactionMonth(updated) !== getBudgetMonth(assignedBudget))
+              ? { ...updated, budgetId: undefined }
+              : updated;
+          })()
           : transaction);
-        await persistLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments });
+        const nextSplits = linkedSplit && changes.splitDetails
+          ? splits.map((item) => item.id === linkedSplit.id ? {
+            ...item,
+            title: merchant,
+            amount: changes.splitDetails!.fullAmount,
+            date: formatTransactionDate(new Date(occurredAt)),
+            method: changes.splitDetails!.method,
+            shares: changes.splitDetails!.shares,
+            source: changes.source,
+            category: changes.category.trim() || item.category,
+            iconId: changes.icon ?? item.iconId,
+            paymentMode: changes.paymentMode,
+          } : item)
+          : splits;
+        await persistLocalData({ transactions: nextTransactions, friends, splits: nextSplits, budgets, goals, recurringPayments });
         setTransactions(nextTransactions);
+        if (nextSplits !== splits) setSplits(nextSplits);
         if (changes.type === 'expense') notifyBudgetThresholds(nextTransactions);
       },
       removeTransaction: async (id) => {
+        const transactionToRemove = transactions.find((transaction) => transaction.id === id);
+        if (!transactionToRemove) return;
+        if (transactionToRemove.canDelete === false) throw new Error('Only the creator can delete this expense.');
         const nextTransactions = transactions.filter((transaction) => transaction.id !== id);
-        if (nextTransactions.length === transactions.length) return;
+        const linkedSplit = splits.find((item) =>
+          item.id === transactionToRemove.splitExpenseId || item.ledgerTransactionId === transactionToRemove.id);
+        if (linkedSplit?.createdById && linkedSplit.createdById !== CURRENT_USER_ID) {
+          throw new Error('Only the creator can delete this split expense.');
+        }
+        const nextSplits = linkedSplit
+          ? splits.filter((item) => item.id !== linkedSplit.id)
+          : splits;
+        await persistLocalData({ transactions: nextTransactions, friends, splits: nextSplits, budgets, goals, recurringPayments });
+        setTransactions(nextTransactions);
+        if (nextSplits !== splits) setSplits(nextSplits);
+      },
+      assignTransactionToBudget: async (transactionId, budgetId) => {
+        const transaction = transactions.find((item) => item.id === transactionId);
+        const budget = budgets.find((item) => item.id === budgetId);
+        if (!transaction) throw new Error('This expense is no longer available.');
+        if (!budget) throw new Error('This budget is no longer available.');
+        validateExpenseBudgetAssociation(transaction, budget);
+        const nextTransactions = transactions.map((item) => item.id === transactionId
+          ? { ...item, budgetId: budget.id }
+          : item);
         await persistLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments });
         setTransactions(nextTransactions);
+        notifyBudgetThresholds(nextTransactions);
       },
       addBudget: async (input) => {
-        const category = input.category.trim();
-        if (!category) throw new Error('Enter a budget category.');
+        const category = validateBudgetCategory(input.category);
         validatePositiveAmount(input.limit, 'budget limit');
-        if (budgets.some((budget) => budget.category.toLowerCase() === category.toLowerCase())) {
-          throw new Error('A budget for this category already exists.');
+        if (!input.source || !isMonthKey(input.month)) {
+          throw new Error('Choose a source and month for this budget.');
+        }
+        const availability = budgetAvailability.find((entry) => entry.month === input.month);
+        const allocation = calculateBudgetAllocation({
+          budgets, transactions, month: input.month, source: input.source, category, amount: input.limit,
+          available: availability ? input.source === 'salary' ? availability.salary : availability.cash : null,
+        });
+        if (allocation.error) {
+          throw new Error(allocation.error);
         }
         const budget: CategoryBudget = {
           id: `budget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: input.name?.trim() || category,
           category,
+          categoryId: input.categoryId?.trim() || getBudgetCategoryId(category),
+          iconId: input.iconId || 'pricetag-outline',
           limit: Math.trunc(input.limit),
           createdAt: Date.now(),
+          updatedAt: Date.now(),
           alertThreshold: 0.8,
+          month: input.month,
+          year: Number(input.month?.slice(0, 4)),
+          source: input.source,
+          carryForward: input.carryForward ?? false,
+          originalBudgetId: input.originalBudgetId,
+          budgetType: 'category',
         };
         const nextBudgets = [budget, ...budgets];
         await persistLocalData({ transactions, friends, splits, budgets: nextBudgets, goals, recurringPayments });
         setBudgets(nextBudgets);
       },
       updateBudget: async (budgetId, changes) => {
-        const category = changes.category.trim();
-        if (!category) throw new Error('Enter a budget category.');
+        const category = validateBudgetCategory(changes.category);
         validatePositiveAmount(changes.limit, 'budget limit');
-        if (budgets.some((budget) => budget.id !== budgetId && budget.category.toLowerCase() === category.toLowerCase())) {
-          throw new Error('A budget for this category already exists.');
+        if (!changes.source || !isMonthKey(changes.month)) {
+          throw new Error('Choose a source and month for this budget.');
         }
         if (!budgets.some((budget) => budget.id === budgetId)) throw new Error('This budget is no longer available.');
+        const availability = budgetAvailability.find((entry) => entry.month === changes.month);
+        const allocation = calculateBudgetAllocation({
+          budgets, transactions, month: changes.month, source: changes.source, category, amount: changes.limit,
+          available: availability ? changes.source === 'salary' ? availability.salary : availability.cash : null,
+          editingBudgetId: budgetId,
+        });
+        if (allocation.error) {
+          throw new Error(allocation.error);
+        }
         const nextBudgets = budgets.map((budget) => budget.id === budgetId
-          ? { ...budget, category, limit: Math.trunc(changes.limit) }
+          ? {
+            ...budget,
+            name: changes.name?.trim() || category,
+            category,
+            categoryId: changes.categoryId?.trim() || getBudgetCategoryId(category),
+            iconId: changes.iconId || budget.iconId || 'pricetag-outline',
+            limit: Math.trunc(changes.limit),
+            month: changes.month,
+            year: Number(changes.month?.slice(0, 4)),
+            source: changes.source,
+            carryForward: changes.carryForward ?? false,
+            originalBudgetId: changes.originalBudgetId,
+            budgetType: 'category' as const,
+            updatedAt: Date.now(),
+          }
           : budget);
-        await persistLocalData({ transactions, friends, splits, budgets: nextBudgets, goals, recurringPayments });
+        const updatedBudget = nextBudgets.find((budget) => budget.id === budgetId);
+        const previousBudget = budgets.find((budget) => budget.id === budgetId);
+        const categoryChanged = Boolean(previousBudget
+          && previousBudget.category.trim().toLowerCase() !== updatedBudget?.category.trim().toLowerCase());
+        const nextTransactions = transactions.map((transaction) => {
+          if (transaction.budgetId !== budgetId || !updatedBudget) return transaction;
+          const transactionMonth = getTransactionMonth(transaction);
+          return (!categoryChanged || transaction.category.trim().toLowerCase() === updatedBudget.category.toLowerCase())
+            && transaction.source === (updatedBudget.source ?? 'salary')
+            && transactionMonth === getBudgetMonth(updatedBudget)
+            ? transaction
+            : { ...transaction, budgetId: undefined };
+        });
+        await persistLocalData({ transactions: nextTransactions, friends, splits, budgets: nextBudgets, goals, recurringPayments });
         setBudgets(nextBudgets);
+        setTransactions(nextTransactions);
       },
       removeBudget: async (budgetId) => {
         const nextBudgets = budgets.filter((budget) => budget.id !== budgetId);
         if (nextBudgets.length === budgets.length) return;
-        await persistLocalData({ transactions, friends, splits, budgets: nextBudgets, goals, recurringPayments });
+        const nextTransactions = transactions.map((transaction) =>
+          transaction.budgetId === budgetId ? { ...transaction, budgetId: undefined } : transaction);
+        await persistLocalData({ transactions: nextTransactions, friends, splits, budgets: nextBudgets, goals, recurringPayments });
         setBudgets(nextBudgets);
+        setTransactions(nextTransactions);
+      },
+      processBudgetCarryForward: async (month) => {
+        const availability = budgetAvailability.find((item) => item.month === month);
+        const result = processCarryForward(budgets, transactions, month, availability);
+        if (!result.created.length) return { created: [], warnings: result.warnings };
+        await persistLocalData({ transactions, friends, splits, budgets: result.budgets, goals, recurringPayments });
+        setBudgets(result.budgets);
+        return { created: result.created, warnings: result.warnings };
       },
       addGoal: async (input) => {
         const title = input.title.trim();
@@ -714,6 +1111,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         validatePositiveAmount(input.amount, 'payment amount');
         validateDate(input.nextDueDate, 'due date');
         if (!['weekly', 'monthly', 'yearly'].includes(input.cadence)) throw new Error('Choose a valid payment frequency.');
+        if (!input.source) throw new Error('Choose whether this payment will come from Salary or Cash.');
         if (input.outstandingBalance !== undefined && (!Number.isFinite(input.outstandingBalance) || input.outstandingBalance < 0)) {
           throw new Error('Enter a valid outstanding balance.');
         }
@@ -736,6 +1134,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const name = changes.name.trim();
         const category = changes.category.trim();
         if (!name || !category) throw new Error('Enter a name and category for this payment.');
+        if (!changes.source) throw new Error('Choose whether this payment will come from Salary or Cash.');
         validatePositiveAmount(changes.amount, 'payment amount');
         validateDate(changes.nextDueDate, 'due date');
         if (changes.remainingInstallments !== undefined && (!Number.isInteger(changes.remainingInstallments) || changes.remainingInstallments < 1)) {
@@ -770,7 +1169,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await persistLocalData({ transactions, friends, splits, budgets, goals, recurringPayments: nextPayments });
         setRecurringPayments(nextPayments);
       },
-      markRecurringPaymentPaid: async (paymentId) => {
+      markRecurringPaymentPaid: async (paymentId, source) => {
         await runWithLocalLock(`payment:${paymentId}`, async () => {
           const payment = recurringPayments.find((item) => item.id === paymentId);
           if (!payment || !payment.active) throw new Error('This recurring payment is unavailable.');
@@ -778,6 +1177,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const nextPayments = recurringPayments.map((item) => item.id === paymentId
           ? {
             ...item,
+            source: item.source ?? source,
             nextDueDate: advancePaymentDate(item.nextDueDate, item.cadence, now),
             outstandingBalance: item.kind === 'emi' && item.outstandingBalance !== undefined
               ? Math.max(0, item.outstandingBalance - item.amount)
@@ -808,6 +1208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           date: localDateString(now),
           time: now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
           occurredAt: now.getTime(),
+          source,
           };
           const nextTransactions = [transaction, ...transactions];
           await persistLocalData({ transactions: nextTransactions, friends, splits, budgets, goals, recurringPayments: nextPayments });
@@ -835,29 +1236,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setFriends(nextFriends);
       },
       addSplit: async (input) => {
+        if (input.paidById === CURRENT_USER_ID && !input.source) {
+          throw new Error('Choose whether this split was paid from Salary or Cash.');
+        }
         let next = createSplitExpense(input);
-        const nextTransactions = input.paidById === CURRENT_USER_ID
+        const inputDate = input.date === 'Today'
+          ? new Date()
+          : input.date === 'Yesterday'
+            ? new Date(Date.now() - 86400000)
+            : /^\d{4}-\d{2}-\d{2}$/.test(input.date)
+              ? new Date(`${input.date}T12:00:00`)
+              : new Date(input.date);
+        const occurredAt = input.occurredAt ?? (Number.isNaN(inputDate.getTime()) ? Date.now() : inputDate.getTime());
+        const paymentMode = input.paymentMode ?? (input.source === 'cash' ? 'cash' : 'debit_card');
+        const myShare = next.shares.find((share) => share.friendId === CURRENT_USER_ID);
+        const nextTransactions = myShare
           ? [{
             id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             type: 'expense' as const,
             merchant: input.title.trim(),
-            category: 'Shared expense',
-            icon: 'people',
+            category: input.category?.trim() || 'Shared expense',
+            icon: input.iconId || 'people',
             iconColor: colors.expense,
-            amount: input.amount,
-            date: formatTransactionDate(new Date()),
+            amount: myShare.amount,
+            date: formatTransactionDate(new Date(occurredAt)),
             time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-            occurredAt: Date.now(),
+            occurredAt,
+            source: input.source,
+            paymentMode,
+            splitExpenseId: next.id,
+            canEdit: next.createdById !== undefined ? next.createdById === CURRENT_USER_ID : true,
+            canDelete: next.createdById !== undefined ? next.createdById === CURRENT_USER_ID : true,
           }, ...transactions]
           : transactions;
-        if (input.paidById === CURRENT_USER_ID) {
-          next = { ...next, ledgerTransactionId: nextTransactions[0].id };
+        const creatorName = profile?.name || 'You';
+        next = {
+          ...next,
+          ledgerTransactionId: myShare ? nextTransactions[0].id : undefined,
+          source: input.source,
+          category: input.category?.trim() || 'Shared expense',
+          iconId: input.iconId || 'people',
+          paymentMode,
+          createdById: CURRENT_USER_ID,
+          createdByName: creatorName,
+        };
+        if (myShare) {
+          const ledgerExpense = nextTransactions[0];
+          nextTransactions[0] = { ...ledgerExpense, createdByName: creatorName };
         }
         const nextSplits = [next, ...splits];
         await persistLocalData({ transactions: nextTransactions, friends, splits: nextSplits, budgets, goals, recurringPayments });
         setTransactions(nextTransactions);
         setSplits(nextSplits);
-        if (input.paidById === CURRENT_USER_ID) notifyBudgetThresholds(nextTransactions);
+        if (myShare) notifyBudgetThresholds(nextTransactions);
         return next;
       },
       settleShare: async (splitId, friendId) => {
@@ -892,8 +1323,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSplits(nextSplits);
         });
       },
-      settleMyShare: async (splitId) => {
+      settleMyShare: async (splitId, source) => {
         await runWithLocalLock(`split:${splitId}:${CURRENT_USER_ID}`, async () => {
+        if (!source) throw new Error('Choose whether this settlement came from Salary or Cash.');
         const split = splits.find((item) => item.id === splitId);
         const share = split?.shares.find((item) => item.friendId === CURRENT_USER_ID);
         if (!split || !share) throw new Error('Your share is no longer available.');
@@ -917,11 +1349,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           date: formatTransactionDate(now),
           time: now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
           occurredAt: now.getTime(),
+          source,
         };
         const nextTransactions = [transaction, ...transactions];
         await persistLocalData({ transactions: nextTransactions, friends, splits: nextSplits, budgets, goals, recurringPayments });
         setTransactions(nextTransactions);
         setSplits(nextSplits);
+        notifyBudgetThresholds(nextTransactions);
         });
       },
       applyAuthSession: async (response) => {
@@ -936,15 +1370,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const nextProfile: UserProfile = {
           name: authenticatedUser.name || '',
           userId: authenticatedUser.username || '',
-          monthlyIncome: Number(authenticatedUser.incomeAmountMinor?.slice(0, -2) || authenticatedUser.salary || 0),
-          cashInHand: Number((authenticatedUser.cashBalanceMinor || '0').slice(0, -2) || 0),
-          savings: Number((authenticatedUser.savingsAmountMinor || '0').slice(0, -2) || 0),
+          monthlyIncome: amountFromMinor(authenticatedUser.incomeAmountMinor, Number(authenticatedUser.salary) || 0),
+          cashInHand: amountFromMinor(authenticatedUser.cashBalanceMinor),
+          savings: amountFromMinor(authenticatedUser.savingsAmountMinor),
+          employmentType: authenticatedUser.employmentType,
           phone: authenticatedUser.phone || phone,
           countryCode,
           email: authenticatedUser.email || '',
         };
         const [firstName = '', ...lastNameParts] = nextProfile.name.trim().split(/\s+/);
         const ownerId = getAccountDataOwner(nextProfile);
+        const [savedEmployment, savedFinancialProfile] = await Promise.all([
+          employmentService.getEmployment(ownerId),
+          financialProfileService.seedFinancialProfile({
+            monthlyIncome: nextProfile.monthlyIncome,
+            cashBalance: nextProfile.cashInHand,
+            savings: nextProfile.savings,
+          }, ownerId),
+        ]);
+        const nextEmployment = savedEmployment
+          ?? (authenticatedUser.employmentType ? await employmentService.saveEmployment(authenticatedUser.employmentType, ownerId) : null);
+        nextProfile.employmentType = nextEmployment?.type;
+        nextProfile.monthlyIncome = fromMinorUnits(savedFinancialProfile.monthlyIncomeMinor) ?? nextProfile.monthlyIncome;
+        nextProfile.cashInHand = fromMinorUnits(savedFinancialProfile.cashBalanceMinor) ?? nextProfile.cashInHand;
+        nextProfile.savings = fromMinorUnits(savedFinancialProfile.savingsAmountMinor) ?? nextProfile.savings;
         const savedProfile = await profileService.saveProfile({
           firstName,
           lastName: lastNameParts.join(' '),
@@ -967,7 +1416,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await restoreAccountData(getAccountDataOwner(nextProfile));
         setPreferences(nextPreferences);
         setProfile(nextProfile);
-        setProfileState((current) => ({ ...current, ...savedProfile, ...nextPreferences }));
+        setEmployment(nextEmployment);
+        setFinancialProfile(savedFinancialProfile);
+        setProfileState((current) => ({
+          ...current,
+          ...savedProfile,
+          ...nextPreferences,
+          employmentType: nextEmployment?.type ?? null,
+        }));
         setOnboardingDraft((current) => ({
           ...current,
           firstName: authenticatedUser.name?.split(/\s+/)[0] || current.firstName,
@@ -1029,7 +1485,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthPhase('otp');
       },
     }),
-    [authPhase, restoreError, restoreLocalState, restoreAccountData, persistLocalData, runWithLocalLock, notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences, friends, splitGroups, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, phoneVerified, emailVerified, onboardingDraft, onboardingStep],
+    [
+      authPhase, restoreError, restoreLocalState, restoreAccountData, persistLocalData, runWithLocalLock,
+      notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences,
+      friends, splitGroups, splits, transactions, budgets, budgetAvailability, goals, recurringPayments,
+      verificationChannel, verificationTarget, phoneVerified, emailVerified, onboardingDraft, onboardingStep,
+      employment, financialProfile, balanceConfirmationEntries, updateFinancialProfile,
+      confirmMonthlyBalances, snoozeMonthlyBalances,
+    ],
   );
 
   return (

@@ -6,6 +6,10 @@ export interface UserProfile {
   monthlyIncome: number;
   cashInHand: number;
   savings: number;
+  incomeAmountMinor?: string;
+  cashBalanceMinor?: string;
+  savingsAmountMinor?: string;
+  employmentType?: 'salaried' | 'business' | 'student' | 'retired' | 'homemaker';
   phone: string;
   countryCode: string;
   email?: string;
@@ -14,6 +18,13 @@ export interface UserProfile {
 export interface Transaction {
   id: string;
   type: 'expense' | 'income';
+  source?: ExpenseSource;
+  paymentMode?: ExpensePaymentMode;
+  budgetId?: string;
+  splitExpenseId?: string;
+  createdByName?: string;
+  canEdit?: boolean;
+  canDelete?: boolean;
   merchant: string;
   category: string;
   icon: string;
@@ -63,10 +74,30 @@ export interface GoalContribution {
 
 export interface CategoryBudget {
   id: string;
+  name?: string;
   category: string;
+  categoryId?: string;
+  iconId?: string;
   limit: number;
   createdAt: number;
+  updatedAt?: number;
   alertThreshold?: number;
+  month?: string;
+  year?: number;
+  source?: ExpenseSource;
+  carryForward?: boolean;
+  originalBudgetId?: string;
+  budgetType?: 'category';
+}
+
+export type ExpenseSource = 'salary' | 'cash';
+export type ExpensePaymentMode = 'cash' | 'debit_card' | 'credit_card';
+
+export interface MonthlyBudgetAvailability {
+  month: string;
+  salary: number;
+  cash: number;
+  updatedAt: number;
 }
 
 export type PaymentKind = 'emi' | 'subscription';
@@ -82,6 +113,7 @@ export interface RecurringPayment {
   category: string;
   active: boolean;
   completed?: boolean;
+  source?: ExpenseSource;
   outstandingBalance?: number;
   remainingInstallments?: number;
 }
@@ -143,6 +175,12 @@ export interface SplitExpense {
   note?: string;
   createdAt: number;
   ledgerTransactionId?: string;
+  source?: ExpenseSource;
+  category?: string;
+  iconId?: string;
+  paymentMode?: ExpensePaymentMode;
+  createdById?: string;
+  createdByName?: string;
 }
 
 export interface PendingBalance {
@@ -171,4 +209,9 @@ export interface CreateSplitInput {
   participantIds: string[];
   customShares?: Record<string, number>;
   note?: string;
+  source?: ExpenseSource;
+  category?: string;
+  iconId?: string;
+  paymentMode?: ExpensePaymentMode;
+  occurredAt?: number;
 }

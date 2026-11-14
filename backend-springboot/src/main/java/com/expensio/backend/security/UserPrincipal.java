@@ -14,13 +14,27 @@ public class UserPrincipal implements Principal, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final UUID userId;
+    private final String tokenType;
 
     public UserPrincipal(UUID userId) {
+        this(userId, "APPLICATION");
+    }
+
+    public UserPrincipal(UUID userId, String tokenType) {
         this.userId = Objects.requireNonNull(userId, "userId must not be null");
+        this.tokenType = tokenType != null ? tokenType : "APPLICATION";
     }
 
     public UUID getUserId() {
         return userId;
+    }
+
+    public String getTokenType() {
+        return tokenType;
+    }
+
+    public boolean isOnboarding() {
+        return "ONBOARDING".equalsIgnoreCase(tokenType);
     }
 
     @Override

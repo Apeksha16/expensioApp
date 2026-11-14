@@ -95,6 +95,19 @@ public class User {
         this.status = status;
     }
 
+    public AccountStatus getStatusEnum() {
+        if (this.status == null) return AccountStatus.ACTIVE;
+        try {
+            return AccountStatus.valueOf(this.status);
+        } catch (IllegalArgumentException ex) {
+            return AccountStatus.ACTIVE;
+        }
+    }
+
+    public void setStatusEnum(AccountStatus status) {
+        this.status = status != null ? status.name() : AccountStatus.ACTIVE.name();
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

@@ -1,0 +1,137 @@
+{
+  "info": {
+    "name": "Expensio - Full API Collection",
+    "description": "Postman Collection for Expensio Backend (Auth, Onboarding, Username Generation, and User Management)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "http://localhost:5001/api/v1/health", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "v1", "health"] }
+      }
+    },
+    {
+      "name": "2. Auth - Email Signup",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ishita.developer@expensio.app\",\n  \"password\": \"Password@123\",\n  \"name\": \"Ishita Katiyar\"\n}"
+        },
+        "url": { "raw": "http://localhost:5001/v1/auth/email/signup", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "auth", "email", "signup"] }
+      }
+    },
+    {
+      "name": "3. Auth - Mobile OTP Start (Twilio Live)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+919876543210\"\n}"
+        },
+        "url": { "raw": "http://localhost:5001/v1/auth/mobile/otp/start", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "auth", "mobile", "otp", "start"] }
+      }
+    },
+    {
+      "name": "4. Auth - Email Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ishita.developer@expensio.app\",\n  \"password\": \"Password@123\"\n}"
+        },
+        "url": { "raw": "http://localhost:5001/v1/auth/email/login", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "auth", "email", "login"] }
+      }
+    },
+    {
+      "name": "5. Onboarding - Get Config",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "http://localhost:5001/v1/onboarding/config", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "onboarding", "config"] }
+      }
+    },
+    {
+      "name": "6. Onboarding - Get Status",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" }],
+        "url": { "raw": "http://localhost:5001/v1/onboarding/status", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "onboarding", "status"] }
+      }
+    },
+    {
+      "name": "7. Onboarding - Update Profile",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Demo\",\n  \"lastName\": \"User\",\n  \"email\": \"demo.developer@expensio.app\",\n  \"phone\": \"+919876543210\"\n}"
+        },
+        "url": { "raw": "http://localhost:5001/v1/onboarding/profile", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "onboarding", "profile"] }
+      }
+    },
+    {
+      "name": "8. Onboarding - Update Employment",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employmentType\": \"SALARIED\",\n  \"monthlyIncomeMinor\": 8500000,\n  \"currency\": \"INR\"\n}"
+        },
+        "url": { "raw": "http://localhost:5001/v1/onboarding/employment", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "onboarding", "employment"] }
+      }
+    },
+    {
+      "name": "9. Onboarding - Update Financial Profile",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cashBalanceMinor\": 2500000,\n  \"savingsBalanceMinor\": 10000000,\n  \"currency\": \"INR\"\n}"
+        },
+        "url": { "raw": "http://localhost:5001/v1/onboarding/financial-profile", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "onboarding", "financial-profile"] }
+      }
+    },
+    {
+      "name": "10. Onboarding - Complete",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{ACCESS_TOKEN}}" }],
+        "url": { "raw": "http://localhost:5001/v1/onboarding/complete", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "onboarding", "complete"] }
+      }
+    },
+    {
+      "name": "11. Users - Get Me (Full Profile)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{APP_TOKEN}}" }],
+        "url": { "raw": "http://localhost:5001/v1/users/me", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "users", "me"] }
+      }
+    },
+    {
+      "name": "12. Auth - Logout All Devices",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{APP_TOKEN}}" }],
+        "url": { "raw": "http://localhost:5001/v1/auth/logout-all", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["v1", "auth", "logout-all"] }
+      }
+    }
+  ]
+}
+

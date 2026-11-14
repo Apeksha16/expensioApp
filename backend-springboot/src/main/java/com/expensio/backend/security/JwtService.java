@@ -40,25 +40,37 @@ public class JwtService {
      * Generates a signed HS256 access token for the given user UUID using configured expiration.
      */
     public String generateAccessToken(UUID userId) {
+        return generateToken(userId, "APPLICATION");
+    }
+
+    public String generateOnboardingToken(UUID userId) {
+        return generateToken(userId, "ONBOARDING");
+    }
+
+    public String generateToken(UUID userId, String tokenType) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }
         Instant now = clock.instant();
         Instant expiry = now.plusMillis(jwtProperties.getAccessTokenExpirationMs());
-        return generateAccessToken(userId, now, null, expiry);
+        return generateToken(userId, tokenType, now, null, expiry);
     }
 
     /**
      * Generates a signed access token with explicit issued-at and expiration timestamps.
      */
     public String generateAccessToken(UUID userId, Instant issuedAt, Instant expiration) {
-        return generateAccessToken(userId, issuedAt, null, expiration);
+        return generateToken(userId, "APPLICATION", issuedAt, null, expiration);
     }
 
     /**
      * Generates a signed access token with explicit issued-at, optional not-before, and expiration timestamps.
      */
     public String generateAccessToken(UUID userId, Instant issuedAt, Instant notBefore, Instant expiration) {
+        return generateToken(userId, "APPLICATION", issuedAt, notBefore, expiration);
+    }
+
+    public String generateToken(UUID userId, String tokenType, Instant issuedAt, Instant notBefore, Instant expiration) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }
@@ -74,6 +86,7 @@ public class JwtService {
                     .type("JWT")
                     .and()
                 .subject(userId.toString())
+                .claim("token_type", tokenType != null ? tokenType : "APPLICATION")
                 .issuer(jwtProperties.getIssuer())
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiration));
@@ -134,6 +147,12 @@ public class JwtService {
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException("JWT token subject is not a valid UUID", ex);
         }
+    }
+
+    public String extractTokenType(String token) {
+        Claims claims = parseAndValidateClaims(token);
+        Object tokenType = claims.get("token_type");
+        return tokenType != null ? tokenType.toString() : "APPLICATION";
     }
 
     /**

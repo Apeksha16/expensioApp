@@ -36,6 +36,18 @@ public class OtpVerification {
     @Column(name = "consumed_at")
     private Instant consumedAt;
 
+    @Column(name = "challenge_id", length = 64, unique = true)
+    private String challengeId;
+
+    @Column(name = "resend_available_at")
+    private Instant resendAvailableAt;
+
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    @Column(name = "device_id", length = 255)
+    private String deviceId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -135,5 +147,37 @@ public class OtpVerification {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getChallengeId() {
+        return challengeId;
+    }
+
+    public void setChallengeId(String challengeId) {
+        this.challengeId = challengeId;
+    }
+
+    public Instant getResendAvailableAt() {
+        return resendAvailableAt;
+    }
+
+    public void setResendAvailableAt(Instant resendAvailableAt) {
+        this.resendAvailableAt = resendAvailableAt;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 }

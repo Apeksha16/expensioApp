@@ -35,6 +35,11 @@ public class JwtProperties {
     private long refreshTokenExpirationMs = 2592000000L; // 30 days
     private String issuer = "expensio-api";
 
+    public JwtProperties() {
+        this.environment = null;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public JwtProperties(Environment environment) {
         this.environment = environment;
     }
@@ -76,11 +81,11 @@ public class JwtProperties {
             throw new IllegalStateException("JWT access-token-expiration-ms must be greater than zero.");
         }
 
-        List<String> activeProfiles = Arrays.asList(environment.getActiveProfiles());
+        List<String> activeProfiles = environment != null ? Arrays.asList(environment.getActiveProfiles()) : List.of("dev");
         boolean isDevOrTest = activeProfiles.contains("dev")
                 || activeProfiles.contains("test")
-                || environment.getProperty("spring.application.name", "").contains("test");
-        if (activeProfiles.isEmpty()) {
+                || (environment != null && environment.getProperty("spring.application.name", "").contains("test"));
+        if (activeProfiles.isEmpty() && environment != null) {
             isDevOrTest = isDevOrTest || Arrays.asList(environment.getDefaultProfiles()).contains("dev");
         }
 

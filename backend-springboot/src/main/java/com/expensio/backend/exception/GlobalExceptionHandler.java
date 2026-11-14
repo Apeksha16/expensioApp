@@ -109,10 +109,15 @@ public class GlobalExceptionHandler {
 
         log.error("Unhandled exception processing request {}: ", request.getRequestURI(), ex);
 
+        String message = ex.getMessage();
+        if (ex.getCause() != null && ex.getCause().getMessage() != null) {
+            message = ex.getMessage() + " (Cause: " + ex.getCause().getMessage() + ")";
+        }
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                "An unexpected server error occurred. Please try again later.",
+                message != null ? message : "An unexpected server error occurred. Please try again later.",
                 request.getRequestURI()
         );
 

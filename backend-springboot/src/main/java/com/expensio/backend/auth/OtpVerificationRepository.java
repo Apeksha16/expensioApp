@@ -13,4 +13,6 @@ public interface OtpVerificationRepository extends JpaRepository<OtpVerification
             String targetIdentifier,
             String purpose
     );
+
+    Optional<OtpVerification> findByChallengeId(String challengeId);
 }

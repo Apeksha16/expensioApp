@@ -10,6 +10,10 @@ target/
 .env.*.local
 *.env
 *.log
+*-local.yml
+*.local.yml
+application-dev-local.yml
+application-local.yml
 
 ### STS ###
 .apt_generated

@@ -12,6 +12,10 @@ yarn-error.log*
 backend/.env
 frontend/.env
 *.pem
+*-local.yml
+*.local.yml
+application-dev-local.yml
+application-local.yml
 
 # Expo & Web
 .expo/

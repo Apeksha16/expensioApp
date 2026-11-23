@@ -13,9 +13,10 @@
 - Show a loading state until local data is initialized, to avoid flashing default values.
 - Show empty states when information is unavailable. Never display fabricated balances or statistics.
 
-**Backend (future)**
-- Provide authenticated profile retrieval and update APIs with ownership validation.
-- Never allow modification of verified contact details through the ordinary profile API.
+**Backend**
+- Implemented in Spring Boot: `GET /v1/users/me` and `PUT /v1/users/me` via `UserController`.
+- Provides authenticated profile retrieval and update APIs with JWT ownership validation.
+- Never allows modification of verified contact details through the ordinary profile API.
 
 ## 1.2 Cartoon Avatar
 
@@ -37,9 +38,10 @@
 - Update the stored email (and the report destination) only after successful verification.
 - Preserve the existing email if verification fails, expires or is cancelled.
 
-**Backend (future)**
-- Replace the simulated service with real email OTP verification, bound to purpose and challenge ID, with expiry, cooldown, attempt limits and rate limits.
-- Update email only after backend verification; prevent duplicate verified emails.
+**Backend**
+- Implemented in Spring Boot: `POST /v1/verification/email/start` and `POST /v1/verification/email/verify` via `VerificationController`.
+- Real email OTP verification bound to email address, with 5-minute expiry, cooldowns, attempt limits, and BCrypt/Argon2id hashing.
+- Updates verified contact only after backend token verification; prevents duplicate verified identities.
 
 ---
 
@@ -60,10 +62,11 @@
 - When the type changes, show only the input for the new type and do not carry over the stale value.
 - Validate required amount, non-negative values and configured limits.
 
-**Backend (future)**
-- Validate that the amount field matches the employment type.
-- Store a single current employment record per user; keep history of changes.
-- Reject unsupported types and missing values.
+**Backend**
+- Implemented in Spring Boot: `PUT /v1/onboarding/employment` via `OnboardingController` and `UserEmployment` entity.
+- Validates that the amount matches the employment type (`SALARIED`, `BUSINESS`, `STUDENT`, `RETIRED`, `HOMEMAKER`).
+- Stores amount in minor units (`incomeAmountMinor`) with ISO currency code (default INR).
+- Rejects unsupported types and missing values.
 
 ---
 
@@ -89,10 +92,10 @@
 - Preserve the previous value if saving fails; show success or error toast.
 - Updates must not create income or expense transactions.
 
-**Backend (future)**
-- Store amounts as integer minor units with an ISO currency code; never floating point.
-- Keep the original onboarding declared values untouched; save updates as new versioned records with timestamps.
-- Validate ownership and configured limits on every update.
+**Backend**
+- Implemented in Spring Boot: `PUT /v1/onboarding/financial-profile` via `OnboardingController` and `UserFinancialProfile` entity.
+- Stores amounts as integer minor units (`cashBalanceMinor`, `savingsAmountMinor`); never binary floating point.
+- Validates ownership, format, and configured positive bounds on every update.
 
 ---
 

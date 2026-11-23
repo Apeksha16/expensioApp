@@ -1,5 +1,5 @@
 Reports Module — Backend Functional Requirements and Dependencies
-Target: Java 17+, Spring Boot, PostgreSQL
+Target: Java 21 (LTS), Spring Boot 4.1.1, PostgreSQL
 Status: Proposed API and implementation contract based on supplied web requirements; not evidence of existing deployed code.
 1. Purpose and scope
 Provide authenticated, read-only reporting of the user's financial activity across Expenses, Subscriptions, Goals, and Splits. Serve consistent Overview, Analytics, and PDF-ready data for the React Native client. Reports must never mutate transactions, balances, subscriptions, goals, or settlements.

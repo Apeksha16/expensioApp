@@ -444,17 +444,19 @@
 **Backend**
 
 Implement the following core entities:
-- users — User identity, username and account status.
-- auth_identities — Google and other authentication provider identities.
-- credentials — Password hashes.
-- user_profiles — Personal profile information.
-- user_employment — Employment type and income information.
-- user_financial_profiles — Initial cash balance and savings.
-- otp_challenges — OTP challenges and verification status.
-- onboarding_sessions — Onboarding progress and expiry.
-- auth_sessions — Active and revoked sessions.
-- audit_logs — Security and account activity.
-- outbox_events — Reliable asynchronous event processing.
+- `users` — User identity, username, normalized username, account status and timestamps (`com.expensio.backend.user.User`).
+- `auth_identities` — Google and other authentication provider identities linked to user IDs (`com.expensio.backend.auth.AuthIdentity`).
+- `credentials` — Password hashes (Argon2id), salt, failed attempts and lockout timestamps (`com.expensio.backend.auth.Credential`).
+- `user_profiles` — Personal profile information (first name, last name, email, phone) (`com.expensio.backend.profile.UserProfile`).
+- `user_employments` — Employment type (salaried, business, student, retired, homemaker) and income (`com.expensio.backend.onboarding.UserEmployment`).
+- `user_financial_profiles` — Initial cash balance and savings amount in minor units (`com.expensio.backend.onboarding.UserFinancialProfile`).
+- `otp_verifications` — OTP challenges, target channels, hashed codes, expiry, attempt counts and verified flags (`com.expensio.backend.auth.OtpVerification`).
+- `onboarding_sessions` — Onboarding progress, step states and expiry (`com.expensio.backend.auth.OnboardingSession`).
+- `user_mpins` — 4-digit hashed MPIN credentials and attempt counters (`com.expensio.backend.auth.UserMpin`).
+- `refresh_tokens` — Cryptographically hashed refresh tokens, device info, family tracking and revocation flags (`com.expensio.backend.auth.RefreshToken`).
+- `temporary_auth_tokens` — Short-lived tokens for restricted onboarding transitions (`com.expensio.backend.auth.TemporaryAuthToken`).
+- `audit_logs` — Security and account activity audit records (`com.expensio.backend.audit.AuditLog`).
+- `outbox_events` — Reliable transactional asynchronous event relay (`com.expensio.backend.outbox.OutboxEvent`).
 
 ## 5.2 Data Integrity
 
@@ -512,7 +514,7 @@ Implement the following core entities:
 | POST | /v1/verification/mobile/start | Send mobile OTP |
 | POST | /v1/verification/mobile/verify | Verify mobile OTP |
 
-## 6.3 Onboarding APIs
+## 6.3 Onboarding & User APIs
 
 **Backend**
 
@@ -525,14 +527,28 @@ Implement the following core entities:
 | PUT | /v1/onboarding/financial-profile | Save initial financial details |
 | POST | /v1/onboarding/complete | Finalize account creation |
 | GET | /v1/users/me | Retrieve authenticated profile |
+| PUT | /v1/users/me | Update personal details |
+| PUT | /v1/users/me/username | Update unique username |
+| GET | /api/v1/health | Application health check |
+| GET | /api/health | Legacy health check |
 
 ## 6.4 API Response Handling
 
 **Backend**
-- Use consistent response structures across all APIs.
-- Return meaningful HTTP status codes.
-- Include machine-readable error codes.
-- Return field-level validation errors.
+- Use consistent response envelope (`ApiResponse<T>`) across all APIs:
+  ```json
+  {
+    "success": true,
+    "data": { ... },
+    "message": "Operation successful",
+    "error": null,
+    "timestamp": "2026-11-23T16:30:00Z",
+    "requestId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+  ```
+- Return meaningful HTTP status codes (200 OK, 201 Created, 400 Bad Request, 401 Unauthorized, 404 Not Found, 409 Conflict, 429 Too Many Requests, 500 Internal Error).
+- Include machine-readable error codes (`INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `OTP_EXPIRED`, `USERNAME_POOL_EXHAUSTED`, etc.).
+- Return field-level validation errors via standardized `ErrorResponse`.
 - Include request IDs for debugging.
 - Never expose internal exceptions, SQL errors or sensitive information.
 - Implement pagination for future list-based endpoints.

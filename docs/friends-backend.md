@@ -1,5 +1,5 @@
 Friends Module: Backend Functional & Technical Specification
-Platform: Java 17+, Spring Boot, Spring Security/JWT, PostgreSQL
+Platform: Java 21 (LTS), Spring Boot 4.1.1, Spring Security (stateless JWT), PostgreSQL
 Status: Proposed backend implementation contract; adapted from supplied Friends module source
 Database: PostgreSQL (consistent with Expensio's selected backend direction)
 1. Purpose and boundaries

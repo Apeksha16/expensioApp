@@ -29,51 +29,69 @@ backend/
 │   ├── main/
 │   │   ├── java/com/expensio/backend/
 │   │   │   ├── ExpensioBackendApplication.java  # Main application entry point
+│   │   │   ├── audit/                           # Audit trail & security event logging
+│   │   │   │   ├── AuditLog.java
+│   │   │   │   └── AuditLogRepository.java
+│   │   │   ├── auth/                            # Enterprise authentication & session management
+│   │   │   │   ├── controller/AuthController.java
+│   │   │   │   ├── dto/                         # Signup, Login, OTP, OAuth & Token DTOs
+│   │   │   │   ├── service/                     # AuthService, OtpService, RefreshTokenService, GoogleTokenVerifier
+│   │   │   │   └── *Repository.java / *.java    # AuthIdentity, Credential, OnboardingSession, RefreshToken, UserMpin
+│   │   │   ├── common/                          # Standardized ApiResponse, HealthResponse & phone utils
+│   │   │   │   ├── controller/HealthController.java
+│   │   │   │   └── service/PhoneNormalizationService.java
+│   │   │   ├── communication/                   # Notification dispatchers (Twilio SMS & SMTP Email)
+│   │   │   │   ├── DevCommunicationService.java
+│   │   │   │   ├── SmtpEmailService.java
+│   │   │   │   └── TwilioSmsService.java
 │   │   │   ├── config/                          # Application-level beans & CORS configuration
 │   │   │   │   ├── AppConfig.java
 │   │   │   │   └── CorsConfig.java
-│   │   │   ├── security/                        # Security filter chain, JWT verification & principal
-│   │   │   │   ├── SecurityConfig.java
+│   │   │   ├── exception/                       # Centralized global exception handling & standardized error codes
+│   │   │   │   ├── GlobalExceptionHandler.java
+│   │   │   │   └── ErrorResponse.java
+│   │   │   ├── onboarding/                      # Multi-step profile, employment & financial onboarding
+│   │   │   │   ├── controller/OnboardingController.java
+│   │   │   │   ├── dto/                         # Onboarding status, config, profile & financial DTOs
+│   │   │   │   ├── service/OnboardingService.java
+│   │   │   │   └── UserEmployment.java / UserFinancialProfile.java
+│   │   │   ├── outbox/                          # Transactional outbox event publisher & background relay
+│   │   │   │   ├── OutboxEvent.java
+│   │   │   │   └── OutboxRelayScheduler.java
+│   │   │   ├── profile/                         # User profile persistence
+│   │   │   │   ├── UserProfile.java
+│   │   │   │   └── UserProfileRepository.java
+│   │   │   ├── security/                        # Security filter chain, Argon2id, JWT & request tracking
 │   │   │   │   ├── JwtAuthenticationEntryPoint.java
 │   │   │   │   ├── JwtAuthenticationFilter.java
-│   │   │   │   ├── JwtProperties.java
 │   │   │   │   ├── JwtService.java
-│   │   │   │   └── UserPrincipal.java
-│   │   │   ├── common/                          # Shared DTOs, utilities, and common endpoints
-│   │   │   │   ├── controller/
-│   │   │   │   │   └── HealthController.java
-│   │   │   │   └── dto/
-│   │   │   │       ├── ApiResponse.java
-│   │   │   │       └── HealthResponse.java
-│   │   │   ├── exception/                       # Centralized global exception handling & standardized errors
-│   │   │   │   ├── GlobalExceptionHandler.java
-│   │   │   │   ├── ErrorResponse.java
-│   │   │   │   ├── AppException.java
-│   │   │   │   ├── ResourceNotFoundException.java
-│   │   │   │   ├── BadRequestException.java
-│   │   │   │   └── UnauthorizedException.java
-│   │   │   ├── auth/                            # Future authentication module (Phase 2 & 3)
-│   │   │   │   └── package-info.java
-│   │   │   ├── user/                            # Future user profile & identity module (Phase 2)
-│   │   │   │   └── package-info.java
-│   │   │   ├── profile/                         # Future onboarding & profile customization (Phase 2)
-│   │   │   │   └── package-info.java
-│   │   │   └── account/                         # Future account balances & ledger module (Phase 4)
-│   │   │       └── package-info.java
+│   │   │   │   ├── PasswordPolicyService.java
+│   │   │   │   ├── RequestIdFilter.java
+│   │   │   │   ├── SecurityConfig.java
+│   │   │   │   └── TokenHashService.java
+│   │   │   ├── user/                            # User profile and account status operations
+│   │   │   │   ├── controller/UserController.java
+│   │   │   │   ├── service/UserService.java
+│   │   │   │   └── User.java / AccountStatus.java
+│   │   │   ├── username/                        # 7-tier algorithmic username generator
+│   │   │   │   └── UsernameGeneratorService.java
+│   │   │   └── verification/                    # Standalone email and mobile OTP verification
+│   │   │       ├── controller/VerificationController.java
+│   │   │       └── service/VerificationService.java
 │   │   └── resources/
 │   │       ├── application.yml                  # Base configuration with environment variable interpolation
 │   │       ├── application-dev.yml              # Local development overrides & SQL logging
-│   │       └── db/migration/                    # Flyway database migration scripts
+│   │       ├── application-prod.yml             # Production overrides
+│   │       └── db/migration/                    # Flyway database migration scripts (V1-V4)
 │   └── test/
-│       ├── java/com/expensio/backend/
-│       │   ├── ExpensioBackendApplicationTests.java
-│       │   ├── common/controller/HealthControllerTest.java
-│       │   └── security/SecurityConfigTest.java
-│       └── resources/
-│           └── application.yml                  # Test profile configuration
-├── .env.example                                 # Environment variable reference template
-├── .gitignore                                   # Ignore list for build artifacts & secrets
-└── pom.xml                                      # Maven project descriptor
+│       ├── java/com/expensio/backend/           # 72 automated unit, integration and security tests
+│       └── resources/                           # Test profile configuration
+├── Dockerfile                                   # Multi-stage production container build
+├── docker-compose.yml                           # Production Docker service definition
+├── Expensio_API_Collection.json                 # Postman API Collection
+├── expensio-api-tests.http                      # VS Code REST client automated test suite
+├── pom.xml                                      # Maven project descriptor
+└── .env.example                                 # Environment variable reference template
 ```
 
 ---
@@ -226,8 +244,9 @@ mockMvc.perform(get("/api/v1/protected")
         .andExpect(status().isOk());
 ```
 
-### 6. Known Limitations & Deferred Work
-- **Authentication Endpoints:** Real endpoints for phone OTP verification, MPIN login, Google OAuth, and account registration will be added in subsequent phases.
-- **Refresh Token Lifecycle:** Database-backed refresh token rotation and revocation (`refresh_tokens` table) will be integrated with the auth controllers.
-- **Database Identity Check:** Per requirements, requests authenticate directly via verified token subject without a database roundtrip on every call. Database-backed account status enforcement (`ACTIVE`, `SUSPENDED`) will be added alongside user profile endpoints.
+### 6. Implemented Capabilities & Roadmap
+- **Authentication & Security (Phases 1–8 Implemented):** Google OAuth token verification, Argon2id password hashing, Twilio SMS and SMTP Email OTP verification, MPIN credentials, refresh token rotation with reuse detection, and session revocation (`/v1/auth/*`, `/v1/verification/*`).
+- **Onboarding & User Profiles (Implemented):** 5 employment types, minor units financial profile, multi-step onboarding session management, and 7-tier algorithmic username generator (`/v1/onboarding/*`, `/v1/users/*`).
+- **Database Migrations & Event Outbox (Implemented):** Flyway PostgreSQL migrations V1–V4, `audit_logs` tracking, and `OutboxRelayScheduler` background processing.
+- **Planned Financial Modules:** Dedicated domain REST endpoints for Expenses, Budgets, Splits, Subscriptions, EMIs, Goals, Ledger, and Reports (documented in the root `docs/` specifications).
 

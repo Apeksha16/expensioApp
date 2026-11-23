@@ -1,6 +1,6 @@
 # Expensio Full-Stack Mobile Workspace ⚡
 
-Expensio is a modern personal finance, expense tracking, and bill-splitting mobile application built for iOS and Android with React Native and an Express.js backend.
+Expensio is a modern personal finance, expense tracking, and bill-splitting mobile application built for iOS and Android with React Native and a Java 21 / Spring Boot backend.
 
 ## Workspace Architecture
 
@@ -11,29 +11,23 @@ expensio/
 │   ├── src/
 │   │   ├── config/
 │   │   │   └── firebase.ts      # Firebase client configuration (FCM & Phone Auth)
-│   │   └── services/
-│   │       ├── api.ts           # API client connecting to backend on port 5000
-│   │       └── notifications.ts # In-app and push notification handling
+│   │   └── services/            # Client services and persistence
 │   ├── package.json             # Mobile dependencies
 │   └── tsconfig.json
 │
-└── backend/                      # Node.js + Express API server (Port 5000)
+└── backend/                      # Spring Boot 4.1.1 + Java 21 API service (Port 5001 / 8080)
     ├── src/
-    │   ├── server.js            # Main server entry with CORS, JSON parser & logger
-    │   ├── config/
-    │   │   └── firebase.js      # Firebase Admin SDK initialization
-    │   ├── controllers/
-    │   │   ├── authController.js         # Phone & OTP verification with JWT
-    │   │   ├── expenseController.js      # Accounts & UPI transactions
-    │   │   ├── splitController.js        # Splits & Settle Up
-    │   │   ├── subscriptionController.js # Subscriptions tracker
-    │   │   └── notificationController.js # Device push token registry
-    │   ├── routes/              # Express API route modules
-    │   ├── middleware/          # JWT authorization middleware
-    │   └── data/
-    │       └── mockDatabase.js  # In-memory store with seeded data
-    ├── package.json
-    └── .env                     # Server environment variables
+    │   ├── main/java/com/expensio/backend/
+    │   │   ├── auth/            # Auth, OTP, tokens & security
+    │   │   ├── config/          # App and CORS configurations
+    │   │   ├── security/        # JWT security filter chain & policies
+    │   │   ├── user/            # User profile and accounts
+    │   │   └── ExpensioBackendApplication.java
+    │   └── main/resources/      # Flyway migrations and application config
+    ├── Dockerfile               # Production multi-stage Docker build
+    ├── docker-compose.yml       # Production container orchestration
+    ├── pom.xml                  # Maven project descriptor
+    └── .env.example             # Environment configuration template
 ```
 
 ---

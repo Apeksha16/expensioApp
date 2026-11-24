@@ -39,6 +39,14 @@ export function writeSession(session: StoredSession): Promise<void> {
   return writeJson(STORAGE_KEYS.session, session);
 }
 
+export async function updateSession(updater: (session: StoredSession) => StoredSession): Promise<StoredSession | null> {
+  const current = await readSession();
+  if (!current) return null;
+  const next = updater(current);
+  await writeSession(next);
+  return next;
+}
+
 export function clearSession(): Promise<void> {
   return removeValue(STORAGE_KEYS.session);
 }

@@ -100,8 +100,8 @@ public class OnboardingService {
     public OnboardingStatusResponse getStatus(UUID userId) {
         User user = getUser(userId);
         UserProfile profile = userProfileRepository.findById(userId).orElse(null);
-        boolean employmentExists = userEmploymentRepository.existsById(userId);
-        boolean financialProfileExists = userFinancialProfileRepository.existsById(userId);
+        UserEmployment employment = userEmploymentRepository.findById(userId).orElse(null);
+        UserFinancialProfile financialProfile = userFinancialProfileRepository.findById(userId).orElse(null);
 
         boolean isProfileComplete = profile != null && profile.isProfileComplete();
         boolean isEmailVerified = user.getEmail() != null && !user.getEmail().isBlank();
@@ -110,9 +110,9 @@ public class OnboardingService {
         String currentStep;
         if (isProfileComplete) {
             currentStep = "COMPLETED";
-        } else if (!employmentExists) {
+        } else if (employment == null) {
             currentStep = "EMPLOYMENT";
-        } else if (!financialProfileExists) {
+        } else if (financialProfile == null) {
             currentStep = "FINANCIAL_PROFILE";
         } else {
             currentStep = "READY_TO_COMPLETE";
@@ -123,9 +123,24 @@ public class OnboardingService {
                 isEmailVerified,
                 isPhoneVerified,
                 isProfileComplete,
-                employmentExists,
-                financialProfileExists
+                employment != null,
+                financialProfile != null,
+                new UserDto(user.getId(), user.getEmail(), user.getPhone(), user.getName(), user.getStatus()),
+                employment,
+                financialProfile
         );
+    }
+
+    public UserEmployment getEmployment(UUID userId) {
+        getUser(userId);
+        return userEmploymentRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employment details not found for user: " + userId));
+    }
+
+    public UserFinancialProfile getFinancialProfile(UUID userId) {
+        getUser(userId);
+        return userFinancialProfileRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Financial profile not found for user: " + userId));
     }
 
     /**

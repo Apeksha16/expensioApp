@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -63,6 +63,23 @@ export function ProfileScreen({ navigation }: Props) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [reportSaving, setReportSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setError('');
+    setMessage('');
+    try {
+      await logout();
+    } catch (logoutError) {
+      const msg = logoutError instanceof Error ? logoutError.message : 'Unable to log out from server. Please try again.';
+      setError(msg);
+      showToast('error', msg);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [draftFirstName, setDraftFirstName] = useState(savedFirstName);
@@ -490,9 +507,19 @@ export function ProfileScreen({ navigation }: Props) {
         {error ? <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text> : null}
 
         <SectionHeading title="Account" subtitle="Your data and settings stay on this device." />
-        <Pressable onPress={() => void logout()} style={styles.logout}>
-          <Ionicons name="log-out-outline" size={20} color={colors.expense} />
-          <Text style={styles.logoutText}>Log out</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
+          disabled={loggingOut}
+          onPress={() => void handleLogout()}
+          style={[styles.logout, loggingOut && styles.logoutDisabled]}
+        >
+          {loggingOut ? (
+            <ActivityIndicator size="small" color={colors.expense} />
+          ) : (
+            <Text style={styles.logoutText}>Log out</Text>
+          )}
         </Pressable>
       </ScrollView>
 
@@ -683,6 +710,7 @@ const styles = StyleSheet.create({
   successMessage: { ...typography.caption, color: colors.income },
   errorMessage: { ...typography.caption, color: colors.expense },
   logout: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  logoutDisabled: { opacity: 0.6 },
   logoutText: { ...typography.bodySemibold, color: colors.expense },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
   avatarModal: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, backgroundColor: colors.background, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, gap: spacing.md },

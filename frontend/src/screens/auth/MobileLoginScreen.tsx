@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
@@ -40,15 +40,37 @@ export function MobileLoginScreen() {
     setVerification,
     verificationChannel,
     verificationTarget,
+    phone: savedPhone,
+    countryCode: savedCountryCode,
+    onboardingDraft,
   } = useApp();
+
+  const rawSavedPhone = savedPhone || (verificationChannel === 'phone' ? verificationTarget : '') || onboardingDraft.phone || '';
+  const initialDial = savedCountryCode || DEFAULT_COUNTRY_DIAL;
+  const dialDigits = initialDial.replace(/\D/g, '');
+  const digitsOnly = rawSavedPhone.replace(/\D/g, '');
+  const cleanPrefilledPhone = dialDigits && digitsOnly.startsWith(dialDigits) && digitsOnly.length > dialDigits.length
+    ? digitsOnly.slice(dialDigits.length)
+    : digitsOnly;
+
   const [mode, setMode] = useState<Mode>(verificationChannel === 'email' ? 'email' : 'mobile');
-  const [dial, setDial] = useState(DEFAULT_COUNTRY_DIAL);
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState(verificationChannel === 'email' ? verificationTarget : '');
+  const [dial, setDial] = useState(initialDial);
+  const [phone, setPhone] = useState(cleanPrefilledPhone);
+  const [email, setEmail] = useState(verificationChannel === 'email' ? verificationTarget : (onboardingDraft.email || ''));
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    if (cleanPrefilledPhone && !phone) {
+      setPhone(cleanPrefilledPhone);
+    }
+    if (initialDial && dial !== initialDial) {
+      setDial(initialDial);
+    }
+  }, [cleanPrefilledPhone, initialDial]);
   const selected = countryCodes.find((item) => item.dial === dial) ?? countryCodes[0];
   const phoneDigits = phone.replace(/\D/g, '');
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -64,7 +86,7 @@ export function MobileLoginScreen() {
   };
 
   const onPhoneChange = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, dial === '+91' ? 10 : 15);
+    const digits = value.replace(/\D/g, '').slice(0, 10);
     setPhone(digits);
     if (error) setError('');
   };
@@ -83,38 +105,34 @@ export function MobileLoginScreen() {
   };
 
   const submit = async () => {
-    if (loading) return;
+    if (loading || isSubmittingRef.current) return;
     if (!isReady) {
       setError(mode === 'mobile'
-        ? dial === '+91' ? 'Enter a valid 10-digit number' : 'Enter a valid mobile number'
+        ? dial === '+91' ? 'Enter a valid 10-digit mobile number' : 'Enter a valid mobile number'
         : 'Enter a valid email address');
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
     setError('');
     try {
       if (mode === 'mobile') {
         const cleanPhone = phone.replace(/\D/g, '');
-        const response = await sendOtp(cleanPhone);
-        if (response.debugOtp) {
-          Alert.alert('Development OTP', `Use ${response.debugOtp} to verify your number.`);
-        }
+        await sendOtp(cleanPhone, selected.code);
         setPhoneCredentials(dial, cleanPhone);
         setVerification('phone', cleanPhone);
       } else {
         const target = email.trim().toLowerCase();
-        const response = await sendEmailOtp(target);
-        if (response.debugOtp) {
-          Alert.alert('Development OTP', `Use ${response.debugOtp} to verify your email.`);
-        }
+        await sendEmailOtp(target);
         setVerification('email', target);
       }
       setAuthPhase('otp');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to send OTP');
+      setError(requestError instanceof Error ? requestError.message : 'Unable to send verification code. Please try again.');
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -158,10 +176,6 @@ export function MobileLoginScreen() {
           </View>
 
           <View style={styles.hero}>
-            <View style={styles.eyebrow}>
-              <View style={styles.eyebrowDot} />
-              <Text style={styles.eyebrowText}>WELCOME BACK</Text>
-            </View>
             <Text style={styles.headline}>
               Your money,{'\n'}
               <Text style={styles.headlineAccent}>made simpler.</Text>
@@ -206,29 +220,28 @@ export function MobileLoginScreen() {
                   </Pressable>
                 ) : null}
                 <TextInput
-                  key={`${mode}-${dial}`}
+                  key={mode}
                   accessibilityLabel={mode === 'mobile' ? 'Mobile number' : 'Email address'}
                   accessibilityLabelledBy="login-field-label"
-                  {...(mode === 'mobile'
-                    ? { defaultValue: phone.replace(/^(\d{5})(\d)/, '$1 $2') }
-                    : { value: email })}
+                  value={mode === 'mobile' ? phone : email}
                   onChangeText={onInputChange}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
                   onSubmitEditing={mode === 'email' ? submit : undefined}
-                  keyboardType={mode === 'mobile' ? 'phone-pad' : 'email-address'}
+                  keyboardType={mode === 'mobile' ? 'number-pad' : 'email-address'}
+                  maxLength={mode === 'mobile' ? 10 : undefined}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType={mode === 'email' ? 'done' : 'default'}
                   blurOnSubmit={false}
-                  placeholder={mode === 'mobile' ? '98765 43210' : 'you@example.com'}
+                  placeholder={mode === 'mobile' ? '9876543210' : 'you@example.com'}
                   placeholderTextColor="#74837A"
                   style={styles.input}
                 />
               </View>
               <Text style={styles.helper}>
                 {mode === 'mobile'
-                  ? "We'll text you a 6-digit code. Message rates may apply."
+                  ? "We'll text you a 6-digit code."
                   : "We'll email you a 6-digit code. No password needed."}
               </Text>
               {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -244,10 +257,7 @@ export function MobileLoginScreen() {
             style={[styles.sendButton, isReady ? styles.sendButtonReady : styles.sendButtonDisabled]}
           >
             {loading ? <ActivityIndicator color="#0B2B1F" /> : (
-              <>
-                <Text style={[styles.sendLabel, !isReady && styles.sendLabelDisabled]}>Send OTP</Text>
-                <Ionicons name="arrow-forward" size={20} color={isReady ? '#0B2B1F' : '#8FA698'} />
-              </>
+              <Text style={[styles.sendLabel, !isReady && styles.sendLabelDisabled]}>Send OTP</Text>
             )}
           </Pressable>
 

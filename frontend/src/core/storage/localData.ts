@@ -117,7 +117,7 @@ function isRecurringPayment(value: unknown): value is RecurringPayment {
 
 function localDataKey(ownerId?: string | null): string {
   return ownerId
-    ? `${STORAGE_KEYS.localDataAccountPrefix}${encodeURIComponent(ownerId.trim().toLowerCase())}`
+    ? `${STORAGE_KEYS.localDataAccountPrefix}${ownerId.trim().toLowerCase().replace(/[^a-zA-Z0-9.\-_]/g, '_')}`
     : STORAGE_KEYS.localData;
 }
 

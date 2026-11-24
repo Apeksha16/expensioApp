@@ -3,7 +3,7 @@ import type { SplitGroup } from '../types';
 
 function groupsKey(ownerId?: string | null): string {
   return ownerId
-    ? `${STORAGE_KEYS.splitGroupsAccountPrefix}${encodeURIComponent(ownerId.trim().toLowerCase())}`
+    ? `${STORAGE_KEYS.splitGroupsAccountPrefix}${ownerId.trim().toLowerCase().replace(/[^a-zA-Z0-9.\-_]/g, '_')}`
     : STORAGE_KEYS.splitGroups;
 }
 

@@ -6,6 +6,10 @@ import {
   STORAGE_KEYS,
   writeJson,
 } from '../core/storage/localPersistence';
+import { authApi } from './api/authApi';
+import { verificationApi } from './api/verificationApi';
+import { onboardingApi } from './api/onboardingApi';
+import { ApiError } from './api/apiClient';
 
 export interface AuthUser {
   id?: string;
@@ -24,6 +28,8 @@ export interface AuthResponse {
   success: boolean;
   token?: string;
   refreshToken?: string;
+  tokenType?: string;
+  onboardingStatus?: string;
   user?: AuthUser;
   isProfileComplete?: boolean;
   error?: string;
@@ -39,10 +45,12 @@ export interface CompleteOnboardingInput {
   lastName: string;
   email: string;
   phone: string;
-  employmentType: 'salaried' | 'business' | 'student' | 'retired' | 'homemaker';
+  employmentType: 'salaried' | 'business' | 'student' | 'retired' | 'homemaker' | string;
   incomeAmountMinor: string;
   cashBalanceMinor: string;
   savingsAmountMinor?: string;
+  currency?: string;
+  avatarId?: string;
 }
 
 interface LocalAccount {
@@ -61,16 +69,21 @@ interface LocalOtpRecord {
 export const LOCAL_OTP_LIFETIME_MS = 5 * 60 * 1000;
 const MAX_OTP_ATTEMPTS = 5;
 
+// In-memory cache for backend challenge IDs between start and verify steps
+const activeChallenges: Record<string, string> = {};
+// In-memory cache for credentials during email registration to auto-login after OTP verification
+const pendingEmailCredentials: Record<string, { email: string; password: string; name?: string }> = {};
+
 function accountKey(email: string) {
-  return `${STORAGE_KEYS.localAccountPrefix}${encodeURIComponent(email.trim().toLowerCase())}`;
+  return `${STORAGE_KEYS.localAccountPrefix}${email.trim().toLowerCase().replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
 }
 
 function otpKey(channel: 'phone' | 'email', target: string) {
-  return `${STORAGE_KEYS.localOtpPrefix}${channel}_${encodeURIComponent(target.trim().toLowerCase())}`;
+  return `${STORAGE_KEYS.localOtpPrefix}${channel}_${target.trim().toLowerCase().replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
 }
 
 function phoneAccountKey(phone: string) {
-  return `${STORAGE_KEYS.localAccountByPhonePrefix}${encodeURIComponent(phone)}`;
+  return `${STORAGE_KEYS.localAccountByPhonePrefix}${phone.trim().replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
 }
 
 function localToken() {
@@ -239,76 +252,292 @@ async function verifyLocalOtp(
   });
 }
 
-export function sendOtp(phone: string) {
-  return issueOtp('phone', phone);
-}
+// =============================================================================
+// Live Backend Integration
+// =============================================================================
 
-export function verifyOtp(phone: string, otp: string) {
-  return verifyLocalOtp('phone', phone, otp);
-}
-
-export async function authenticateEmail(email: string, password: string, mode: 'login' | 'register'): Promise<AuthResponse> {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (mode === 'register') {
-    const existing = await readLocalAccount(normalizedEmail);
-    if (existing) throw new Error('A local account already exists for this email. Log in instead.');
-    const account: LocalAccount = {
-      email: normalizedEmail,
-      password,
-      user: { email: normalizedEmail },
-      isProfileComplete: false,
-    };
-    await saveLocalAccount(account);
-    return createResponse(account.user);
-  }
-
-  const account = await readLocalAccount(normalizedEmail);
-  if (!account || account.password !== password) {
-    throw new Error('No matching local account. Create an account on this device first.');
-  }
-  return createResponse(account.user, { isProfileComplete: account.isProfileComplete });
-}
-
-export function authenticateGoogle(_idToken: string): Promise<AuthResponse> {
-  return Promise.reject(new Error('Google sign-in is unavailable in local-only mode.'));
-}
-
-export function sendEmailOtp(email: string) {
-  return issueOtp('email', email);
-}
-
-export function verifyEmailOtp(email: string, otp: string) {
-  return verifyLocalOtp('email', email, otp);
-}
-
-export async function completeOnboarding(input: CompleteOnboardingInput): Promise<AuthResponse> {
-  const session = await readSession();
-  const email = input.email.trim().toLowerCase();
-  const existing = await readLocalAccount(email);
-  const user: AuthUser = {
-    ...existing?.user,
-    name: `${input.firstName} ${input.lastName}`.trim(),
-    username: email || input.phone,
-    email,
-    phone: input.phone,
-    incomeAmountMinor: input.incomeAmountMinor,
-    cashBalanceMinor: input.cashBalanceMinor,
-    savingsAmountMinor: input.savingsAmountMinor ?? '0',
-  };
-  const account = {
-    email,
-    password: existing?.password ?? '',
-    user,
-    isProfileComplete: true,
-  };
-  await saveLocalAccount(account);
-  if (input.phone) {
-    await writeJson(phoneAccountKey(input.phone), account);
+export async function sendOtp(phone: string, countryCode?: string): Promise<AuthResponse & { resendCooldownSeconds?: number }> {
+  const cleanPhone = phone.trim();
+  const res = await authApi.mobileOtpStart({ phone: cleanPhone, countryCode });
+  if (res.data?.challengeId) {
+    activeChallenges[cleanPhone] = res.data.challengeId;
   }
   return {
     success: true,
-    token: session?.accessToken ?? localToken(),
-    user,
-    isProfileComplete: true,
+    message: res.message || 'Verification code sent.',
+    resendCooldownSeconds: res.data?.resendCooldownSeconds,
   };
+}
+
+export async function verifyOtp(phone: string, otp: string, countryCode?: string): Promise<AuthResponse> {
+  const cleanPhone = phone.trim();
+  const challengeId = activeChallenges[cleanPhone] || '';
+  const res = await authApi.mobileOtpVerify({
+    phone: cleanPhone,
+    countryCode,
+    challengeId,
+    otp,
+  });
+  delete activeChallenges[cleanPhone];
+  const isProfileComplete = res.data.isProfileComplete === true &&
+    res.data.tokenType !== 'ONBOARDING' &&
+    res.data.onboardingStatus !== 'PENDING_ONBOARDING';
+
+  return {
+    success: true,
+    token: res.data.accessToken,
+    refreshToken: res.data.refreshToken,
+    tokenType: res.data.tokenType,
+    onboardingStatus: res.data.onboardingStatus,
+    user: {
+      id: res.data.user?.id,
+      name: res.data.user?.name,
+      email: res.data.user?.email,
+      phone: res.data.user?.phone || cleanPhone,
+    },
+    isProfileComplete,
+    verifiedChannel: 'phone',
+    message: res.message,
+  };
+}
+
+export async function authenticateEmail(
+  email: string,
+  password: string,
+  mode: 'login' | 'register',
+  name?: string,
+): Promise<AuthResponse> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  try {
+    if (mode === 'login') {
+      const res = await authApi.emailLogin({ email: normalizedEmail, password });
+      const isProfileComplete = res.data.isProfileComplete === true &&
+        res.data.tokenType !== 'ONBOARDING' &&
+        res.data.onboardingStatus !== 'PENDING_ONBOARDING';
+
+      return {
+        success: true,
+        token: res.data.accessToken,
+        refreshToken: res.data.refreshToken,
+        tokenType: res.data.tokenType,
+        onboardingStatus: res.data.onboardingStatus,
+        user: {
+          id: res.data.user?.id,
+          name: res.data.user?.name,
+          email: res.data.user?.email || normalizedEmail,
+          phone: res.data.user?.phone,
+        },
+        isProfileComplete,
+        verifiedChannel: 'email',
+        message: res.message,
+      };
+    } else {
+      const resolvedName = name?.trim() || normalizedEmail.split('@')[0];
+      // Save pending registration credentials in memory so verifyEmailOtp can obtain session tokens
+      pendingEmailCredentials[normalizedEmail] = {
+        email: normalizedEmail,
+        password,
+        name: resolvedName,
+      };
+
+      const res = await authApi.emailSignup({ email: normalizedEmail, password, name: resolvedName });
+      if (res.data?.challengeId) {
+        activeChallenges[normalizedEmail] = res.data.challengeId;
+      }
+      return {
+        success: true,
+        token: localToken(),
+        user: { email: normalizedEmail, name: resolvedName },
+        isProfileComplete: false,
+        requiresVerification: 'email',
+        message: res.message,
+      };
+    }
+  } catch (err: unknown) {
+    // Fall back to local account storage if backend is unreachable
+    if (err instanceof ApiError && err.isNetworkError) {
+      if (mode === 'register') {
+        const existing = await readLocalAccount(normalizedEmail);
+        if (existing) throw new Error('A local account already exists for this email. Log in instead.');
+        const account: LocalAccount = {
+          email: normalizedEmail,
+          password,
+          user: { email: normalizedEmail, name: name?.trim() || normalizedEmail.split('@')[0] },
+          isProfileComplete: false,
+        };
+        await saveLocalAccount(account);
+        return createResponse(account.user);
+      }
+      const account = await readLocalAccount(normalizedEmail);
+      if (!account || account.password !== password) {
+        throw new Error('No matching local account. Create an account on this device first.');
+      }
+      return createResponse(account.user, { isProfileComplete: account.isProfileComplete });
+    }
+    throw err;
+  }
+}
+
+export async function authenticateGoogle(idToken: string): Promise<AuthResponse> {
+  try {
+    const res = await authApi.googleAuth({ idToken });
+    return {
+      success: true,
+      token: res.data.accessToken,
+      refreshToken: res.data.refreshToken,
+      user: {
+        id: res.data.user?.id,
+        name: res.data.user?.name,
+        email: res.data.user?.email,
+      },
+      isProfileComplete: res.data.isProfileComplete === true,
+    };
+  } catch (err: unknown) {
+    if (err instanceof ApiError && err.isNetworkError) {
+      throw new Error('Google sign-in is unavailable while offline.');
+    }
+    throw err;
+  }
+}
+
+export async function sendEmailOtp(email: string): Promise<AuthResponse> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const res = await verificationApi.startEmailVerification({ email: normalizedEmail });
+  if (res.data?.challengeId) {
+    activeChallenges[normalizedEmail] = res.data.challengeId;
+  }
+  return {
+    success: true,
+    message: res.message || 'Verification code sent.',
+  };
+}
+
+export async function verifyEmailOtp(email: string, otp: string): Promise<AuthResponse> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const challengeId = activeChallenges[normalizedEmail] || 'default-challenge';
+  try {
+    await verificationApi.verifyEmail({ email: normalizedEmail, challengeId, otp });
+    delete activeChallenges[normalizedEmail];
+
+    // Check if we have pending signup credentials to auto-authenticate and retrieve JWT tokens
+    const pending = pendingEmailCredentials[normalizedEmail];
+    if (pending) {
+      delete pendingEmailCredentials[normalizedEmail];
+      const loginRes = await authApi.emailLogin({
+        email: pending.email,
+        password: pending.password,
+      });
+      return {
+        success: true,
+        token: loginRes.data.accessToken,
+        refreshToken: loginRes.data.refreshToken,
+        user: {
+          id: loginRes.data.user?.id,
+          name: loginRes.data.user?.name || pending.name,
+          email: loginRes.data.user?.email || normalizedEmail,
+          phone: loginRes.data.user?.phone,
+        },
+        isProfileComplete: loginRes.data.isProfileComplete === true,
+        verifiedChannel: 'email',
+        message: loginRes.message,
+      };
+    }
+
+    const account = await readLocalAccount(normalizedEmail);
+    return {
+      success: true,
+      user: account?.user ?? { email: normalizedEmail },
+      isProfileComplete: account?.isProfileComplete ?? false,
+      verifiedChannel: 'email',
+    };
+  } catch (err: unknown) {
+    if (err instanceof ApiError && err.isNetworkError) {
+      return verifyLocalOtp('email', normalizedEmail, otp);
+    }
+    throw err;
+  }
+}
+
+export async function completeOnboarding(input: CompleteOnboardingInput): Promise<AuthResponse> {
+  const currency = input.currency || 'INR';
+  try {
+    // Run Step 1, 2, and 3 updates in parallel
+    await Promise.all([
+      onboardingApi.updateProfile({
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        phone: input.phone,
+      }),
+      onboardingApi.updateEmployment({
+        employmentType: input.employmentType.toUpperCase(),
+        monthlyIncomeMinor: Number(input.incomeAmountMinor) || 0,
+        currency,
+      }),
+      onboardingApi.updateFinancialProfile({
+        cashBalanceMinor: Number(input.cashBalanceMinor) || 0,
+        savingsBalanceMinor: Number(input.savingsAmountMinor || '0') || 0,
+        currency,
+      }),
+    ]);
+
+    // 4. Complete onboarding and elevate session
+    const res = await onboardingApi.completeOnboarding();
+    const email = input.email.trim().toLowerCase();
+
+    return {
+      success: true,
+      token: res.data.accessToken,
+      refreshToken: res.data.refreshToken,
+      tokenType: 'APPLICATION',
+      onboardingStatus: 'COMPLETED',
+      user: {
+        id: res.data.user.id,
+        name: `${input.firstName} ${input.lastName}`.trim(),
+        username: res.data.username,
+        email,
+        phone: input.phone,
+        incomeAmountMinor: input.incomeAmountMinor,
+        cashBalanceMinor: input.cashBalanceMinor,
+        savingsAmountMinor: input.savingsAmountMinor ?? '0',
+      },
+      isProfileComplete: true,
+      message: res.message || 'Account created successfully',
+    };
+  } catch (err: unknown) {
+    if (err instanceof ApiError && err.isNetworkError) {
+      // Local offline fallback
+      const session = await readSession();
+      const email = input.email.trim().toLowerCase();
+      const existing = await readLocalAccount(email);
+      const user: AuthUser = {
+        ...existing?.user,
+        name: `${input.firstName} ${input.lastName}`.trim(),
+        username: email || input.phone,
+        email,
+        phone: input.phone,
+        incomeAmountMinor: input.incomeAmountMinor,
+        cashBalanceMinor: input.cashBalanceMinor,
+        savingsAmountMinor: input.savingsAmountMinor ?? '0',
+      };
+      const account = {
+        email,
+        password: existing?.password ?? '',
+        user,
+        isProfileComplete: true,
+      };
+      await saveLocalAccount(account);
+      if (input.phone) {
+        await writeJson(phoneAccountKey(input.phone), account);
+      }
+      return {
+        success: true,
+        token: session?.accessToken ?? localToken(),
+        user,
+        isProfileComplete: true,
+      };
+    }
+    throw err;
+  }
 }

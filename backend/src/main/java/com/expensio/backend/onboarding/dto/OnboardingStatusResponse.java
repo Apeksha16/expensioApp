@@ -1,5 +1,8 @@
 package com.expensio.backend.onboarding.dto;
 
+import com.expensio.backend.auth.dto.UserDto;
+import com.expensio.backend.onboarding.UserEmployment;
+import com.expensio.backend.onboarding.UserFinancialProfile;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class OnboardingStatusResponse {
@@ -10,6 +13,10 @@ public class OnboardingStatusResponse {
     private boolean isProfileComplete;
     private boolean isEmploymentComplete;
     private boolean isFinancialProfileComplete;
+
+    private UserDto profile;
+    private UserEmployment employment;
+    private UserFinancialProfile financialProfile;
 
     public OnboardingStatusResponse() {
     }
@@ -29,6 +36,22 @@ public class OnboardingStatusResponse {
         this.isFinancialProfileComplete = isFinancialProfileComplete;
     }
 
+    public OnboardingStatusResponse(
+            String currentStep,
+            boolean isEmailVerified,
+            boolean isPhoneVerified,
+            boolean isProfileComplete,
+            boolean isEmploymentComplete,
+            boolean isFinancialProfileComplete,
+            UserDto profile,
+            UserEmployment employment,
+            UserFinancialProfile financialProfile) {
+        this(currentStep, isEmailVerified, isPhoneVerified, isProfileComplete, isEmploymentComplete, isFinancialProfileComplete);
+        this.profile = profile;
+        this.employment = employment;
+        this.financialProfile = financialProfile;
+    }
+
     public String getCurrentStep() { return currentStep; }
 
     @JsonProperty("isEmailVerified")
@@ -45,5 +68,12 @@ public class OnboardingStatusResponse {
 
     @JsonProperty("isFinancialProfileComplete")
     public boolean isFinancialProfileComplete() { return isFinancialProfileComplete; }
+
+    public UserDto getProfile() { return profile; }
+
+    public UserEmployment getEmployment() { return employment; }
+
+    public UserFinancialProfile getFinancialProfile() { return financialProfile; }
 }
+
 

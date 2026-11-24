@@ -44,7 +44,7 @@ function normalizeProfile(profile: ProfileRecord): ProfileRecord {
 
 function profileKey(ownerId?: string | null): string {
   return ownerId
-    ? `${STORAGE_KEYS.profileAccountPrefix}${encodeURIComponent(ownerId.trim().toLowerCase())}`
+    ? `${STORAGE_KEYS.profileAccountPrefix}${ownerId.trim().toLowerCase().replace(/[^a-zA-Z0-9.\-_]/g, '_')}`
     : STORAGE_KEYS.profile;
 }
 

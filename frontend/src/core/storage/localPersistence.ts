@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   reportPreferencesAccountPrefix: 'expensio_report_preferences_account_',
   avatarAccountPrefix: 'expensio_avatar_account_',
   emailVerification: 'expensio_email_verification',
+  onboardingDraft: 'expensio_onboarding_draft',
+  onboardingDraftAccountPrefix: 'expensio_onboarding_draft_account_',
   localData: 'expensio_local_data',
   localDataAccountPrefix: 'expensio_local_data_account_',
   splitGroups: 'expensio_split_groups',
@@ -35,6 +37,11 @@ export class CorruptStoredDataError extends Error {
   }
 }
 
+export function sanitizeStorageKey(key: string): string {
+  // Expo SecureStore keys must only contain alphanumeric, '.', '-', and '_'
+  return key.replace(/[^a-zA-Z0-9.\-_]/g, '_') || 'default_key';
+}
+
 const secureStoreAdapter: KeyValueStorage = Platform.OS === 'web'
   ? {
     async get(key) {
@@ -51,9 +58,9 @@ const secureStoreAdapter: KeyValueStorage = Platform.OS === 'web'
     },
   }
   : {
-    get: (key) => SecureStore.getItemAsync(key),
-    set: (key, value) => SecureStore.setItemAsync(key, value),
-    remove: (key) => SecureStore.deleteItemAsync(key),
+    get: (key) => SecureStore.getItemAsync(sanitizeStorageKey(key)),
+    set: (key, value) => SecureStore.setItemAsync(sanitizeStorageKey(key), value),
+    remove: (key) => SecureStore.deleteItemAsync(sanitizeStorageKey(key)),
   };
 
 let storage: KeyValueStorage = secureStoreAdapter;

@@ -83,11 +83,9 @@ export function AuthEntryScreen() {
         </View>
 
         <Pressable onPress={() => setAuthPhase('mobile')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-          <Ionicons name="phone-portrait-outline" size={22} color="#0A2A1E" />
           <Text style={styles.primaryLabel}>Continue with Mobile Number</Text>
         </Pressable>
         <Pressable onPress={() => setAuthPhase('email')} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-          <Ionicons name="mail-outline" size={22} color="#F3F0E6" />
           <Text style={styles.secondaryLabel}>Continue with Email</Text>
         </Pressable>
 

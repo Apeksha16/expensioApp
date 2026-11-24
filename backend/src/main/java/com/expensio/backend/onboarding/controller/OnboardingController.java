@@ -56,6 +56,16 @@ public class OnboardingController {
     }
 
     /**
+     * 2.3 Get Employment Information
+     */
+    @GetMapping("/employment")
+    public ResponseEntity<ApiResponse<UserEmployment>> getEmployment(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        UserEmployment employment = onboardingService.getEmployment(principal.getUserId());
+        return ResponseEntity.ok(ApiResponse.ok("Employment retrieved successfully", employment));
+    }
+
+    /**
      * 2.3 Update Employment Information
      */
     @PutMapping("/employment")
@@ -66,6 +76,16 @@ public class OnboardingController {
         String ipAddress = servletRequest.getRemoteAddr();
         UserEmployment updated = onboardingService.updateEmployment(principal.getUserId(), request, ipAddress);
         return ResponseEntity.ok(ApiResponse.ok("Employment updated successfully", updated));
+    }
+
+    /**
+     * 2.4 Get Initial Financial Profile
+     */
+    @GetMapping("/financial-profile")
+    public ResponseEntity<ApiResponse<UserFinancialProfile>> getFinancialProfile(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        UserFinancialProfile updated = onboardingService.getFinancialProfile(principal.getUserId());
+        return ResponseEntity.ok(ApiResponse.ok("Financial profile retrieved successfully", updated));
     }
 
     /**

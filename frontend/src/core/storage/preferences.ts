@@ -167,7 +167,7 @@ function preferenceKeys(ownerId?: string | null): { modules: string; avatar: str
     avatar: STORAGE_KEYS.avatar,
     reports: STORAGE_KEYS.reportPreferences,
   };
-  const suffix = encodeURIComponent(ownerId.trim().toLowerCase());
+  const suffix = ownerId.trim().toLowerCase().replace(/[^a-zA-Z0-9.\-_]/g, '_');
   return {
     modules: `${STORAGE_KEYS.modulePreferencesAccountPrefix}${suffix}`,
     avatar: `${STORAGE_KEYS.avatarAccountPrefix}${suffix}`,

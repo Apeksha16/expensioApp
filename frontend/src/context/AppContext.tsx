@@ -28,10 +28,14 @@ import type {
 } from '../types';
 import { createSplitExpense } from '../utils/splits';
 import { updateLocalAccountEmail, type AuthResponse } from '../services/authApi';
-import { clearSession, readSession, writeSession } from '../core/storage/session';
+import { userApi } from '../services/api/userApi';
+import { authApi as backendAuthApi } from '../services/api/authApi';
+import { onboardingApi } from '../services/api/onboardingApi';
+import { clearSession, readSession, updateSession, writeSession } from '../core/storage/session';
 import { readLocalData, writeLocalData } from '../core/storage/localData';
 import { avatarPreferenceService } from '../services/avatarPreferenceService';
 import { profileService, type ProfileRecord } from '../services/profileService';
+import { onboardingDraftService } from '../services/onboardingDraftService';
 import { advancePaymentDate, localDateString, validateDate, validatePositiveAmount } from '../services/moneyService';
 import { colors } from '../theme';
 import { formatINR, formatTransactionDate } from '../utils/format';
@@ -119,10 +123,11 @@ export interface OnboardingDraft {
   lastName: string;
   email: string;
   phone: string;
-  employmentType: 'salaried' | 'business' | 'student' | 'retired' | 'homemaker' | '';
+  employmentType: 'salaried' | 'business' | 'student' | 'retired' | 'homemaker' | string;
   incomeRupees: string;
   cashRupees: string;
   savingsRupees: string;
+  currency?: string;
 }
 
 const colorsForFriend = ['#146B45', '#D97706', '#7C3AED', '#2563EB', '#DB2777'];
@@ -131,7 +136,7 @@ const AppContext = createContext<AppState | null>(null);
 
 function getAccountDataOwner(user: Pick<UserProfile, 'email' | 'phone'> | null | undefined): string | null {
   const identity = user?.phone?.trim() || user?.email?.trim().toLowerCase();
-  return identity || null;
+  return identity ? identity.replace(/[^a-zA-Z0-9.\-_]/g, '_') : null;
 }
 
 function isInCurrentMonth(transaction: Transaction, now = new Date()): boolean {
@@ -161,6 +166,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     firstName: '', lastName: '', email: '', phone: '', employmentType: '',
     incomeRupees: '', cashRupees: '', savingsRupees: '',
   });
+  const onboardingDraftRef = useRef<OnboardingDraft>(onboardingDraft);
+  onboardingDraftRef.current = onboardingDraft;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [preferences, setPreferences] = useState<ValidatedLocalPreferences>({
     preferredModuleIds: [...DEFAULT_PREFERRED_MODULE_IDS],
@@ -228,23 +235,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const session = await readSession();
       const sessionUser = session?.user as unknown as UserProfile | undefined;
       const ownerId = session?.dataOwnerId ?? getAccountDataOwner(sessionUser);
-      const [savedPreferences, storedProfile] = await Promise.all([
+      const [savedPreferences, storedProfile, storedDraft] = await Promise.all([
         getLocalPreferences(ownerId),
         profileService.getProfile(ownerId),
+        onboardingDraftService.getDraft(ownerId),
       ]);
       await restoreAccountData(ownerId);
       setPreferences(savedPreferences);
       const user = sessionUser;
-      const draft = session?.onboardingDraft as Partial<OnboardingDraft> | undefined;
+      const sessionDraft = session?.onboardingDraft as Partial<OnboardingDraft> | undefined;
       const sessionName = user?.name?.trim().split(/\s+/) ?? [];
-      const firstName = storedProfile.firstName || draft?.firstName || sessionName[0] || '';
-      const lastName = storedProfile.lastName || draft?.lastName || sessionName.slice(1).join(' ');
+      const firstName = storedProfile.firstName || storedDraft.firstName || sessionDraft?.firstName || sessionName[0] || '';
+      const lastName = storedProfile.lastName || storedDraft.lastName || sessionDraft?.lastName || sessionName.slice(1).join(' ');
+      const mobile = storedProfile.mobile || storedDraft.phone || user?.phone || sessionDraft?.phone || '';
+      const email = storedProfile.email || storedDraft.email || user?.email || sessionDraft?.email || '';
+      const employmentType = storedDraft.employmentType || sessionDraft?.employmentType || 'salaried';
+      const incomeRupees = storedDraft.incomeRupees || sessionDraft?.incomeRupees || '';
+      const cashRupees = storedDraft.cashRupees || sessionDraft?.cashRupees || '';
+      const savingsRupees = storedDraft.savingsRupees || sessionDraft?.savingsRupees || '';
+
       const nextProfileRecord: ProfileRecord = {
         firstName,
         lastName,
-        mobile: storedProfile.mobile || user?.phone || draft?.phone || '',
+        mobile,
         countryCode: storedProfile.countryCode || user?.countryCode || '+91',
-        email: storedProfile.email || user?.email || draft?.email || '',
+        email,
       };
       let nextPreferences = savedPreferences;
       if (nextProfileRecord.email && savedPreferences.reportEmail !== nextProfileRecord.email.toLowerCase()) {
@@ -280,17 +295,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCountryCode(user.countryCode || '+91');
       setPhoneVerified(session.phoneVerified === true);
       setEmailVerified(session.emailVerified === true);
-      if (draft) {
-        setOnboardingDraft((current) => ({ ...current, ...draft }));
-      }
-      if (nextProfileRecord.email) setOnboardingDraft((current) => ({ ...current, email: nextProfileRecord.email }));
-      if (nextProfileRecord.firstName || nextProfileRecord.lastName) {
-        setOnboardingDraft((current) => ({
-          ...current,
-          firstName: nextProfileRecord.firstName,
-          lastName: nextProfileRecord.lastName,
-        }));
-      }
+
+      const mergedDraft: OnboardingDraft = {
+        firstName,
+        lastName,
+        email,
+        phone: mobile,
+        employmentType,
+        incomeRupees,
+        cashRupees,
+        savingsRupees,
+      };
+      setOnboardingDraft(mergedDraft);
+      onboardingDraftRef.current = mergedDraft;
+
       setOnboardingStepState(session.onboardingStep || 1);
       setAuthPhase(session.isProfileComplete ? 'main' : 'setup');
     } catch (error) {
@@ -360,8 +378,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setVerificationReturnPhase('mobile');
       },
       updateOnboardingDraft: (draft) => {
-        const next = { ...onboardingDraft, ...draft };
-        setOnboardingDraft(next);
+        const ownerId = localDataOwnerRef.current;
+        setOnboardingDraft((current) => {
+          const next = { ...current, ...draft };
+          onboardingDraftRef.current = next;
+          void onboardingDraftService.saveDraft(next, ownerId);
+          void updateSession((session) => ({ ...session, onboardingDraft: next }));
+          return next;
+        });
         setProfileState((current) => ({
           ...current,
           firstName: draft.firstName ?? current.firstName,
@@ -369,16 +393,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           email: draft.email ?? current.email,
           mobile: draft.phone ?? current.mobile,
         }));
-        void readSession()
-          .then((session) => session ? writeSession({ ...session, onboardingDraft: next }) : undefined)
-          .catch((error: unknown) => showToast('error', error instanceof Error ? error.message : 'Unable to save onboarding details locally.'));
       },
       setOnboardingStep: (step) => {
         const nextStep = Math.min(4, Math.max(1, step));
         setOnboardingStepState(nextStep);
-        void readSession()
-          .then((session) => session ? writeSession({ ...session, onboardingStep: nextStep }) : undefined)
-          .catch((error: unknown) => showToast('error', error instanceof Error ? error.message : 'Unable to save onboarding progress locally.'));
+        void updateSession((session) => ({ ...session, onboardingStep: nextStep }));
       },
       profile,
       profileState,
@@ -418,6 +437,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setProfileState((current) => ({ ...current, ...updated }));
         setOnboardingDraft((current) => ({ ...current, firstName, lastName }));
         setProfile((current) => current ? { ...current, name: `${firstName} ${lastName}`.trim() } : current);
+        try {
+          await userApi.updateMe({ firstName, lastName });
+        } catch {
+          // Non-blocking: local profile update succeeded
+        }
       },
       saveReportPreferences: async (changes) => {
         const updated = await reportPreferenceService.saveReportPreferences(changes, localDataOwnerRef.current);
@@ -513,12 +537,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthPhase('main');
       },
       logout: async () => {
-        try {
-          await clearSession();
-        } catch (error) {
-          setRestoreError(error instanceof Error ? error.message : 'Unable to clear the local session.');
-          return;
-        }
+        const session = await readSession();
+        // Await server session revocation. Only if backend successfully revokes the session do we clean up locally.
+        await backendAuthApi.logout({ refreshToken: session?.refreshToken });
+        onboardingApi.clearCache();
+        await clearSession();
+        await onboardingDraftService.clearDraft(localDataOwnerRef.current);
+
         setProfile(null);
         localDataOwnerRef.current = null;
         setTransactions([]);
@@ -943,11 +968,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           countryCode,
           email: authenticatedUser.email || '',
         };
-        const [firstName = '', ...lastNameParts] = nextProfile.name.trim().split(/\s+/);
+        const rawName = (authenticatedUser.name || '').trim();
+        const isPlaceholderName = !rawName || rawName.toLowerCase() === 'expensio user' || rawName.toLowerCase() === 'expensio';
+        const [firstName = '', ...lastNameParts] = isPlaceholderName ? ['', ''] : rawName.split(/\s+/);
+        const cleanLastName = isPlaceholderName ? '' : lastNameParts.join(' ');
+        const cleanFirstName = firstName;
         const ownerId = getAccountDataOwner(nextProfile);
         const savedProfile = await profileService.saveProfile({
-          firstName,
-          lastName: lastNameParts.join(' '),
+          firstName: cleanFirstName,
+          lastName: cleanLastName,
           mobile: nextProfile.phone,
           countryCode: nextProfile.countryCode,
           email: nextProfile.email || '',
@@ -955,27 +984,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const nextPreferences = nextProfile.email
           ? await updateLocalPreferences({ reportEmail: nextProfile.email.toLowerCase() }, ownerId)
           : preferences;
+        let isFullyComplete = response.isProfileComplete === true &&
+          response.tokenType !== 'ONBOARDING' &&
+          response.onboardingStatus !== 'PENDING_ONBOARDING';
+
+        const currentDraft = onboardingDraftRef.current;
+
         await writeSession({
           accessToken: response.token,
+          refreshToken: response.refreshToken,
           user: nextProfile as unknown as Record<string, unknown>,
-          isProfileComplete: response.isProfileComplete === true,
+          isProfileComplete: isFullyComplete,
           phoneVerified: nextPhoneVerified,
           emailVerified: nextEmailVerified,
-          onboardingStep,
+          onboardingStep: isFullyComplete ? 4 : (onboardingStep || 1),
           dataOwnerId: getAccountDataOwner(nextProfile) ?? undefined,
+          onboardingDraft: currentDraft as unknown as Record<string, unknown>,
         });
+
+        let targetOnboardingStep = isFullyComplete ? 4 : (onboardingStep || 1);
+        if (!isFullyComplete && response.token) {
+          try {
+            const statusRes = await onboardingApi.getStatus();
+            if (statusRes?.data) {
+              const status = statusRes.data;
+              if (status.isProfileComplete) {
+                isFullyComplete = true;
+                targetOnboardingStep = 4;
+              } else if (status.currentStep === 'EMPLOYMENT') {
+                targetOnboardingStep = 2;
+              } else if (status.currentStep === 'FINANCIAL_PROFILE') {
+                targetOnboardingStep = 3;
+              } else if (status.currentStep === 'READY_TO_COMPLETE') {
+                targetOnboardingStep = 4;
+              }
+              await writeSession({
+                accessToken: response.token,
+                refreshToken: response.refreshToken,
+                user: nextProfile as unknown as Record<string, unknown>,
+                isProfileComplete: isFullyComplete,
+                phoneVerified: nextPhoneVerified,
+                emailVerified: nextEmailVerified,
+                onboardingStep: targetOnboardingStep,
+                dataOwnerId: getAccountDataOwner(nextProfile) ?? undefined,
+                onboardingDraft: currentDraft as unknown as Record<string, unknown>,
+              });
+            }
+          } catch {
+            // Keep default step if network fails
+          }
+        }
+
+        setOnboardingStepState(targetOnboardingStep);
         await restoreAccountData(getAccountDataOwner(nextProfile));
         setPreferences(nextPreferences);
         setProfile(nextProfile);
         setProfileState((current) => ({ ...current, ...savedProfile, ...nextPreferences }));
         setOnboardingDraft((current) => ({
           ...current,
-          firstName: authenticatedUser.name?.split(/\s+/)[0] || current.firstName,
-          lastName: authenticatedUser.name?.split(/\s+/).slice(1).join(' ') || current.lastName,
+          firstName: isPlaceholderName ? '' : (cleanFirstName || (current.firstName?.toLowerCase() === 'expensio' ? '' : current.firstName)),
+          lastName: isPlaceholderName ? '' : (cleanLastName || (current.lastName?.toLowerCase() === 'user' ? '' : current.lastName)),
           email: authenticatedUser.email || current.email,
           phone: authenticatedUser.phone || current.phone,
         }));
-        setAuthPhase(response.isProfileComplete ? 'main' : 'setup');
+        setAuthPhase(isFullyComplete ? 'main' : 'setup');
       },
       beginVerification: async (response, channel, target) => {
         if (!response.token || !response.user) {
@@ -1005,6 +1077,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : preferences;
         await writeSession({
           accessToken: response.token,
+          refreshToken: response.refreshToken,
           user: nextProfile as unknown as Record<string, unknown>,
           isProfileComplete: false,
           phoneVerified,

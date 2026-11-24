@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
-  Animated,
-  Alert,
   ActivityIndicator,
+  Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -22,9 +22,9 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { OtpInput } from '../../components/OtpInput';
 import { useApp } from '../../context/AppContext';
 import { OTP_RESEND_SECONDS } from '../../data/config';
+import { countryCodes } from '../../data/mock';
 import { sendEmailOtp, sendOtp, verifyEmailOtp, verifyOtp } from '../../services/authApi';
 import { maskEmail, maskPhone } from '../../utils/format';
 
@@ -32,6 +32,215 @@ export function OtpScreen() {
   const { verificationChannel } = useApp();
   return verificationChannel === 'email' ? <EmailOtpScreen /> : <PhoneOtpScreen />;
 }
+
+// ---------------------------------------------------------
+// Smooth 1-by-1 Animated OTP Input
+// ---------------------------------------------------------
+
+interface SmoothOtpInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onComplete?: (code: string) => void;
+  autoFocus?: boolean;
+  inputRef?: React.RefObject<React.ElementRef<typeof TextInput> | null>;
+}
+
+function SmoothOtpDigit({ char }: { char: string }) {
+  const scaleAnim = useRef(new Animated.Value(char ? 1 : 0.3)).current;
+  const opacityAnim = useRef(new Animated.Value(char ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (char) {
+      scaleAnim.setValue(0.3);
+      opacityAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 260,
+          friction: 14,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 130,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0.3);
+      opacityAnim.setValue(0);
+    }
+  }, [char, scaleAnim, opacityAnim]);
+
+  if (!char) return null;
+  return (
+    <Animated.Text
+      style={[
+        otpInputStyles.digit,
+        {
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
+        },
+      ]}
+    >
+      {char}
+    </Animated.Text>
+  );
+}
+
+function SmoothOtpSlotItem({
+  digit,
+  isFilled,
+}: {
+  digit: string;
+  isFilled: boolean;
+}) {
+  const fillAnim = useRef(new Animated.Value(isFilled ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(fillAnim, {
+      toValue: isFilled ? 1 : 0,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [isFilled, fillAnim]);
+
+  return (
+    <View style={otpInputStyles.slot}>
+      <SmoothOtpDigit char={digit} />
+      {/* Inactive base underline */}
+      <View style={otpInputStyles.baseUnderline} />
+      {/* Animated filled dark green underline */}
+      <Animated.View
+        style={[
+          otpInputStyles.filledUnderline,
+          { opacity: fillAnim },
+        ]}
+      />
+    </View>
+  );
+}
+
+function SmoothOtpInput({
+  value,
+  onChange,
+  onComplete,
+  autoFocus = true,
+  inputRef: externalRef,
+}: SmoothOtpInputProps) {
+  const localRef = useRef<React.ElementRef<typeof TextInput>>(null);
+  const inputRef = externalRef || localRef;
+  const [rowWidth, setRowWidth] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  const slideAnim = useRef(new Animated.Value(Math.min(value.length, 5))).current;
+  const cursorOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const targetSlot = Math.min(value.length, 5);
+    Animated.spring(slideAnim, {
+      toValue: targetSlot,
+      tension: 220,
+      friction: 18,
+      useNativeDriver: true,
+    }).start();
+  }, [value.length, slideAnim]);
+
+  useEffect(() => {
+    if (!isFocused) {
+      cursorOpacity.setValue(0);
+      return;
+    }
+    cursorOpacity.setValue(1);
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(cursorOpacity, { toValue: 0, duration: 480, useNativeDriver: true }),
+        Animated.timing(cursorOpacity, { toValue: 1, duration: 480, useNativeDriver: true }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [isFocused, cursorOpacity]);
+
+  const slotGap = 10;
+  const totalSlots = 6;
+  const slotWidth = rowWidth > 0 ? (rowWidth - (totalSlots - 1) * slotGap) / totalSlots : 0;
+  const step = slotWidth + slotGap;
+
+  return (
+    <Pressable
+      accessibilityLabel="Enter 6-digit verification code"
+      onPress={() => inputRef.current?.focus()}
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        if (w > 0) setRowWidth(w);
+      }}
+      style={otpInputStyles.slotsRow}
+    >
+      {Array.from({ length: 6 }, (_, index) => {
+        const digit = value[index] ?? '';
+        return (
+          <SmoothOtpSlotItem
+            key={index}
+            digit={digit}
+            isFilled={Boolean(digit)}
+          />
+        );
+      })}
+
+      {/* Smoothly gliding active indicator moving 1 by 1 across boxes */}
+      {rowWidth > 0 && isFocused && value.length < 6 && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            otpInputStyles.glider,
+            {
+              width: slotWidth,
+              transform: [
+                {
+                  translateX: slideAnim.interpolate({
+                    inputRange: [0, 1, 2, 3, 4, 5],
+                    outputRange: [0, step, step * 2, step * 3, step * 4, step * 5],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {/* Centered blinking vertical cursor */}
+          <Animated.View style={[otpInputStyles.gliderCursor, { opacity: cursorOpacity }]} />
+          {/* Active bottom underline that glides with the focus */}
+          <View style={otpInputStyles.gliderBar} />
+        </Animated.View>
+      )}
+
+      <TextInput
+        ref={inputRef}
+        autoFocus={autoFocus}
+        accessibilityLabel="Verification code"
+        value={value}
+        onChangeText={(text) => {
+          const cleaned = text.replace(/\D/g, '').slice(0, 6);
+          onChange(cleaned);
+          if (cleaned.length === 6) {
+            onComplete?.(cleaned);
+          }
+        }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        keyboardType="number-pad"
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
+        maxLength={6}
+        caretHidden
+        style={otpInputStyles.hiddenInput}
+      />
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------
+// Phone OTP Screen
+// ---------------------------------------------------------
 
 function PhoneOtpScreen() {
   const [fontsLoaded] = useFonts({
@@ -47,6 +256,7 @@ function PhoneOtpScreen() {
     countryCode,
     setAuthPhase,
     applyAuthSession,
+    verificationTarget,
   } = useApp();
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
@@ -54,7 +264,14 @@ function PhoneOtpScreen() {
   const [seconds, setSeconds] = useState(OTP_RESEND_SECONDS);
   const [resending, setResending] = useState(false);
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
-  const cursorOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -62,33 +279,29 @@ function PhoneOtpScreen() {
     return () => clearTimeout(timer);
   }, [seconds]);
 
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(cursorOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
-        Animated.timing(cursorOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [cursorOpacity]);
+  const countryIso = countryCodes.find((item) => item.dial === countryCode)?.code;
+  const isVerifyingRef = useRef(false);
 
   const verify = (value = otp) => {
-    if (loading) return;
+    if (loading || isVerifyingRef.current) return;
     if (value.length < 6) {
       setError('Enter the 6-digit code');
       return;
     }
 
+    isVerifyingRef.current = true;
     setLoading(true);
-    void verifyOtp(phone, value)
+    void verifyOtp(phone, value, countryIso)
       .then(async (response) => {
         await applyAuthSession(response);
       })
       .catch((requestError) => {
-        setError(requestError instanceof Error ? requestError.message : 'Unable to verify OTP');
+        setError(requestError instanceof Error ? requestError.message : 'Unable to verify code. Please check and try again.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        isVerifyingRef.current = false;
+      });
   };
 
   const resend = async () => {
@@ -96,14 +309,19 @@ function PhoneOtpScreen() {
     setResending(true);
     setError('');
     try {
-      const response = await sendOtp(phone);
-      if (response.debugOtp) {
-        Alert.alert('Development OTP', `Use ${response.debugOtp} to verify your number.`);
-      }
-      setSeconds(OTP_RESEND_SECONDS);
+      const rawPhone = (phone || verificationTarget || '').trim();
+      const activePhone = rawPhone.replace(/\D/g, '');
+      const response = await sendOtp(activePhone || rawPhone, countryIso);
+      setSeconds(response.resendCooldownSeconds || OTP_RESEND_SECONDS);
       setOtp('');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to resend code');
+      const errorMsg = requestError instanceof Error ? requestError.message : '';
+      const match = errorMsg.match(/wait\s+(\d+)\s+seconds/i);
+      if (match && match[1]) {
+        setSeconds(parseInt(match[1], 10));
+      } else {
+        setError(errorMsg || 'Unable to resend verification code. Please try again.');
+      }
     } finally {
       setResending(false);
     }
@@ -112,7 +330,7 @@ function PhoneOtpScreen() {
   const target = maskPhone(countryCode, phone);
 
   if (!fontsLoaded) {
-    return <View style={mobileOtpStyles.fontLoading}><ActivityIndicator color="#C8F169" /></View>;
+    return <View style={mobileOtpStyles.fontLoading}><ActivityIndicator color="#2E7D52" /></View>;
   }
 
   return (
@@ -152,7 +370,7 @@ function PhoneOtpScreen() {
           </View>
           <View style={mobileOtpStyles.hero}>
             <View style={mobileOtpStyles.keyTile}>
-              <Ionicons name="key-outline" size={25} color="#C8F169" />
+              <Ionicons name="key-outline" size={25} color="#38A169" />
             </View>
             <Text style={mobileOtpStyles.title}>
               Verify your{'\n'}
@@ -166,7 +384,7 @@ function PhoneOtpScreen() {
             >
               <Text style={mobileOtpStyles.target}>{target}</Text>
               <View style={mobileOtpStyles.editButton}>
-                <Ionicons name="pencil" size={14} color="#C8F169" />
+                <Ionicons name="pencil" size={14} color="#38A169" />
               </View>
             </Pressable>
           </View>
@@ -179,58 +397,34 @@ function PhoneOtpScreen() {
           <View style={mobileOtpStyles.spacer} />
           <View style={mobileOtpStyles.codeCard}>
             <Text style={mobileOtpStyles.codeLabel}>VERIFICATION CODE</Text>
-            <Pressable
-              accessibilityLabel="Enter 6-digit verification code"
-              onPress={() => inputRef.current?.focus()}
-              style={mobileOtpStyles.slotsRow}
-            >
-              {Array.from({ length: 6 }, (_, index) => {
-                const digit = otp[index] ?? '';
-                const isCurrent = index === Math.min(otp.length, 5) && !digit;
-                return (
-                  <View
-                    key={index}
-                    style={[
-                      mobileOtpStyles.slot,
-                      digit ? mobileOtpStyles.slotFilled : null,
-                      isCurrent ? mobileOtpStyles.slotFocused : null,
-                    ]}
-                  >
-                    {digit ? <Text style={mobileOtpStyles.digit}>{digit}</Text> : null}
-                    {isCurrent ? <Animated.View style={[mobileOtpStyles.cursor, { opacity: cursorOpacity }]} /> : null}
-                  </View>
-                );
-              })}
-              <TextInput
-                ref={inputRef}
-                accessibilityLabel="Verification code"
-                value={otp}
-                onChangeText={(value) => {
-                  const cleaned = value.replace(/\D/g, '').slice(0, 6);
-                  setOtp(cleaned);
-                  if (error) setError('');
-                  if (cleaned.length === 6 && !loading) verify(cleaned);
-                }}
-                keyboardType="number-pad"
-                autoComplete="one-time-code"
-                textContentType="oneTimeCode"
-                maxLength={6}
-                caretHidden
-                style={mobileOtpStyles.hiddenInput}
-              />
-            </Pressable>
+            <SmoothOtpInput
+              value={otp}
+              onChange={(value) => {
+                setOtp(value);
+                if (error) setError('');
+              }}
+              onComplete={(code) => {
+                if (!loading) verify(code);
+              }}
+              inputRef={inputRef}
+            />
             {error ? <Text accessibilityRole="alert" style={mobileOtpStyles.error}>{error}</Text> : null}
             <View style={mobileOtpStyles.resendRow}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={seconds > 0 ? `Resend code in ${seconds} seconds` : 'Resend code'}
-                accessibilityState={{ disabled: seconds > 0 || resending }}
-                onPress={() => void resend()}
-                disabled={seconds > 0 || resending}
-                style={mobileOtpStyles.resendButton}
-              >
-                <Text style={mobileOtpStyles.resend}>{resending ? 'Sending…' : 'Resend code'}</Text>
-              </Pressable>
+              {seconds > 0 ? (
+                <Text style={mobileOtpStyles.resendMuted}>
+                  Resend code in <Text style={mobileOtpStyles.seconds}>{seconds}s</Text>
+                </Text>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Resend verification code"
+                  onPress={() => void resend()}
+                  disabled={resending}
+                  style={mobileOtpStyles.resendButton}
+                >
+                  <Text style={mobileOtpStyles.resendLink}>{resending ? 'Sending…' : 'Resend code'}</Text>
+                </Pressable>
+              )}
             </View>
           </View>
           <Pressable
@@ -245,13 +439,10 @@ function PhoneOtpScreen() {
             disabled={otp.length < 6 || loading}
           >
             {loading ? <ActivityIndicator color={otp.length === 6 ? '#0B2B1F' : '#8FA698'} /> : (
-              <>
-                <Text style={[
-                  mobileOtpStyles.verifyLabel,
-                  otp.length !== 6 && mobileOtpStyles.verifyLabelDisabled,
-                ]}>Verify &amp; Continue</Text>
-                <Ionicons name="arrow-forward" size={20} color={otp.length === 6 ? '#0B2B1F' : '#8FA698'} />
-              </>
+              <Text style={[
+                mobileOtpStyles.verifyLabel,
+                otp.length !== 6 && mobileOtpStyles.verifyLabelDisabled,
+              ]}>Verify &amp; Continue</Text>
             )}
           </Pressable>
         </ScrollView>
@@ -259,6 +450,10 @@ function PhoneOtpScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+// ---------------------------------------------------------
+// Email OTP Screen
+// ---------------------------------------------------------
 
 function EmailOtpScreen() {
   const [fontsLoaded] = useFonts({
@@ -273,26 +468,17 @@ function EmailOtpScreen() {
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [seconds, setSeconds] = useState(30);
+  const [seconds, setSeconds] = useState(OTP_RESEND_SECONDS);
   const [resending, setResending] = useState(false);
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
-  const [focused, setFocused] = useState(false);
-  const cursorOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!focused) {
-      cursorOpacity.setValue(1);
-      return;
-    }
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(cursorOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
-        Animated.timing(cursorOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [cursorOpacity, focused]);
+    inputRef.current?.focus();
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -300,12 +486,19 @@ function EmailOtpScreen() {
     return () => clearTimeout(timer);
   }, [seconds]);
 
-  const verify = async () => {
-    if (loading || otp.length !== 6) return;
+  const isVerifyingRef = useRef(false);
+
+  const verify = async (value = otp) => {
+    if (loading || isVerifyingRef.current) return;
+    if (value.length !== 6) {
+      setError('Enter the complete 6-digit code');
+      return;
+    }
+    isVerifyingRef.current = true;
     setLoading(true);
     setError('');
     try {
-      const response = await verifyEmailOtp(verificationTarget, otp);
+      const response = await verifyEmailOtp(verificationTarget, value);
       await applyAuthSession(response);
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : '';
@@ -315,6 +508,7 @@ function EmailOtpScreen() {
         : message || 'Unable to verify code. Try again.');
     } finally {
       setLoading(false);
+      isVerifyingRef.current = false;
       inputRef.current?.focus();
     }
   };
@@ -328,22 +522,27 @@ function EmailOtpScreen() {
       if (response.debugOtp) {
         Alert.alert('Development OTP', `Use ${response.debugOtp} to verify your email.`);
       }
-      setSeconds(30);
+      setSeconds(OTP_RESEND_SECONDS);
       setOtp('');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to resend code.');
+      const errorMsg = requestError instanceof Error ? requestError.message : '';
+      const match = errorMsg.match(/wait\s+(\d+)\s+seconds/i);
+      if (match && match[1]) {
+        setSeconds(parseInt(match[1], 10));
+      } else {
+        setError(errorMsg || 'Unable to resend code.');
+      }
     } finally {
       setResending(false);
     }
   };
 
   const maskedEmail = maskEmail(verificationTarget);
-  const activeSlot = Math.min(otp.length, 5);
 
   if (!fontsLoaded) {
     return (
       <View style={emailStyles.fontLoading}>
-        <ActivityIndicator color="#C8F169" />
+        <ActivityIndicator color="#2E7D52" />
       </View>
     );
   }
@@ -386,7 +585,7 @@ function EmailOtpScreen() {
 
           <View style={emailStyles.hero}>
             <View style={emailStyles.mailBadge}>
-              <Ionicons name="mail-outline" size={24} color="#C8F169" />
+              <Ionicons name="mail-outline" size={24} color="#38A169" />
             </View>
             <Text style={emailStyles.title}>
               Check your{'\n'}
@@ -400,7 +599,7 @@ function EmailOtpScreen() {
                 onPress={() => setAuthPhase(verificationReturnPhase)}
                 style={emailStyles.editButton}
               >
-                <Ionicons name="pencil" size={14} color="#C8F169" />
+                <Ionicons name="pencil" size={14} color="#38A169" />
               </Pressable>
             </View>
           </View>
@@ -416,46 +615,17 @@ function EmailOtpScreen() {
 
           <View style={emailStyles.codeCard}>
             <Text style={emailStyles.codeLabel}>VERIFICATION CODE</Text>
-            <Pressable
-              accessibilityLabel="Enter 6-digit verification code"
-              onPress={() => inputRef.current?.focus()}
-              style={emailStyles.slotsRow}
-            >
-              {Array.from({ length: 6 }, (_, index) => {
-                const digit = otp[index] ?? '';
-                const isCurrent = focused && index === activeSlot && !digit;
-                return (
-                  <View
-                    key={index}
-                    style={[
-                      emailStyles.slot,
-                      digit ? emailStyles.slotFilled : null,
-                      isCurrent ? emailStyles.slotFocused : null,
-                    ]}
-                  >
-                    {digit ? <Text style={emailStyles.digit}>{digit}</Text> : null}
-                    {isCurrent ? <Animated.View style={[emailStyles.cursor, { opacity: cursorOpacity }]} /> : null}
-                  </View>
-                );
-              })}
-              <TextInput
-                ref={inputRef}
-                accessibilityLabel="Verification code"
-                value={otp}
-                onChangeText={(value) => {
-                  setOtp(value.replace(/\D/g, '').slice(0, 6));
-                  if (error) setError('');
-                }}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                keyboardType="number-pad"
-                autoComplete="one-time-code"
-                textContentType="oneTimeCode"
-                maxLength={6}
-                style={emailStyles.hiddenInput}
-                caretHidden
-              />
-            </Pressable>
+            <SmoothOtpInput
+              value={otp}
+              onChange={(value) => {
+                setOtp(value);
+                if (error) setError('');
+              }}
+              onComplete={(code) => {
+                if (!loading) verify(code);
+              }}
+              inputRef={inputRef}
+            />
             {error ? <Text accessibilityRole="alert" style={emailStyles.error}>{error}</Text> : null}
             <Text style={emailStyles.helper}>Can't find it? Check your spam or promotions folder.</Text>
             <View style={emailStyles.resendRow}>
@@ -486,15 +656,9 @@ function EmailOtpScreen() {
             style={[emailStyles.verifyButton, otp.length === 6 && emailStyles.verifyEnabled]}
           >
             {loading ? (
-              <>
-                <Text style={[emailStyles.verifyText, otp.length !== 6 && emailStyles.verifyTextDisabled]}>Verify &amp; Continue</Text>
-                <ActivityIndicator size="small" color={otp.length === 6 ? '#0B2B1F' : '#8FA698'} />
-              </>
+              <ActivityIndicator color={otp.length === 6 ? '#0B2B1F' : '#8FA698'} />
             ) : (
-              <>
-                <Text style={[emailStyles.verifyText, otp.length !== 6 && emailStyles.verifyTextDisabled]}>Verify &amp; Continue</Text>
-                <Ionicons name="arrow-forward" size={20} color={otp.length === 6 ? '#0B2B1F' : '#8FA698'} />
-              </>
+              <Text style={[emailStyles.verifyText, otp.length !== 6 && emailStyles.verifyTextDisabled]}>Verify &amp; Continue</Text>
             )}
           </Pressable>
         </ScrollView>
@@ -503,256 +667,11 @@ function EmailOtpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B2B1F' },
-  container: { flexGrow: 1, paddingHorizontal: 20 },
-  decoration: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
-  outerRing: {
-    position: 'absolute',
-    width: 416,
-    height: 416,
-    borderRadius: 208,
-    borderWidth: 1.5,
-    borderColor: 'rgba(200,241,105,0.16)',
-    top: 210,
-    right: -208,
-  },
-  middleRing: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    borderWidth: 1.5,
-    borderColor: 'rgba(200,241,105,0.12)',
-    top: 268,
-    right: -150,
-  },
-  innerDisc: {
-    position: 'absolute',
-    width: 184,
-    height: 184,
-    borderRadius: 92,
-    backgroundColor: 'rgba(200,241,105,0.07)',
-    top: 326,
-    right: -92,
-  },
-  header: {
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#2B5644',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSpacer: { width: 40, height: 40 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandMark: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: '#C8F169',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandMarkText: { color: '#0B2B1F', fontSize: 17, fontWeight: '800' },
-  brandText: { color: '#F3F1E7', fontSize: 19, fontWeight: '700', letterSpacing: -0.3 },
-  hero: { marginTop: 36, paddingHorizontal: 4 },
-  keyTile: {
-    width: 52,
-    height: 52,
-    borderRadius: 15,
-    backgroundColor: 'rgba(200,241,105,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(200,241,105,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-  title: {
-    color: '#F3F1E7',
-    fontSize: 40,
-    lineHeight: 40,
-    fontWeight: '800',
-    letterSpacing: -1.5,
-  },
-  titleAccent: { color: '#C8F169' },
-  subtitle: { color: '#B7C9BC', fontSize: 15, lineHeight: 22, marginTop: 14 },
-  target: { color: '#F3F1E7', fontWeight: '700' },
-  changeButton: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 11 },
-  changeArrow: { color: '#C8F169', fontSize: 19 },
-  changeText: {
-    color: '#C8F169',
-    fontSize: 14,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
-  spacer: { flex: 1, minHeight: 28 },
-  codeCard: {
-    backgroundColor: '#F3F1E7',
-    borderRadius: 24,
-    padding: 16,
-    minHeight: 158,
-  },
-  codeLabel: { color: '#0B2B1F', fontSize: 13, fontWeight: '700', marginBottom: 11 },
-  codeCell: {
-    height: 54,
-    borderRadius: 12,
-    borderColor: '#CBD2C2',
-    backgroundColor: '#FFFFFF',
-    fontSize: 24,
-    color: '#0B2B1F',
-  },
-  error: { color: '#B3261E', fontSize: 12, marginTop: 8 },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  resendMuted: { color: '#4B5A50', fontSize: 12 },
-  resendTimer: { color: '#0B2B1F', fontWeight: '700' },
-  resend: { color: '#0B2B1F', fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
-  hint: { color: '#4B5A50', fontSize: 12 },
-  verifyButton: {
-    height: 54,
-    marginTop: 14,
-    borderRadius: 27,
-    backgroundColor: '#1E4132',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  verifyReady: { backgroundColor: '#C8F169' },
-  verifyLabel: { color: '#8FA698', fontSize: 16, fontWeight: '800' },
-});
+// ---------------------------------------------------------
+// Styles
+// ---------------------------------------------------------
 
-const emailStyles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B2B1F' },
-  fontLoading: { flex: 1, backgroundColor: '#0B2B1F', alignItems: 'center', justifyContent: 'center' },
-  container: { flexGrow: 1, paddingHorizontal: 20 },
-  decoration: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
-  outerRing: {
-    position: 'absolute',
-    width: 416,
-    height: 416,
-    borderRadius: 208,
-    borderWidth: 1.5,
-    borderColor: 'rgba(200,241,105,0.16)',
-    top: 120,
-    right: -208,
-  },
-  middleRing: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    borderWidth: 1.5,
-    borderColor: 'rgba(200,241,105,0.12)',
-    top: 178,
-    right: -150,
-  },
-  innerDisc: {
-    position: 'absolute',
-    width: 184,
-    height: 184,
-    borderRadius: 92,
-    backgroundColor: 'rgba(200,241,105,0.07)',
-    top: 236,
-    right: -92,
-  },
-  header: {
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#2B5644',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSpacer: { width: 44, height: 44 },
-  progress: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  progressPill: { width: 22, height: 4, borderRadius: 2, backgroundColor: '#C8F169' },
-  hero: { marginTop: 28, paddingHorizontal: 4, gap: 16 },
-  mailBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2B5644',
-    backgroundColor: 'rgba(200,241,105,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    color: '#F3F1E7',
-    fontSize: 38,
-    lineHeight: 40,
-    fontWeight: '800',
-    letterSpacing: -1.4,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-  },
-  titleAccent: { color: '#C8F169' },
-  subtitle: { color: '#B7C9BC', fontSize: 16, lineHeight: 24, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-  emailChip: {
-    height: 36,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingLeft: 14,
-    paddingRight: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#2B5644',
-    backgroundColor: 'rgba(243,241,231,0.08)',
-  },
-  emailText: { color: '#F3F1E7', fontSize: 15, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  editButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(200,241,105,0.14)',
-  },
-  trustNote: {
-    marginTop: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 4,
-  },
-  trustText: { flex: 1, color: '#6E8577', fontSize: 13, lineHeight: 18, fontFamily: 'PlusJakartaSans_400Regular' },
-  spacer: { flex: 1, minHeight: 20 },
-  codeCard: {
-    backgroundColor: '#F3F1E7',
-    borderRadius: 28,
-    paddingHorizontal: 18,
-    paddingTop: 22,
-    paddingBottom: 10,
-    gap: 14,
-  },
-  codeLabel: {
-    color: '#4B5A50',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    fontFamily: 'PlusJakartaSans_700Bold',
-  },
+const otpInputStyles = StyleSheet.create({
   slotsRow: {
     position: 'relative',
     flexDirection: 'row',
@@ -764,49 +683,67 @@ const emailStyles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     height: 52,
-    borderBottomWidth: 3,
-    borderBottomColor: '#D7DBC9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  baseUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#D7DBC9',
+  },
+  filledUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#0B2B1F',
+  },
+  glider: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slotFocused: { borderBottomColor: '#0B2B1F' },
-  slotFilled: { borderBottomColor: '#C8F169' },
-  digit: { color: '#0B2B1F', fontSize: 25, fontWeight: '800', textAlign: 'center', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  cursor: { width: 2, height: 24, backgroundColor: '#0B2B1F' },
-  hiddenInput: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0,
-    left: 0,
-    top: 0,
+  gliderCursor: {
+    width: 2,
+    height: 24,
+    borderRadius: 1,
+    backgroundColor: '#0B2B1F',
   },
-  helper: { color: '#4B5A50', fontSize: 12.5, lineHeight: 18, fontFamily: 'PlusJakartaSans_400Regular' },
-  error: { color: '#B3261E', fontSize: 13, lineHeight: 18, marginTop: -4, fontFamily: 'PlusJakartaSans_400Regular' },
-  resendRow: { minHeight: 36, justifyContent: 'center' },
-  resendMuted: { color: '#4B5A50', fontSize: 14, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-  seconds: { color: '#0B2B1F', fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  resendButton: { minHeight: 36, justifyContent: 'center', alignSelf: 'flex-start' },
-  resendLink: {
+  gliderBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#0B2B1F',
+  },
+  digit: {
     color: '#0B2B1F',
-    fontSize: 14,
+    fontSize: 25,
     fontWeight: '800',
-    textDecorationLine: 'underline',
+    textAlign: 'center',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
   },
-  verifyButton: {
-    height: 60,
-    marginTop: 16,
-    borderRadius: 30,
-    backgroundColor: '#1E4132',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+  hiddenInput: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    color: 'transparent',
   },
-  verifyEnabled: { backgroundColor: '#C8F169' },
-  verifyText: { color: '#0B2B1F', fontSize: 17, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  verifyTextDisabled: { color: '#8FA698' },
 });
 
 const mobileOtpStyles = StyleSheet.create({
@@ -820,7 +757,7 @@ const mobileOtpStyles = StyleSheet.create({
     height: 416,
     borderRadius: 208,
     borderWidth: 1.5,
-    borderColor: 'rgba(200,241,105,0.16)',
+    borderColor: 'rgba(46,125,82,0.18)',
     top: 120,
     right: -208,
   },
@@ -830,7 +767,7 @@ const mobileOtpStyles = StyleSheet.create({
     height: 300,
     borderRadius: 150,
     borderWidth: 1.5,
-    borderColor: 'rgba(200,241,105,0.12)',
+    borderColor: 'rgba(46,125,82,0.14)',
     top: 178,
     right: -150,
   },
@@ -839,7 +776,7 @@ const mobileOtpStyles = StyleSheet.create({
     width: 184,
     height: 184,
     borderRadius: 92,
-    backgroundColor: 'rgba(200,241,105,0.07)',
+    backgroundColor: 'rgba(46,125,82,0.08)',
     top: 236,
     right: -92,
   },
@@ -860,7 +797,7 @@ const mobileOtpStyles = StyleSheet.create({
   },
   headerSpacer: { width: 44, height: 44 },
   progress: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  progressPill: { width: 22, height: 4, borderRadius: 2, backgroundColor: '#C8F169' },
+  progressPill: { width: 22, height: 4, borderRadius: 2, backgroundColor: '#2E7D52' },
   hero: { marginTop: 28, paddingHorizontal: 4, gap: 16 },
   keyTile: {
     width: 52,
@@ -868,7 +805,7 @@ const mobileOtpStyles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#2B5644',
-    backgroundColor: 'rgba(200,241,105,0.1)',
+    backgroundColor: 'rgba(46,125,82,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -880,7 +817,7 @@ const mobileOtpStyles = StyleSheet.create({
     letterSpacing: -1.4,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
   },
-  titleAccent: { color: '#C8F169' },
+  titleAccent: { color: '#38A169' },
   subtitle: {
     color: '#B7C9BC',
     fontSize: 16,
@@ -908,7 +845,7 @@ const mobileOtpStyles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(200,241,105,0.14)',
+    backgroundColor: 'rgba(46,125,82,0.18)',
   },
   trustNote: {
     marginTop: 26,
@@ -934,31 +871,12 @@ const mobileOtpStyles = StyleSheet.create({
     letterSpacing: 1.2,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
-  slotsRow: {
-    position: 'relative',
-    flexDirection: 'row',
-    gap: 10,
-    height: 52,
-    alignItems: 'stretch',
-  },
-  slot: {
-    flex: 1,
-    minWidth: 0,
-    height: 52,
-    borderBottomWidth: 3,
-    borderBottomColor: '#D7DBC9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  slotFocused: { borderBottomColor: '#0B2B1F' },
-  slotFilled: { borderBottomColor: '#C8F169' },
-  digit: { color: '#0B2B1F', fontSize: 25, fontWeight: '800', textAlign: 'center', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  cursor: { width: 2, height: 24, backgroundColor: '#0B2B1F' },
-  hiddenInput: { position: 'absolute', width: 1, height: 1, opacity: 0, left: 0, top: 0 },
   error: { color: '#B3261E', fontSize: 13, lineHeight: 18, fontFamily: 'PlusJakartaSans_400Regular' },
   resendRow: { minHeight: 36, justifyContent: 'center' },
+  resendMuted: { color: '#4B5A50', fontSize: 14, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
+  seconds: { color: '#0B2B1F', fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
   resendButton: { minHeight: 36, justifyContent: 'center', alignSelf: 'flex-start' },
-  resend: {
+  resendLink: {
     color: '#0B2B1F',
     fontSize: 14,
     fontWeight: '800',
@@ -978,4 +896,151 @@ const mobileOtpStyles = StyleSheet.create({
   verifyEnabled: { backgroundColor: '#C8F169' },
   verifyLabel: { color: '#0B2B1F', fontSize: 17, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
   verifyLabelDisabled: { color: '#8FA698' },
+});
+
+const emailStyles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#0B2B1F' },
+  fontLoading: { flex: 1, backgroundColor: '#0B2B1F', alignItems: 'center', justifyContent: 'center' },
+  container: { flexGrow: 1, paddingHorizontal: 20 },
+  decoration: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
+  outerRing: {
+    position: 'absolute',
+    width: 416,
+    height: 416,
+    borderRadius: 208,
+    borderWidth: 1.5,
+    borderColor: 'rgba(46,125,82,0.18)',
+    top: 120,
+    right: -208,
+  },
+  middleRing: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    borderWidth: 1.5,
+    borderColor: 'rgba(46,125,82,0.14)',
+    top: 178,
+    right: -150,
+  },
+  innerDisc: {
+    position: 'absolute',
+    width: 184,
+    height: 184,
+    borderRadius: 92,
+    backgroundColor: 'rgba(46,125,82,0.08)',
+    top: 236,
+    right: -92,
+  },
+  header: {
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#2B5644',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSpacer: { width: 44, height: 44 },
+  progress: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  progressPill: { width: 22, height: 4, borderRadius: 2, backgroundColor: '#2E7D52' },
+  hero: { marginTop: 28, paddingHorizontal: 4, gap: 16 },
+  mailBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2B5644',
+    backgroundColor: 'rgba(46,125,82,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    color: '#F3F1E7',
+    fontSize: 38,
+    lineHeight: 40,
+    fontWeight: '800',
+    letterSpacing: -1.4,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+  },
+  titleAccent: { color: '#38A169' },
+  subtitle: { color: '#B7C9BC', fontSize: 16, lineHeight: 24, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
+  emailChip: {
+    height: 36,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 14,
+    paddingRight: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#2B5644',
+    backgroundColor: 'rgba(243,241,231,0.08)',
+  },
+  emailText: { color: '#F3F1E7', fontSize: 15, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  editButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(46,125,82,0.18)',
+  },
+  trustNote: {
+    marginTop: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 4,
+  },
+  trustText: { flex: 1, color: '#6E8577', fontSize: 13, lineHeight: 18, fontFamily: 'PlusJakartaSans_400Regular' },
+  spacer: { flex: 1, minHeight: 20 },
+  codeCard: {
+    backgroundColor: '#F3F1E7',
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 10,
+    gap: 14,
+  },
+  codeLabel: {
+    color: '#4B5A50',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  error: { color: '#B3261E', fontSize: 13, lineHeight: 18, marginTop: -4, fontFamily: 'PlusJakartaSans_400Regular' },
+  resendRow: { minHeight: 36, justifyContent: 'center' },
+  resendMuted: { color: '#4B5A50', fontSize: 14, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
+  seconds: { color: '#0B2B1F', fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  resendButton: { minHeight: 36, justifyContent: 'center', alignSelf: 'flex-start' },
+  resendLink: {
+    color: '#0B2B1F',
+    fontSize: 14,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+  },
+  verifyButton: {
+    height: 60,
+    marginTop: 16,
+    borderRadius: 30,
+    backgroundColor: '#1E4132',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  verifyEnabled: { backgroundColor: '#C8F169' },
+  verifyText: { color: '#0B2B1F', fontSize: 17, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  verifyTextDisabled: { color: '#8FA698' },
+  helper: { color: '#4B5A50', fontSize: 12.5, lineHeight: 18, fontFamily: 'PlusJakartaSans_400Regular' },
 });

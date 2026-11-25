@@ -1,39 +1,31 @@
 import assert from 'node:assert/strict';
+import Module from 'node:module';
 import test from 'node:test';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
-const buildDir = '/tmp/expensio-friends-test-dist';
-const loadModule = (relPath) =>
-  import(pathToFileURL(path.join(buildDir, relPath)).href);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const buildDir = path.resolve(__dirname, '../.test-dist/cjs');
+const req = Module.createRequire(import.meta.url);
+const loadModule = (relPath) => req(path.join(buildDir, relPath));
 
-const [
-  { ApiError },
-  { isRetryableFriendsReadError, normalizeFriendsError },
-  { createDebouncedSearchController },
-  {
-    createParticipantSnapshotMap,
-    createPendingActionTracker,
-    filterDefensivelyForSearch,
-    filterFriendshipsByQuery,
-    friendshipsToSelectableFriends,
-    hashToneIndex,
-    isGuestOwnedByUser,
-    partitionFriendships,
-    suggestUsernameSlug,
-  },
-  { FriendsSyncController },
-  { computeSplitBalances, getFriendMeta },
-  { formatClockTime, formatCompactAge },
-] = await Promise.all([
-  loadModule('services/api/apiError.js'),
-  loadModule('services/api/friendsErrors.js'),
-  loadModule('services/friendsSearch.js'),
-  loadModule('services/friendsStore.js'),
-  loadModule('services/friendsSync.js'),
-  loadModule('utils/splits.js'),
-  loadModule('utils/format.js'),
-]);
+const { ApiError } = loadModule('services/api/apiError.js');
+const { isRetryableFriendsReadError, normalizeFriendsError } = loadModule('services/api/friendsErrors.js');
+const { createDebouncedSearchController } = loadModule('services/friendsSearch.js');
+const {
+  createParticipantSnapshotMap,
+  createPendingActionTracker,
+  filterDefensivelyForSearch,
+  filterFriendshipsByQuery,
+  friendshipsToSelectableFriends,
+  hashToneIndex,
+  isGuestOwnedByUser,
+  partitionFriendships,
+  suggestUsernameSlug,
+} = loadModule('services/friendsStore.js');
+const { FriendsSyncController } = loadModule('services/friendsSync.js');
+const { computeSplitBalances, getFriendMeta } = loadModule('utils/splits.js');
+const { formatClockTime, formatCompactAge } = loadModule('utils/format.js');
 
 function makeFriendship(overrides = {}) {
   const {

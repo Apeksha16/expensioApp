@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import Module from 'node:module';
 
-const distDir = '/tmp/expensio-auth-test-dist';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distDir = path.resolve(__dirname, '../.test-dist/cjs');
 
 // In-memory SecureStore + React Native stub before loading compiled modules
 const secureStoreMap = new Map();

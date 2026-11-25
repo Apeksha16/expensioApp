@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FRIENDS_CONFIG } from '../config/friendsConfig';
@@ -18,6 +18,7 @@ interface PersonSheetProps {
   onViewSplits?: () => void;
   onEditAvatar?: (friendship: Friendship) => void;
   onRemove: (friendship: Friendship) => void;
+  returnFocusRef?: React.RefObject<any>;
 }
 
 export function PersonSheet({
@@ -28,6 +29,7 @@ export function PersonSheet({
   onViewSplits,
   onEditAvatar,
   onRemove,
+  returnFocusRef,
 }: PersonSheetProps) {
   if (!friendship) return null;
 
@@ -43,6 +45,7 @@ export function PersonSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
+      returnFocusRef={returnFocusRef}
       accessibilityLabel={`Options for ${safeName}`}
     >
       <View style={styles.hero}>

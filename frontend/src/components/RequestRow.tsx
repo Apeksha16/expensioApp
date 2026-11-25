@@ -1,6 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import React, { useCallback, useSyncExternalStore } from 'react';
+import {
+  AccessibilityActionEvent,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import type { FriendRowInteractionStore } from '../services/friendRowInteractionStore';
 import { formatHandle, sanitizeDisplayText } from '../services/friendsStore';
 import { colors, layout, radius, spacing, typography } from '../theme';
 import type { Friendship } from '../types/friends';
@@ -13,22 +21,69 @@ interface RequestRowProps {
   onAccept?: () => void;
   onDecline?: () => void;
   onCancel?: () => void;
+  onAcceptItem?: (friendshipId: string) => void;
+  onDeclineItem?: (friendshipId: string) => void;
+  onCancelItem?: (friendshipId: string) => void;
   loading?: boolean;
+  interactionStore?: FriendRowInteractionStore;
   cardPosition?: GroupedCardPosition;
   showTopDivider?: boolean;
 }
+
+const noopUnsubscribe = () => () => {};
+const alwaysFalse = () => false;
 
 export const RequestRow = React.memo(function RequestRow({
   friendship,
   onAccept,
   onDecline,
   onCancel,
+  onAcceptItem,
+  onDeclineItem,
+  onCancelItem,
   loading = false,
+  interactionStore,
   cardPosition,
   showTopDivider = false,
 }: RequestRowProps) {
-  const { person, direction, createdAt } = friendship;
+  const { friendshipId, person, direction, createdAt } = friendship;
   const isIncoming = direction === 'INCOMING';
+
+  const subscribe = interactionStore ? interactionStore.subscribe : noopUnsubscribe;
+  const getPending = useCallback(
+    () => (interactionStore ? interactionStore.isPending(friendshipId) : false),
+    [friendshipId, interactionStore],
+  );
+  const storePending = useSyncExternalStore(subscribe, interactionStore ? getPending : alwaysFalse);
+  const resolvedLoading = loading || storePending;
+
+  const handleAccept = useCallback(() => {
+    if (resolvedLoading) return;
+    if (onAcceptItem) {
+      onAcceptItem(friendshipId);
+      return;
+    }
+    onAccept?.();
+  }, [friendshipId, onAccept, onAcceptItem, resolvedLoading]);
+
+  const handleDecline = useCallback(() => {
+    if (resolvedLoading) return;
+    if (onDeclineItem) {
+      onDeclineItem(friendshipId);
+      return;
+    }
+    onDecline?.();
+  }, [friendshipId, onDecline, onDeclineItem, resolvedLoading]);
+
+  const handleCancel = useCallback(() => {
+    if (resolvedLoading) return;
+    if (onCancelItem) {
+      onCancelItem(friendshipId);
+      return;
+    }
+    onCancel?.();
+  }, [friendshipId, onCancel, onCancelItem, resolvedLoading]);
+
   const safeName = sanitizeDisplayText(person.displayName) || 'Expensio user';
   const handle = formatHandle(person.username);
   const age = formatCompactAge(createdAt);
@@ -38,16 +93,38 @@ export const RequestRow = React.memo(function RequestRow({
     : [handle, age ? `Sent ${age}` : 'Pending'].filter(Boolean).join(' · ');
 
   const unitLabel = isIncoming
-    ? `${safeName}, ${handle}, incoming request${age ? `, ${age}` : ''}. Actions: Accept, Decline.`
-    : `${safeName}, ${handle}, sent request pending${age ? `, sent ${age}` : ''}. Action: Cancel.`;
+    ? `${safeName}, ${handle}, incoming request${age ? `, ${age}` : ''}`
+    : `${safeName}, ${handle}, sent request pending${age ? `, sent ${age}` : ''}`;
+
+  const accessibilityActions = isIncoming
+    ? [
+        { name: 'accept', label: `Accept request from ${safeName}` },
+        { name: 'decline', label: `Decline request from ${safeName}` },
+      ]
+    : [{ name: 'cancel', label: `Cancel request to ${safeName}` }];
+
+  const handleAccessibilityAction = useCallback(
+    (event: AccessibilityActionEvent) => {
+      if (event.nativeEvent.actionName === 'accept') {
+        handleAccept();
+      } else if (event.nativeEvent.actionName === 'decline') {
+        handleDecline();
+      } else if (event.nativeEvent.actionName === 'cancel') {
+        handleCancel();
+      }
+    },
+    [handleAccept, handleCancel, handleDecline],
+  );
 
   const inner = (
     <View>
       {showTopDivider ? <View style={styles.topDivider} /> : null}
       <View
-        accessible={false}
+        accessible={true}
         accessibilityLabel={unitLabel}
-        style={[styles.row, loading && styles.rowPending]}
+        accessibilityActions={resolvedLoading ? undefined : accessibilityActions}
+        onAccessibilityAction={resolvedLoading ? undefined : handleAccessibilityAction}
+        style={[styles.row, resolvedLoading && styles.rowPending]}
       >
         <Avatar
           id={person.id}
@@ -69,7 +146,7 @@ export const RequestRow = React.memo(function RequestRow({
           ) : null}
         </View>
 
-        {loading ? (
+        {resolvedLoading ? (
           <View style={styles.loaderBox}>
             <ActivityIndicator size="small" color={colors.accent} />
           </View>
@@ -78,8 +155,8 @@ export const RequestRow = React.memo(function RequestRow({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Accept request from ${safeName}`}
-              accessibilityState={{ disabled: loading }}
-              onPress={onAccept}
+              accessibilityState={{ disabled: resolvedLoading }}
+              onPress={handleAccept}
               hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
               style={({ pressed }) => [styles.acceptPill, pressed && styles.pressed]}
             >
@@ -89,8 +166,8 @@ export const RequestRow = React.memo(function RequestRow({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Decline request from ${safeName}`}
-              accessibilityState={{ disabled: loading }}
-              onPress={onDecline}
+              accessibilityState={{ disabled: resolvedLoading }}
+              onPress={handleDecline}
               style={({ pressed }) => [styles.declineBtn, pressed && styles.iconPressed]}
             >
               <Ionicons name="close-outline" size={20} color={colors.textSecondary} />
@@ -100,8 +177,8 @@ export const RequestRow = React.memo(function RequestRow({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Cancel request to ${safeName}`}
-            accessibilityState={{ disabled: loading }}
-            onPress={onCancel}
+            accessibilityState={{ disabled: resolvedLoading }}
+            onPress={handleCancel}
             style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
           >
             <Text style={styles.cancelText}>Cancel</Text>

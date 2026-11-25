@@ -1,10 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   BackHandler,
   Dimensions,
   Easing,
+  findNodeHandle,
   FlatList,
   Modal,
   NativeScrollEvent,
@@ -48,6 +50,7 @@ interface AvatarPickerBottomSheetProps {
   title?: string;
   confirmLabel?: string;
   showNames?: boolean;
+  returnFocusRef?: React.RefObject<any>;
 }
 
 interface CarouselItemProps {
@@ -328,6 +331,7 @@ export function AvatarPickerBottomSheet({
   title = 'Choose your avatar',
   confirmLabel = 'Set as profile avatar',
   showNames = true,
+  returnFocusRef,
 }: AvatarPickerBottomSheetProps) {
   const insets = useSafeAreaInsets();
   const [draftAvatarId, setDraftAvatarId] = useState<string>(
@@ -375,6 +379,10 @@ export function AvatarPickerBottomSheet({
       useNativeDriver: true,
     }).start(() => {
       setIsRendered(false);
+      if (returnFocusRef?.current) {
+        const node = findNodeHandle(returnFocusRef.current);
+        if (node) AccessibilityInfo.setAccessibilityFocus(node);
+      }
       onClose();
     });
   };
@@ -408,12 +416,23 @@ export function AvatarPickerBottomSheet({
     >
       <View style={styles.modalRoot}>
         {/* Dimmed backdrop */}
-        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+        <Animated.View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.backdrop, { opacity: backdropOpacity }]}
+        >
+          <Pressable
+            accessible={false}
+            importantForAccessibility="no"
+            style={StyleSheet.absoluteFill}
+            onPress={handleClose}
+          />
         </Animated.View>
 
         {/* Slide-up Sheet */}
         <Animated.View
+          accessibilityViewIsModal
+          accessibilityLabel={title}
           style={[
             styles.sheetContainer,
             {

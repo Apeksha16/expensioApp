@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AuthHeroShell } from '../../components/AuthHeroShell';

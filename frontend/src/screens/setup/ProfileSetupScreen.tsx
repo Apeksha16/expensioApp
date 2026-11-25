@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -81,6 +81,7 @@ function SequentialProgressBar({ activeStep, stepMeta }: SequentialProgressBarPr
   ]).current;
   const prevStepRef = useRef<number>(0);
   const isInitialRef = useRef<boolean>(true);
+  const [segmentWidth, setSegmentWidth] = useState(0);
 
   useEffect(() => {
     const prev = prevStepRef.current;
@@ -99,7 +100,7 @@ function SequentialProgressBar({ activeStep, stepMeta }: SequentialProgressBarPr
             toValue: 1,
             duration: stepDuration,
             easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
+            useNativeDriver: true,
           })
         );
       }
@@ -118,7 +119,7 @@ function SequentialProgressBar({ activeStep, stepMeta }: SequentialProgressBarPr
             toValue: 1,
             duration: stepDuration,
             easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
+            useNativeDriver: true,
           })
         );
       }
@@ -133,7 +134,7 @@ function SequentialProgressBar({ activeStep, stepMeta }: SequentialProgressBarPr
             toValue: 0,
             duration: stepDuration,
             easing: Easing.inOut(Easing.cubic),
-            useNativeDriver: false,
+            useNativeDriver: true,
           })
         );
       }
@@ -155,13 +156,38 @@ function SequentialProgressBar({ activeStep, stepMeta }: SequentialProgressBarPr
       </View>
       <View style={styles.progressSegments}>
         {stepMeta.map((item, index) => {
-          const width = fillAnims[index].interpolate({
-            inputRange: [0, 1],
-            outputRange: ['0%', '100%'],
-          });
+          const translateX =
+            segmentWidth > 0
+              ? fillAnims[index].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-segmentWidth, 0],
+                })
+              : 0;
           return (
-            <View key={item.label} style={styles.progressSegmentTrack}>
-              <Animated.View style={[styles.progressSegmentFill, { width }]} />
+            <View
+              key={item.label}
+              style={styles.progressSegmentTrack}
+              onLayout={
+                index === 0
+                  ? (e) => {
+                      const nextW = e.nativeEvent.layout.width;
+                      if (nextW > 0 && Math.abs(nextW - segmentWidth) > 0.5) {
+                        setSegmentWidth(nextW);
+                      }
+                    }
+                  : undefined
+              }
+            >
+              <Animated.View
+                style={[
+                  styles.progressSegmentFill,
+                  {
+                    width: '100%',
+                    opacity: segmentWidth > 0 ? 1 : fillAnims[index],
+                    transform: [{ translateX }],
+                  },
+                ]}
+              />
             </View>
           );
         })}

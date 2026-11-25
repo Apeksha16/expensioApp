@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -34,12 +34,17 @@ import { FriendRowSkeleton } from '../../components/Skeleton';
 import { FRIENDS_CONFIG } from '../../config/friendsConfig';
 import { useApp } from '../../context/AppContext';
 import {
+  createFriendRowInteractionStore,
+  type FriendRowInteractionStore,
+} from '../../services/friendRowInteractionStore';
+import {
   filterFriendshipsByQuery,
   getAccountDataOwner,
   getInitials,
   sanitizeDisplayText,
 } from '../../services/friendsStore';
 import { colors, layout, radius, spacing, typography } from '../../theme';
+import type { Friend } from '../../types';
 import type { Friendship, PreflightRemovalResult } from '../../types/friends';
 import { MAX_GUESTS_PER_OWNER } from '../../types/friends';
 import { formatClockTime, formatINR } from '../../utils/format';
@@ -59,6 +64,9 @@ type ListRowItem =
       id: string;
       kind: 'friend-row';
       friendship: Friendship;
+      friend: Friend;
+      rightLabel?: string;
+      rightTone: 'owe' | 'owed' | 'neutral';
       cardPosition: GroupedCardPosition;
       showTopDivider: boolean;
       showGuestBadge: boolean;
@@ -148,10 +156,29 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
     unsettledAmount: 0,
   });
   const [guestEditorTarget, setGuestEditorTarget] = useState<Friendship | null>(null);
-  const [activeSwipeId, setActiveSwipeId] = useState<string | null>(null);
 
+  const interactionStoreRef = useRef<FriendRowInteractionStore | null>(null);
+  if (!interactionStoreRef.current) {
+    interactionStoreRef.current = createFriendRowInteractionStore();
+  }
+  const interactionStore = interactionStoreRef.current;
+
+  const addButtonRef = useRef<React.ElementRef<typeof Pressable>>(null);
+  const friendshipByIdRef = useRef<Map<string, Friendship>>(new Map());
   const addTriggerRef = useRef(addFriendTriggerCount);
   const modalTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const nextMap = new Map<string, Friendship>();
+    friendships.forEach((f) => {
+      nextMap.set(f.friendshipId, f);
+    });
+    friendshipByIdRef.current = nextMap;
+  }, [friendships]);
+
+  useEffect(() => {
+    interactionStore.setPendingIds(pendingFriendActionIds);
+  }, [interactionStore, pendingFriendActionIds]);
 
   useEffect(() => {
     return () => {
@@ -211,13 +238,13 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
 
   const handleSegmentChange = useCallback(
     (next: SegmentTab) => {
-      setActiveSwipeId(null);
+      interactionStore.setActiveSwipeId(null);
       if (next === 'requests') {
         clearNewIncomingAlert();
       }
       setSegment(next);
     },
-    [clearNewIncomingAlert],
+    [clearNewIncomingAlert, interactionStore],
   );
 
   const openConfirmSheet = useCallback(
@@ -319,10 +346,33 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         rows.push({ id: 'empty-friends', kind: 'empty', section: 'friends' });
       } else {
         filteredPeople.forEach((friendship, idx) => {
+          const net = netAmounts.get(friendship.person.id);
+          const rightLabel =
+            net !== undefined && net !== 0
+              ? net > 0
+                ? `Owes ${formatINR(net)}`
+                : `You owe ${formatINR(Math.abs(net))}`
+              : undefined;
+          const rightTone: 'owe' | 'owed' | 'neutral' =
+            net && net > 0 ? 'owed' : net && net < 0 ? 'owe' : 'neutral';
           rows.push({
             id: `friend-${friendship.friendshipId}`,
             kind: 'friend-row',
             friendship,
+            friend: {
+              id: friendship.person.id,
+              name: friendship.person.displayName,
+              userId: friendship.person.username,
+              initials: getInitials(friendship.person.displayName),
+              color: colors.accent,
+              avatarId: friendship.person.avatarId,
+              avatarUri: friendship.person.avatarUri ?? null,
+              isGuest: friendship.person.isGuest,
+              friendshipId: friendship.friendshipId,
+              ownerUserId: friendship.person.ownerUserId,
+            },
+            rightLabel,
+            rightTone,
             cardPosition: cardPositionForIndex(idx, filteredPeople.length),
             showTopDivider: idx > 0,
             showGuestBadge: false,
@@ -343,10 +393,33 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         rows.push({ id: 'empty-guests', kind: 'empty', section: 'guests' });
       } else {
         filteredGuests.forEach((friendship, idx) => {
+          const net = netAmounts.get(friendship.person.id);
+          const rightLabel =
+            net !== undefined && net !== 0
+              ? net > 0
+                ? `Owes ${formatINR(net)}`
+                : `You owe ${formatINR(Math.abs(net))}`
+              : undefined;
+          const rightTone: 'owe' | 'owed' | 'neutral' =
+            net && net > 0 ? 'owed' : net && net < 0 ? 'owe' : 'neutral';
           rows.push({
             id: `guest-${friendship.friendshipId}`,
             kind: 'friend-row',
             friendship,
+            friend: {
+              id: friendship.person.id,
+              name: friendship.person.displayName,
+              userId: friendship.person.username,
+              initials: getInitials(friendship.person.displayName),
+              color: colors.accent,
+              avatarId: friendship.person.avatarId,
+              avatarUri: friendship.person.avatarUri ?? null,
+              isGuest: friendship.person.isGuest,
+              friendshipId: friendship.friendshipId,
+              ownerUserId: friendship.person.ownerUserId,
+            },
+            rightLabel,
+            rightTone,
             cardPosition: cardPositionForIndex(idx, filteredGuests.length),
             showTopDivider: idx > 0,
             showGuestBadge: true,
@@ -405,8 +478,40 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
     filteredIncoming,
     filteredOutgoing,
     filteredPeople,
+    netAmounts,
     segment,
   ]);
+
+  const listMetrics = useMemo(() => {
+    const offsets: number[] = [];
+    const lengths: number[] = [];
+    let offset = 0;
+    for (const item of listData) {
+      let length: number;
+      if (item.kind === 'eyebrow') {
+        length = 24;
+      } else if (item.kind === 'spacer') {
+        length = layout.sectionGap;
+      } else if (item.kind === 'empty') {
+        length = 168;
+      } else {
+        length = layout.rowHeight;
+      }
+      offsets.push(offset);
+      lengths.push(length);
+      offset += length;
+    }
+    return { offsets, lengths };
+  }, [listData]);
+
+  const getItemLayout = useCallback(
+    (_data: ArrayLike<ListRowItem> | null | undefined, index: number) => ({
+      length: listMetrics.lengths[index] ?? layout.rowHeight,
+      offset: listMetrics.offsets[index] ?? index * layout.rowHeight,
+      index,
+    }),
+    [listMetrics],
+  );
 
   const canGoBack = navigation.canGoBack();
   const currentOwnerId = getAccountDataOwner(profile);
@@ -437,22 +542,49 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
   );
 
   const handleOpenAdd = useCallback((initialTab: 'find' | 'guest' = 'find') => {
-    setActiveSwipeId(null);
+    interactionStore.setActiveSwipeId(null);
     setAddSheetState({ visible: true, initialTab });
-  }, []);
+  }, [interactionStore]);
 
-  const handleRowPress = useCallback((friendship: Friendship) => {
-    if (activeSwipeId === friendship.friendshipId) {
-      setActiveSwipeId(null);
+  const handleRowPressById = useCallback((id: string) => {
+    if (interactionStore.isSwipeOpen(id)) {
+      interactionStore.setActiveSwipeId(null);
       return;
     }
-    setActiveSwipeId(null);
-    setPersonSheetTarget(friendship);
-  }, [activeSwipeId]);
+    interactionStore.setActiveSwipeId(null);
+    const target = friendshipByIdRef.current.get(id);
+    if (target) setPersonSheetTarget(target);
+  }, [interactionStore]);
 
-  const handleRowRemove = useCallback((friendship: Friendship) => {
-    setActiveSwipeId(null);
-    void openConfirmSheet(friendship, 'remove');
+  const handleRowRemoveById = useCallback((id: string) => {
+    interactionStore.setActiveSwipeId(null);
+    const target = friendshipByIdRef.current.get(id);
+    if (target) void openConfirmSheet(target, 'remove');
+  }, [interactionStore, openConfirmSheet]);
+
+  const handleSwipeOpenById = useCallback((id: string) => {
+    interactionStore.setActiveSwipeId(id);
+  }, [interactionStore]);
+
+  const handleSwipeCloseById = useCallback((id: string) => {
+    if (interactionStore.isSwipeOpen(id)) {
+      interactionStore.setActiveSwipeId(null);
+    }
+  }, [interactionStore]);
+
+  const handleAcceptById = useCallback((id: string) => {
+    const target = friendshipByIdRef.current.get(id);
+    if (target) void handleAccept(target);
+  }, [handleAccept]);
+
+  const handleDeclineById = useCallback((id: string) => {
+    const target = friendshipByIdRef.current.get(id);
+    if (target) void openConfirmSheet(target, 'decline');
+  }, [openConfirmSheet]);
+
+  const handleCancelById = useCallback((id: string) => {
+    const target = friendshipByIdRef.current.get(id);
+    if (target) void openConfirmSheet(target, 'cancel');
   }, [openConfirmSheet]);
 
   const renderItem = useCallback(
@@ -478,66 +610,36 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         case 'spacer':
           return <View style={styles.sectionSpacer} />;
 
-        case 'friend-row': {
-          const { friendship, cardPosition, showTopDivider, showGuestBadge } = item;
-          const isPending = pendingFriendActionIds.includes(friendship.friendshipId);
-          const net = netAmounts.get(friendship.person.id);
-          const balanceChip =
-            net !== undefined && net !== 0
-              ? net > 0
-                ? `Owes ${formatINR(net)}`
-                : `You owe ${formatINR(Math.abs(net))}`
-              : undefined;
-
+        case 'friend-row':
           return (
             <FriendRow
               grouped
-              cardPosition={cardPosition}
-              showTopDivider={showTopDivider}
-              showGuestBadge={showGuestBadge}
-              friend={{
-                id: friendship.person.id,
-                name: friendship.person.displayName,
-                userId: friendship.person.username,
-                initials: getInitials(friendship.person.displayName),
-                color: colors.accent,
-                avatarId: friendship.person.avatarId,
-                avatarUri: friendship.person.avatarUri ?? null,
-                isGuest: friendship.person.isGuest,
-                friendshipId: friendship.friendshipId,
-                ownerUserId: friendship.person.ownerUserId,
-              }}
-              rightLabel={balanceChip}
-              rightTone={net && net > 0 ? 'owed' : net && net < 0 ? 'owe' : 'neutral'}
-              actionLoading={isPending}
-              swipeOpen={activeSwipeId === friendship.friendshipId}
-              onSwipeOpen={() => setActiveSwipeId(friendship.friendshipId)}
-              onSwipeClose={() =>
-                setActiveSwipeId((curr) =>
-                  curr === friendship.friendshipId ? null : curr,
-                )
-              }
-              onPress={() => handleRowPress(friendship)}
-              onRemove={() => handleRowRemove(friendship)}
+              cardPosition={item.cardPosition}
+              showTopDivider={item.showTopDivider}
+              showGuestBadge={item.showGuestBadge}
+              friend={item.friend}
+              rightLabel={item.rightLabel}
+              rightTone={item.rightTone}
+              interactionStore={interactionStore}
+              onSwipeOpenItem={handleSwipeOpenById}
+              onSwipeCloseItem={handleSwipeCloseById}
+              onPressItem={handleRowPressById}
+              onRemoveItem={handleRowRemoveById}
             />
           );
-        }
 
-        case 'request-row': {
-          const { friendship, cardPosition, showTopDivider } = item;
-          const isPending = pendingFriendActionIds.includes(friendship.friendshipId);
+        case 'request-row':
           return (
             <RequestRow
-              friendship={friendship}
-              cardPosition={cardPosition}
-              showTopDivider={showTopDivider}
-              loading={isPending}
-              onAccept={() => void handleAccept(friendship)}
-              onDecline={() => void openConfirmSheet(friendship, 'decline')}
-              onCancel={() => void openConfirmSheet(friendship, 'cancel')}
+              friendship={item.friendship}
+              cardPosition={item.cardPosition}
+              showTopDivider={item.showTopDivider}
+              interactionStore={interactionStore}
+              onAcceptItem={handleAcceptById}
+              onDeclineItem={handleDeclineById}
+              onCancelItem={handleCancelById}
             />
           );
-        }
 
         case 'empty': {
           const isFiltered = filterQuery.trim().length > 0;
@@ -611,16 +713,17 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
       }
     },
     [
-      activeSwipeId,
       filterQuery,
       friendCounts.guests,
-      handleAccept,
+      handleAcceptById,
+      handleCancelById,
+      handleDeclineById,
       handleOpenAdd,
-      handleRowPress,
-      handleRowRemove,
-      netAmounts,
-      openConfirmSheet,
-      pendingFriendActionIds,
+      handleRowPressById,
+      handleRowRemoveById,
+      handleSwipeCloseById,
+      handleSwipeOpenById,
+      interactionStore,
     ],
   );
 
@@ -743,6 +846,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
       ) : null}
 
       <Pressable
+        ref={addButtonRef}
         accessibilityRole="button"
         accessibilityLabel="Add friend or guest"
         onPress={() => handleOpenAdd('find')}
@@ -787,11 +891,12 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
             data={listData}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
+            getItemLayout={getItemLayout}
             ListHeaderComponent={listHeader}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => setActiveSwipeId(null)}
+            onScrollBeginDrag={() => interactionStore.setActiveSwipeId(null)}
             removeClippedSubviews={Platform.OS !== 'web'}
             initialNumToRender={14}
             maxToRenderPerBatch={12}
@@ -818,6 +923,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         visible={personSheetTarget !== null}
         friendship={personSheetTarget}
         currentOwnerId={currentOwnerId}
+        returnFocusRef={addButtonRef}
         onClose={() => setPersonSheetTarget(null)}
         onViewSplits={navigateToSplits}
         onEditAvatar={(target) => runAfterSheetDismiss(() => setGuestEditorTarget(target))}
@@ -827,6 +933,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
       <AddFriendSheet
         visible={addSheetState.visible}
         initialTab={addSheetState.initialTab}
+        returnFocusRef={addButtonRef}
         onClose={() => setAddSheetState((prev) => ({ ...prev, visible: false }))}
         onSearch={searchFriendCandidates}
         onSendRequest={sendFriendRequest}
@@ -841,6 +948,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         friendship={confirmTarget?.friendship ?? null}
         mode={confirmTarget?.mode ?? 'remove'}
         preflightCheck={removalPreflight}
+        returnFocusRef={addButtonRef}
         onClose={() => setConfirmTarget(null)}
         onConfirmRemove={handleConfirmAction}
         onNavigateToSplits={() => {
@@ -855,6 +963,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         title="Choose guest avatar"
         confirmLabel="Save guest avatar"
         showNames={false}
+        returnFocusRef={addButtonRef}
         onSelect={(avatarId) => {
           if (!guestEditorTarget) return;
           const targetId = guestEditorTarget.person.id;

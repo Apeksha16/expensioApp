@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { forwardRef, useState } from 'react';
 import {
   Pressable,
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',

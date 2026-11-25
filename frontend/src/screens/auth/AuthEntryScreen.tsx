@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,7 +41,7 @@ export function AuthEntryScreen() {
           <View style={[styles.stackCard, styles.backCard]}>
             <View style={styles.cardHeader}>
               <View style={styles.smallIconTile}>
-                <MaterialCommunityIcons name="silverware-fork-knife" size={15} color={colors.accentDark} />
+                <Ionicons name="restaurant-outline" size={15} color={colors.accentDark} />
               </View>
               <Text style={styles.backCardTitle}>Shared expenses</Text>
               <View style={styles.placeholderValue} />

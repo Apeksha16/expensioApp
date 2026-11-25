@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import React, { useCallback, useSyncExternalStore } from 'react';
 import {
   AccessibilityActionEvent,
   ActivityIndicator,
@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { FriendRowInteractionStore } from '../services/friendRowInteractionStore';
 import { formatHandle, sanitizeDisplayText } from '../services/friendsStore';
 import { colors, layout, radius, spacing, typography } from '../theme';
 import type { Friend } from '../types';
@@ -21,6 +22,7 @@ interface Props {
   friend: Friend;
   selected?: boolean;
   onPress?: () => void;
+  onPressItem?: (id: string) => void;
   rightLabel?: string;
   rightTone?: 'owe' | 'owed' | 'neutral';
   showChevron?: boolean;
@@ -30,16 +32,24 @@ interface Props {
   showTopDivider?: boolean;
   onEditGuest?: () => void;
   onRemove?: () => void;
+  onRemoveItem?: (id: string) => void;
   actionLoading?: boolean;
   swipeOpen?: boolean;
   onSwipeOpen?: () => void;
   onSwipeClose?: () => void;
+  onSwipeOpenItem?: (id: string) => void;
+  onSwipeCloseItem?: (id: string) => void;
+  interactionStore?: FriendRowInteractionStore;
 }
+
+const noopUnsubscribe = () => () => {};
+const alwaysFalse = () => false;
 
 export const FriendRow = React.memo(function FriendRow({
   friend,
   selected,
   onPress,
+  onPressItem,
   rightLabel,
   rightTone = 'neutral',
   showChevron = true,
@@ -49,17 +59,72 @@ export const FriendRow = React.memo(function FriendRow({
   showTopDivider = false,
   onEditGuest,
   onRemove,
+  onRemoveItem,
   actionLoading = false,
   swipeOpen,
   onSwipeOpen,
   onSwipeClose,
+  onSwipeOpenItem,
+  onSwipeCloseItem,
+  interactionStore,
 }: Props) {
+  const rowId = friend.friendshipId ?? friend.id;
+  const subscribe = interactionStore ? interactionStore.subscribe : noopUnsubscribe;
+  const getPending = useCallback(
+    () => (interactionStore ? interactionStore.isPending(rowId) : false),
+    [interactionStore, rowId],
+  );
+  const getSwipe = useCallback(
+    () => (interactionStore ? interactionStore.isSwipeOpen(rowId) : false),
+    [interactionStore, rowId],
+  );
+  const storePending = useSyncExternalStore(subscribe, interactionStore ? getPending : alwaysFalse);
+  const storeSwipeOpen = useSyncExternalStore(subscribe, interactionStore ? getSwipe : alwaysFalse);
+
+  const resolvedLoading = actionLoading || storePending;
+  const resolvedSwipeOpen = swipeOpen ?? (interactionStore ? storeSwipeOpen : undefined);
+
+  const handlePress = useCallback(() => {
+    if (onPressItem) {
+      onPressItem(rowId);
+      return;
+    }
+    onPress?.();
+  }, [onPress, onPressItem, rowId]);
+
+  const handleRemove = useCallback(() => {
+    if (onRemoveItem) {
+      onRemoveItem(rowId);
+      return;
+    }
+    onRemove?.();
+  }, [onRemove, onRemoveItem, rowId]);
+
+  const handleSwipeOpen = useCallback(() => {
+    if (onSwipeOpenItem) {
+      onSwipeOpenItem(rowId);
+      return;
+    }
+    onSwipeOpen?.();
+  }, [onSwipeOpen, onSwipeOpenItem, rowId]);
+
+  const handleSwipeClose = useCallback(() => {
+    if (onSwipeCloseItem) {
+      onSwipeCloseItem(rowId);
+      return;
+    }
+    onSwipeClose?.();
+  }, [onSwipeClose, onSwipeCloseItem, rowId]);
+
+  const hasPress = Boolean(onPress || onPressItem);
+  const hasRemove = Boolean(onRemove || onRemoveItem);
+
   const safeName = sanitizeDisplayText(friend.name) || 'Expensio user';
   const formattedHandle = friend.userId ? formatHandle(friend.userId) : '';
 
   const actionsList: string[] = [];
   if (onEditGuest) actionsList.push('Edit avatar');
-  if (onRemove) actionsList.push('Remove');
+  if (hasRemove) actionsList.push('Remove');
 
   const rowAccessibilityLabel = [
     safeName,
@@ -73,21 +138,21 @@ export const FriendRow = React.memo(function FriendRow({
     .join(', ');
 
   const accessibilityActions = [
-    ...(onPress ? [{ name: 'activate', label: 'Open details' }] : []),
+    ...(hasPress ? [{ name: 'activate', label: 'Open details' }] : []),
     ...(onEditGuest ? [{ name: 'edit', label: `Edit ${safeName}'s avatar` }] : []),
-    ...(onRemove ? [{ name: 'delete', label: `Remove ${safeName}` }] : []),
+    ...(hasRemove ? [{ name: 'delete', label: `Remove ${safeName}` }] : []),
   ];
 
   const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
     switch (event.nativeEvent.actionName) {
       case 'activate':
-        onPress?.();
+        handlePress();
         break;
       case 'edit':
         onEditGuest?.();
         break;
       case 'delete':
-        onRemove?.();
+        handleRemove();
         break;
     }
   };
@@ -100,7 +165,7 @@ export const FriendRow = React.memo(function FriendRow({
           styles.row,
           !grouped && styles.rowCard,
           selected && styles.selected,
-          actionLoading && styles.rowPending,
+          resolvedLoading && styles.rowPending,
         ]}
       >
         <Avatar
@@ -149,7 +214,7 @@ export const FriendRow = React.memo(function FriendRow({
             </View>
           ) : null}
 
-          {actionLoading ? (
+          {resolvedLoading ? (
             <ActivityIndicator size="small" color={colors.accent} />
           ) : selected ? (
             <View style={styles.selectedCheck}>
@@ -163,18 +228,18 @@ export const FriendRow = React.memo(function FriendRow({
     </View>
   );
 
-  const pressableRow = onPress ? (
+  const pressableRow = hasPress ? (
     <Pressable
-      onPress={onPress}
-      disabled={actionLoading}
+      onPress={handlePress}
+      disabled={resolvedLoading}
       accessibilityRole="button"
       accessibilityLabel={rowAccessibilityLabel}
       accessibilityHint={grouped ? 'Opens person options' : undefined}
-      accessibilityState={{ selected: Boolean(selected), disabled: actionLoading, busy: actionLoading }}
+      accessibilityState={{ selected: Boolean(selected), disabled: resolvedLoading, busy: resolvedLoading }}
       accessibilityActions={accessibilityActions.length ? accessibilityActions : undefined}
       onAccessibilityAction={accessibilityActions.length ? handleAccessibilityAction : undefined}
       style={({ pressed }) =>
-        pressed && !actionLoading && (grouped ? styles.groupedPressed : styles.pressed)
+        pressed && !resolvedLoading && (grouped ? styles.groupedPressed : styles.pressed)
       }
     >
       {inner}
@@ -190,15 +255,15 @@ export const FriendRow = React.memo(function FriendRow({
     </View>
   );
 
-  const content = grouped && onRemove ? (
+  const content = grouped && hasRemove ? (
     <SwipeRevealRow
       actionLabel="Remove"
       accessibilityActionLabel={`Remove ${safeName}`}
-      onAction={onRemove}
-      disabled={actionLoading}
-      isOpen={swipeOpen}
-      onSwipeOpen={onSwipeOpen}
-      onSwipeClose={onSwipeClose}
+      onAction={handleRemove}
+      disabled={resolvedLoading}
+      isOpen={resolvedSwipeOpen}
+      onSwipeOpen={handleSwipeOpen}
+      onSwipeClose={handleSwipeClose}
     >
       {pressableRow}
     </SwipeRevealRow>

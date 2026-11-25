@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 3,
     borderRadius: radius.xxs,
-    backgroundColor: colors.border,
+    backgroundColor: colors.controlBorder,
   },
   baseUnderlineError: {
     backgroundColor: colors.dangerBorder,

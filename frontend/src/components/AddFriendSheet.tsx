@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -130,7 +130,7 @@ export function AddFriendSheet({
       toValue: avatarPickerOpen && !guestLimitReached ? 1 : 0,
       duration: reduceMotion ? 0 : 220,
       easing: Easing.inOut(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   }, [avatarPickerOpen, drawerAnim, guestLimitReached, reduceMotion]);
 
@@ -288,9 +288,9 @@ export function AddFriendSheet({
     [],
   );
 
-  const trayHeight = drawerAnim.interpolate({
+  const trayTranslateY = drawerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, AVATAR_TRAY_HEIGHT],
+    outputRange: [-10, 0],
   });
 
   const chevronRotate = drawerAnim.interpolate({
@@ -510,16 +510,13 @@ export function AddFriendSheet({
                 </View>
               </Pressable>
 
-              {!guestLimitReached ? (
+              {!guestLimitReached && avatarPickerOpen ? (
                 <Animated.View
-                  pointerEvents={avatarPickerOpen ? 'auto' : 'none'}
-                  accessibilityElementsHidden={!avatarPickerOpen}
-                  importantForAccessibility={avatarPickerOpen ? 'yes' : 'no-hide-descendants'}
                   style={[
                     styles.avatarPopoverTray,
                     {
-                      height: trayHeight,
                       opacity: drawerAnim,
+                      transform: [{ translateY: trayTranslateY }],
                     },
                   ]}
                 >

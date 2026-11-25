@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, radius, spacing, typography } from '../theme';
 import { formatINRInput, parseINRInput } from '../utils/format';
 import { InputField } from './InputField';
@@ -13,7 +13,6 @@ interface Props {
   error?: string;
   currencySymbol?: string;
   icon?: keyof typeof Ionicons.glyphMap;
-  materialIcon?: keyof typeof MaterialCommunityIcons.glyphMap;
   variant?: 'inline' | 'card';
 }
 
@@ -25,7 +24,6 @@ export function CurrencyInput({
   error,
   currencySymbol = '₹',
   icon = 'wallet-outline',
-  materialIcon,
   variant = 'inline',
 }: Props) {
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
@@ -57,11 +55,7 @@ export function CurrencyInput({
         style={[styles.card, error ? styles.cardError : null]}
       >
         <View style={styles.iconBox}>
-          {materialIcon ? (
-            <MaterialCommunityIcons name={materialIcon} size={20} color={colors.accent} />
-          ) : (
-            <Ionicons name={icon} size={20} color={colors.accent} />
-          )}
+          <Ionicons name={icon} size={20} color={colors.accent} />
         </View>
         <View style={styles.cardCopy}>
           <Text style={styles.cardLabel}>{label}</Text>

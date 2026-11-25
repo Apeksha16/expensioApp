@@ -11,8 +11,6 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
 interface GuestQuotaRingProps {
   used: number;
   total?: number;
@@ -88,7 +86,7 @@ export function GuestQuotaRing({
         toValue: 1,
         duration: 130,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     );
 
@@ -131,37 +129,50 @@ export function GuestQuotaRing({
         onPress={() => setTooltipOpen((prev) => !prev)}
         style={({ pressed }) => [styles.ringButton, pressed && styles.pressed]}
       >
-        <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-          {slices.map((slice) => (
-            <Path
-              key={`track-${slice.index}`}
-              d={slice.d}
-              stroke={colors.border}
-              strokeWidth={STROKE_WIDTH}
-              strokeLinecap="round"
-              fill="none"
-            />
-          ))}
-          {slices.map((slice) => {
-            if (slice.index >= clampedUsed) return null;
-            const dashOffset = sliceAnims[slice.index].interpolate({
-              inputRange: [0, 1],
-              outputRange: [slice.arcLength, 0],
-            });
-            return (
-              <AnimatedPath
-                key={`fill-${slice.index}`}
+        <View style={styles.svgStack}>
+          <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+            {slices.map((slice) => (
+              <Path
+                key={`track-${slice.index}`}
                 d={slice.d}
-                stroke={fillColor}
+                stroke={colors.border}
                 strokeWidth={STROKE_WIDTH}
                 strokeLinecap="round"
-                strokeDasharray={`${slice.arcLength} ${slice.arcLength}`}
-                strokeDashoffset={dashOffset}
                 fill="none"
               />
+            ))}
+          </Svg>
+          {slices.map((slice) => {
+            if (slice.index >= clampedUsed) return null;
+            const scale = sliceAnims[slice.index].interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.85, 1],
+            });
+            return (
+              <Animated.View
+                key={`fill-${slice.index}`}
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    opacity: sliceAnims[slice.index],
+                    transform: [{ scale }],
+                  },
+                ]}
+              >
+                <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+                  <Path
+                    d={slice.d}
+                    stroke={fillColor}
+                    strokeWidth={STROKE_WIDTH}
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </Svg>
+              </Animated.View>
             );
           })}
-        </Svg>
+        </View>
         <View pointerEvents="none" style={styles.centerCount}>
           <Text style={[styles.countText, atLimit && styles.countTextLimit]}>
             {clampedUsed}/{total}
@@ -197,6 +208,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  svgStack: {
+    width: SIZE,
+    height: SIZE,
+    position: 'relative',
   },
   pressed: {
     opacity: 0.8,

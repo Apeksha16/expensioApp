@@ -211,10 +211,14 @@ export function BottomSheet({
           },
         ]}
       >
-        <Animated.View style={[styles.backdrop, { opacity: overlayOpacity }]}>
+        <Animated.View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.backdrop, { opacity: overlayOpacity }]}
+        >
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Dismiss ${accessibilityLabel}`}
+            accessible={false}
+            importantForAccessibility="no"
             style={StyleSheet.absoluteFill}
             onPress={() => animateClose(true)}
           />

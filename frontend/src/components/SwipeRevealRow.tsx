@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
@@ -75,6 +75,8 @@ export function SwipeRevealRow({
   const panGesture = usePanGesture({
     enabled: Boolean(onAction) && !disabled,
     runOnJS: true,
+    // Deliberately avoid pulling in react-native-reanimated (~1.5 MB native/JS dep);
+    // translateX transitions use RN Animated.spring with useNativeDriver: true.
     disableReanimated: true,
     activeOffsetX: [-8, 8],
     failOffsetY: [-10, 10],

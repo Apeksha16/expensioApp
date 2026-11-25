@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View, ViewStyle } from 'react-native';
 import { colors, radius } from '../theme';
 import { progressRatio } from '../utils/format';
@@ -21,28 +21,44 @@ export function ProgressBar({
   style,
 }: Props) {
   const ratio = progressRatio(current, total);
-  const width = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
+  const [trackWidth, setTrackWidth] = useState(0);
 
   useEffect(() => {
-    Animated.timing(width, {
+    Animated.timing(progress, {
       toValue: ratio,
       duration: 650,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
-  }, [ratio, width]);
+  }, [progress, ratio]);
+
+  const translateX =
+    trackWidth > 0
+      ? progress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-trackWidth, 0],
+        })
+      : 0;
 
   return (
-    <View style={[styles.track, { height, backgroundColor: trackColor }, style]}>
+    <View
+      style={[styles.track, { height, backgroundColor: trackColor }, style]}
+      onLayout={(e) => {
+        const nextW = e.nativeEvent.layout.width;
+        if (nextW > 0 && Math.abs(nextW - trackWidth) > 0.5) {
+          setTrackWidth(nextW);
+        }
+      }}
+    >
       <Animated.View
         style={[
           styles.fill,
           {
+            width: '100%',
             height,
             backgroundColor: color,
-            width: width.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0%', '100%'],
-            }),
+            opacity: trackWidth > 0 ? 1 : progress,
+            transform: [{ translateX }],
           },
         ]}
       />

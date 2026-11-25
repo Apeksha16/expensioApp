@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, shadows, spacing, typography } from '../theme';
@@ -41,7 +41,7 @@ export function OnboardingVisual({ visual }: Props) {
       <View style={styles.referenceStage}>
         <View style={styles.splitCard}>
           <View style={styles.splitHeader}>
-            <View style={styles.splitIcon}><MaterialCommunityIcons name="silverware-fork-knife" size={21} color={colors.accentDark} /></View>
+            <View style={styles.splitIcon}><Ionicons name="restaurant-outline" size={21} color={colors.accentDark} /></View>
             <View style={styles.splitCopy}><Text style={styles.cardTitle}>Shared expenses</Text><Text style={styles.cardSub}>Your splits will appear here</Text></View>
           </View>
           <View style={styles.shareRow}>
@@ -94,9 +94,9 @@ export function OnboardingVisual({ visual }: Props) {
           <View key={item.key} style={[styles.gridItem, item.key === 'expenses' ? styles.gridItemActive : styles.gridItemMuted]}>
             <View style={[styles.gridIcon, item.key === 'expenses' ? styles.gridIconActive : styles.gridIconMuted]}>
               {item.key === 'expenses' ? <Ionicons name="wallet-outline" size={24} color={colors.accentDark} /> : null}
-              {item.key === 'subscriptions' ? <MaterialCommunityIcons name="refresh" size={24} color={colors.surprise} /> : null}
-              {item.key === 'goals' ? <MaterialCommunityIcons name="target" size={24} color={colors.surprise} /> : null}
-              {item.key === 'savings' ? <MaterialCommunityIcons name="piggy-bank-outline" size={24} color={colors.surprise} /> : null}
+              {item.key === 'subscriptions' ? <Ionicons name="refresh-outline" size={24} color={colors.surprise} /> : null}
+              {item.key === 'goals' ? <Ionicons name="locate-outline" size={24} color={colors.surprise} /> : null}
+              {item.key === 'savings' ? <Ionicons name="cash-outline" size={24} color={colors.surprise} /> : null}
             </View>
             <Text style={[styles.gridLabel, item.key === 'expenses' ? styles.gridLabelActive : styles.gridLabelMuted]}>{item.label}</Text>
           </View>

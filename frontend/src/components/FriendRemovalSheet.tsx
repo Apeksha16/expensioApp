@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FriendsApiError } from '../services/api/friendsErrors';
@@ -23,6 +23,7 @@ interface Props {
   preflightCheck: PreflightRemovalResult;
   onNavigateToSplits?: () => void;
   loading?: boolean;
+  returnFocusRef?: React.RefObject<any>;
 }
 
 export function FriendRemovalSheet({
@@ -34,6 +35,7 @@ export function FriendRemovalSheet({
   preflightCheck,
   onNavigateToSplits,
   loading = false,
+  returnFocusRef,
 }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [serverBlocked, setServerBlocked] = useState<{
@@ -109,6 +111,7 @@ export function FriendRemovalSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
+      returnFocusRef={returnFocusRef}
       accessibilityLabel={title}
     >
       <View style={styles.header}>

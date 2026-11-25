@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';

@@ -170,8 +170,11 @@ test('Logger redacts sensitive fields, JWTs, and is a no-op in production', () =
 });
 
 test('Deep link parser validates scheme/route and rejects auth/OTP injection', () => {
-  const validFriends = parseSafeDeepLink('com.expensio.app://friends?requestId=req_42&otp=123456&token=evil');
+  const validFriends = parseSafeDeepLink('com.aptech.expensio.app://friends?requestId=req_42&otp=123456&token=evil');
   assert.deepEqual(validFriends, { route: 'friends' });
+
+  const validLegacyFriends = parseSafeDeepLink('com.expensio.app://friends?requestId=req_42');
+  assert.deepEqual(validLegacyFriends, { route: 'friends' });
 
   const validSplits = parseSafeDeepLink('expensio://splits?splitId=sp_99');
   assert.deepEqual(validSplits, { route: 'splits', splitId: 'sp_99' });
@@ -179,13 +182,13 @@ test('Deep link parser validates scheme/route and rejects auth/OTP injection', (
   const badSplitId = parseSafeDeepLink('expensio://splits?splitId=../../etc/passwd');
   assert.deepEqual(badSplitId, { route: 'splits', splitId: undefined });
 
-  const validReset = parseSafeDeepLink('com.expensio.app://reset-password?token=opaqueResetToken123456&otp=999999');
+  const validReset = parseSafeDeepLink('com.aptech.expensio.app://reset-password?token=opaqueResetToken123456&otp=999999');
   assert.deepEqual(validReset, { route: 'reset-password', token: 'opaqueResetToken123456' });
 
   const badScheme = parseSafeDeepLink('https://evil.example.com/friends');
   assert.equal(badScheme, null);
 
-  const badRoute = parseSafeDeepLink('com.expensio.app://admin-bypass');
+  const badRoute = parseSafeDeepLink('com.aptech.expensio.app://admin-bypass');
   assert.equal(badRoute, null);
 });
 

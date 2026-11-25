@@ -573,6 +573,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshFriendsInternal]);
 
+  const showToast = useCallback((kind: ToastMessage['kind'], message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    const id = Date.now();
+    setToast({ id, kind, message });
+    toastTimer.current = setTimeout(() => setToast((current) => current?.id === id ? null : current), 3200);
+  }, []);
+
   const restoreLocalState = useCallback(async () => {
     setAuthPhase('restoring');
     setRestoreError(null);
@@ -678,7 +685,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setRestoreError(error instanceof Error ? error.message : 'Unable to load saved data from this device.');
       setAuthPhase('onboarding');
     }
-  }, [restoreAccountData]);
+  }, [restoreAccountData, showToast]);
 
   useEffect(() => {
     void restoreLocalState();
@@ -686,13 +693,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
-
-  const showToast = useCallback((kind: ToastMessage['kind'], message: string) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    const id = Date.now();
-    setToast({ id, kind, message });
-    toastTimer.current = setTimeout(() => setToast((current) => current?.id === id ? null : current), 3200);
   }, []);
 
   const computeLocalRemovalPreflight = useCallback((personId: string): PreflightRemovalResult => {

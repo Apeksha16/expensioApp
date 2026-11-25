@@ -59,9 +59,15 @@ test('F-06: AuthEntry wires Google Sign-In to authenticateGoogle and Terms/Priva
   const authEntrySrc = fs.readFileSync(path.join(srcDir, 'screens/auth/AuthEntryScreen.tsx'), 'utf8');
   const mobileLoginSrc = fs.readFileSync(path.join(srcDir, 'screens/auth/MobileLoginScreen.tsx'), 'utf8');
 
-  // Verify Google Sign-In wiring in AuthEntryScreen (not dead code)
+  // Verify Google Sign-In wiring in AuthEntryScreen (not dead code) and empty GOOGLE_CLIENT_ID hides button
   assert.match(authEntrySrc, /authenticateGoogle/, 'AuthEntryScreen must wire authenticateGoogle');
   assert.match(authEntrySrc, /Continue with Google/, 'AuthEntryScreen must render Continue with Google CTA');
+  assert.match(
+    authEntrySrc,
+    /hasGoogleClientId\s*=\s*ENV\.GOOGLE_CLIENT_ID\.trim\(\)\.length\s*>\s*0/,
+    'AuthEntryScreen must hide Google Sign-In button when GOOGLE_CLIENT_ID is empty/whitespace',
+  );
+  assert.match(authEntrySrc, /hasGoogleClientId\s*\?\s*\(/, 'GoogleSignInButton must be gated on hasGoogleClientId');
 
   // Verify Terms & Privacy links are not dead <Text> elements without onPress
   for (const [label, src] of [['AuthEntryScreen', authEntrySrc], ['MobileLoginScreen', mobileLoginSrc]]) {
@@ -129,7 +135,7 @@ test('F-09: Linking listeners are wired through parseSafeDeepLink with auth gate
 
   // Unauthenticated reset-password deep link routes directly to reset_password with sanitized token
   const reset = deepLinkMod.resolveDeepLinkNavigation(
-    'com.expensio.app://reset-password?token=valid_reset_token_123456',
+    'com.aptech.expensio.app://reset-password?token=valid_reset_token_123456',
     {
       isAuthenticated: false,
       friendsEnabled: false,
@@ -141,6 +147,12 @@ test('F-09: Linking listeners are wired through parseSafeDeepLink with auth gate
     phase: 'reset_password',
     token: 'valid_reset_token_123456',
   });
+
+  // app.json and AuthEntry must use com.aptech.expensio.app consistently
+  const appJson = JSON.parse(fs.readFileSync(path.join(frontendDir, 'app.json'), 'utf8'));
+  assert.equal(appJson.expo.scheme, 'com.aptech.expensio.app');
+  assert.equal(appJson.expo.ios.bundleIdentifier, 'com.aptech.expensio.app');
+  assert.equal(appJson.expo.android.package, 'com.aptech.expensio.app');
 
   // Authenticated split deep link enforces ownership check
   const ownedSplit = deepLinkMod.resolveDeepLinkNavigation('com.expensio.app://splits?splitId=sp-owned', {
@@ -201,9 +213,15 @@ test('F-13: EmailChangeScreen has synchronous double-submit ref locks and local-
   releaseFirst();
   await Promise.all([firstCall, secondCall]);
 
-  // Verify AppContext updateProfileEmail and ProfileScreen honor EMAIL_CHANGE_ENABLED gate
+  // Verify AppContext updateProfileEmail, ProfileScreen, and MainTabs honor EMAIL_CHANGE_ENABLED gate
   assert.match(appCtxSrc, /EMAIL_CHANGE_ENABLED/, 'AppContext must check EMAIL_CHANGE_ENABLED');
   assert.match(profileSrc, /EMAIL_CHANGE_ENABLED/, 'ProfileScreen must gate EmailChange navigation by EMAIL_CHANGE_ENABLED');
+  const mainTabsSrc = fs.readFileSync(path.join(srcDir, 'navigation/MainTabs.tsx'), 'utf8');
+  assert.match(
+    mainTabsSrc,
+    /EMAIL_CHANGE_ENABLED\s*\?\s*<Tab\.Screen name="EmailChange"/,
+    'MainTabs must gate EmailChange route registration by EMAIL_CHANGE_ENABLED',
+  );
 });
 
 test('F-17: dead files removed, ScreenHeader & ScreenStatusBar unified, tokens & per-weight Android fonts enforced', () => {

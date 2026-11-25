@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { FRIENDS_CONFIG } from '../config/friendsConfig';
+import { EMAIL_CHANGE_ENABLED } from '../services/emailChangeService';
 import { colors } from '../theme';
 import { DashboardScreen } from '../screens/home/DashboardScreen';
 import { ActivityScreen } from '../screens/home/ActivityScreen';
@@ -57,7 +58,7 @@ export function MainTabs() {
       <Tab.Screen name="Analytics" component={ModuleLandingScreen} />
       <Tab.Screen name="AdditionalModules" component={ModuleLandingScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
-      <Tab.Screen name="EmailChange" component={EmailChangeScreen} />
+      {EMAIL_CHANGE_ENABLED ? <Tab.Screen name="EmailChange" component={EmailChangeScreen} /> : null}
     </Tab.Navigator>
   );
 }

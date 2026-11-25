@@ -24,7 +24,7 @@ function GoogleSignInButton({
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
   const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'com.expensio.app',
+    scheme: 'com.aptech.expensio.app',
     path: 'oauthredirect',
   });
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -89,11 +89,13 @@ function GoogleSignInButton({
 
 export function AuthEntryScreen() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { setAuthPhase, applyAuthSession } = useApp();
   const [googleError, setGoogleError] = useState('');
   const [legalDoc, setLegalDoc] = useState<LegalDocKind | null>(null);
   const cardWidth = Math.min(width, layout.maxContentWidth);
+  const isCompactHeight = height < 830;
+  const hasGoogleClientId = ENV.GOOGLE_CLIENT_ID.trim().length > 0;
 
   const handleGoogleIdToken = async (idToken: string) => {
     try {
@@ -107,6 +109,14 @@ export function AuthEntryScreen() {
   return (
     <View style={styles.screen}>
       <ScreenStatusBar surface="dark" />
+      <View style={[styles.headerWrap, { paddingTop: insets.top + spacing.xs }]}>
+        <ScreenHeader
+          tone="dark"
+          onBack={() => setAuthPhase('onboarding')}
+          backAccessibilityLabel="Back to onboarding"
+          showBrand
+        />
+      </View>
       <ScrollView
         bounces={false}
         keyboardShouldPersistTaps="handled"
@@ -114,21 +124,19 @@ export function AuthEntryScreen() {
         contentContainerStyle={[
           styles.container,
           {
-            paddingTop: insets.top + spacing.xs,
-            paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.xs,
+            paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <ScreenHeader
-          tone="dark"
-          onBack={() => setAuthPhase('onboarding')}
-          backAccessibilityLabel="Back to onboarding"
-          showBrand
-        />
-
-        <View style={[styles.cardStack, { width: cardWidth, marginLeft: -layout.screenMargin }]}>
-          <View style={[styles.stackCard, styles.backCard]}>
+        <View
+          style={[
+            styles.cardStack,
+            isCompactHeight && styles.cardStackCompact,
+            { width: cardWidth, marginLeft: -layout.screenMargin },
+          ]}
+        >
+          <View style={[styles.stackCard, styles.backCard, isCompactHeight && styles.backCardCompact]}>
             <View style={styles.cardHeader}>
               <View style={styles.smallIconTile}>
                 <Ionicons name="restaurant-outline" size={15} color={colors.accentDark} />
@@ -138,7 +146,7 @@ export function AuthEntryScreen() {
             </View>
           </View>
 
-          <View style={[styles.stackCard, styles.middleCard]}>
+          <View style={[styles.stackCard, styles.middleCard, isCompactHeight && styles.middleCardCompact]}>
             <View style={styles.cardHeader}>
               <View style={styles.smallIconTileMuted}>
                 <Ionicons name="flag-outline" size={15} color={colors.surprise} />
@@ -148,7 +156,7 @@ export function AuthEntryScreen() {
             <View style={styles.middleTrack} />
           </View>
 
-          <View style={[styles.stackCard, styles.frontCard]}>
+          <View style={[styles.stackCard, styles.frontCard, isCompactHeight && styles.frontCardCompact]}>
             <View style={styles.frontCopy}>
               <Text style={styles.balanceLabel}>YOUR OVERVIEW</Text>
               <View>
@@ -166,9 +174,9 @@ export function AuthEntryScreen() {
 
         <View style={styles.spacer} />
 
-        <View style={styles.copy}>
+        <View style={[styles.copy, isCompactHeight && styles.copyCompact]}>
           <Text style={styles.eyebrow}>WELCOME TO EXPENSIO</Text>
-          <Text style={styles.title}>
+          <Text style={[styles.title, isCompactHeight && styles.titleCompact]}>
             Your money,{'\n'}
             <Text style={styles.titleAccent}>your way</Text>
           </Text>
@@ -177,7 +185,7 @@ export function AuthEntryScreen() {
           </Text>
         </View>
 
-        <View style={styles.actions}>
+        <View style={[styles.actions, isCompactHeight && styles.actionsCompact]}>
           <PrimaryButton
             title="Continue with Mobile Number"
             variant="lime"
@@ -192,7 +200,7 @@ export function AuthEntryScreen() {
             onPress={() => setAuthPhase('email')}
             style={styles.ctaButton}
           />
-          {ENV.GOOGLE_CLIENT_ID ? (
+          {hasGoogleClientId ? (
             <GoogleSignInButton
               onAuthenticated={handleGoogleIdToken}
               onError={setGoogleError}
@@ -203,7 +211,7 @@ export function AuthEntryScreen() {
           ) : null}
         </View>
 
-        <Text style={styles.terms}>
+        <Text style={[styles.terms, isCompactHeight && styles.termsCompact]}>
           By continuing, you agree to our{' '}
           <Text accessibilityRole="button" onPress={() => setLegalDoc('terms')} style={styles.termLink}>Terms</Text>
           {' '}and{' '}
@@ -221,6 +229,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.heroBg,
   },
+  headerWrap: {
+    paddingHorizontal: layout.screenMargin,
+    width: '100%',
+    maxWidth: layout.maxContentWidth,
+    alignSelf: 'center',
+  },
   container: {
     flexGrow: 1,
     paddingHorizontal: layout.screenMargin,
@@ -232,6 +246,10 @@ const styles = StyleSheet.create({
     height: 248,
     marginTop: spacing.md,
     position: 'relative',
+  },
+  cardStackCompact: {
+    height: 196,
+    marginTop: spacing.xs,
   },
   stackCard: {
     position: 'absolute',
@@ -247,6 +265,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     zIndex: 1,
   },
+  backCardCompact: {
+    height: 96,
+  },
   middleCard: {
     top: 46,
     left: 32,
@@ -261,6 +282,10 @@ const styles = StyleSheet.create({
     ...shadows.card,
     zIndex: 2,
   },
+  middleCardCompact: {
+    top: 34,
+    height: 102,
+  },
   frontCard: {
     top: 96,
     left: spacing.sm,
@@ -274,6 +299,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     ...shadows.card,
     zIndex: 3,
+  },
+  frontCardCompact: {
+    top: 66,
+    height: 128,
+    paddingVertical: spacing.sm,
   },
   cardHeader: {
     height: 24,
@@ -325,6 +355,7 @@ const styles = StyleSheet.create({
   frontCopy: {
     flex: 1,
     justifyContent: 'space-between',
+    paddingRight: spacing.sm,
   },
   balanceLabel: {
     ...typography.label,
@@ -360,6 +391,9 @@ const styles = StyleSheet.create({
   copy: {
     marginBottom: spacing.lg,
   },
+  copyCompact: {
+    marginBottom: spacing.md,
+  },
   eyebrow: {
     ...typography.eyebrow,
     color: colors.surprise,
@@ -369,6 +403,11 @@ const styles = StyleSheet.create({
     ...typography.display,
     color: colors.heroText,
     marginBottom: spacing.sm,
+  },
+  titleCompact: {
+    fontSize: 34,
+    lineHeight: 38,
+    marginBottom: spacing.xs,
   },
   titleAccent: {
     color: colors.surprise,
@@ -380,6 +419,9 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: spacing.sm,
+  },
+  actionsCompact: {
+    gap: spacing.xs,
   },
   ctaButton: {
     minHeight: layout.buttonHeight,
@@ -394,6 +436,9 @@ const styles = StyleSheet.create({
     color: colors.heroTextSubtle,
     textAlign: 'center',
     marginTop: spacing.md,
+  },
+  termsCompact: {
+    marginTop: spacing.sm,
   },
   termLink: {
     color: colors.heroText,

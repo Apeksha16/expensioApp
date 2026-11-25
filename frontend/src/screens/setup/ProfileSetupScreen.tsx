@@ -236,6 +236,9 @@ export function ProfileSetupScreen() {
 
   const firstNameDraft = useRef(initialFirstName);
   const lastNameDraft = useRef(initialLastName);
+  const initialOnboardingStepRef = useRef(onboardingStep);
+  const updateOnboardingDraftRef = useRef(updateOnboardingDraft);
+  updateOnboardingDraftRef.current = updateOnboardingDraft;
   const hasLoadedRef = useRef(false);
   const isSubmittingRef = useRef(false);
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
@@ -303,11 +306,11 @@ export function ProfileSetupScreen() {
           }
           if (status.profile?.name) {
             const parts = status.profile.name.trim().split(/\s+/);
-            if (parts[0] && !onboardingDraft.firstName) serverUpdates.firstName = parts[0];
-            if (parts.slice(1).join(' ') && !onboardingDraft.lastName) serverUpdates.lastName = parts.slice(1).join(' ');
+            if (parts[0] && !firstNameDraft.current) serverUpdates.firstName = parts[0];
+            if (parts.slice(1).join(' ') && !lastNameDraft.current) serverUpdates.lastName = parts.slice(1).join(' ');
           }
           if (Object.keys(serverUpdates).length > 0) {
-            updateOnboardingDraft(serverUpdates);
+            updateOnboardingDraftRef.current(serverUpdates);
           }
 
           let serverStep = 1;
@@ -319,7 +322,7 @@ export function ProfileSetupScreen() {
             serverStep = 4;
           }
 
-          const currentLocalStep = onboardingStep || serverStep || 1;
+          const currentLocalStep = initialOnboardingStepRef.current || serverStep || 1;
           const targetStep = hasRealName ? currentLocalStep : 1;
 
           setStepState((current) => (current !== targetStep ? targetStep : current));

@@ -1,6 +1,6 @@
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { Platform, StatusBar as RNStatusBar } from 'react-native';
+import { AppState, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { colors } from '../theme';
 
 export type StatusBarSurface = 'dark' | 'light' | 'lime';
@@ -36,13 +36,32 @@ export function ScreenStatusBar({ surface, focused = true }: ScreenStatusBarProp
 
   useEffect(() => {
     if (!focused || Platform.OS === 'web') return;
-    RNStatusBar.setBarStyle(rnBarStyle, true);
+    const applyStyle = () => {
+      RNStatusBar.setBarStyle(rnBarStyle, Platform.OS !== 'android');
+    };
+    applyStyle();
+    const rafId =
+      Platform.OS === 'android' && typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame(applyStyle)
+        : null;
+    const timeoutId = Platform.OS === 'android' ? setTimeout(applyStyle, 80) : null;
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        applyStyle();
+      }
+    });
     return () => {
-      RNStatusBar.setBarStyle('dark-content', true);
+      if (rafId !== null && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(rafId);
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+      subscription.remove();
     };
   }, [focused, rnBarStyle]);
 
   if (!focused) return null;
 
-  return <ExpoStatusBar style={barStyle} animated />;
+  return <ExpoStatusBar style={barStyle} animated={false} />;
 }

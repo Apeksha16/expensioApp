@@ -72,7 +72,7 @@ export function AuthHeroShell({
             styles.content,
             {
               paddingTop: insets.top + spacing.xs,
-              paddingBottom: Math.max(insets.bottom, spacing.lg),
+              paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.md,
             },
           ]}
         >

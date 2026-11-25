@@ -6,7 +6,7 @@
 // - Never prefill OTP verification codes from a URL.
 // =============================================================================
 
-const ALLOWED_SCHEMES = new Set(['com.expensio.app:', 'expensio:']);
+const ALLOWED_SCHEMES = new Set(['com.aptech.expensio.app:', 'com.expensio.app:', 'expensio:']);
 const ALLOWED_ROUTES = new Set(['friends', 'splits', 'reset-password']);
 
 export type ParsedDeepLink =

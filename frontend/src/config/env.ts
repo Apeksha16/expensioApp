@@ -24,7 +24,7 @@ function resolveApiBaseUrl(rawUrl?: string): string {
 
 export const ENV = {
   API_BASE_URL: resolveApiBaseUrl(rawEnv.API_URL),
-  GOOGLE_CLIENT_ID: rawEnv.GOOGLE_CLIENT_ID || '',
+  GOOGLE_CLIENT_ID: (rawEnv.GOOGLE_CLIENT_ID || '').trim(),
   TIMEOUT_MS: Math.min(Math.max(Number(rawEnv.API_TIMEOUT_MS) || 15000, 5000), 30000),
   ENABLE_NETWORK_LOGS: isDevRuntime && rawEnv.ENABLE_NETWORK_LOGS !== 'false',
   IS_DEV: isDevRuntime,

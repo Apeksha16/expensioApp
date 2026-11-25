@@ -31,6 +31,7 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
     verificationChannel,
     verificationTarget,
     verificationReturnPhase,
+    otpCooldownSeconds,
     phone,
     countryCode,
     setAuthPhase,
@@ -38,16 +39,19 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
   } = useApp();
 
   const isEmail = verificationChannel === 'email';
+  const initialCooldown = otpCooldownSeconds ?? OTP_RESEND_SECONDS;
   const [otp, setOtp] = useState(auditPreview?.otp ?? '');
   const [error, setError] = useState(auditPreview?.error ?? '');
   const [lockedOut, setLockedOut] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [seconds, setSeconds] = useState(auditPreview?.seconds ?? OTP_RESEND_SECONDS);
+  const [seconds, setSeconds] = useState(auditPreview?.seconds ?? initialCooldown);
   const [resending, setResending] = useState(false);
   const [codeSent, setCodeSent] = useState(auditPreview?.codeSent ?? false);
 
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const isVerifyingRef = useRef(false);
+  const lockedOutRef = useRef(false);
+  const isResendingRef = useRef(false);
   const countryIso = countryCodes.find((item) => item.dial === countryCode)?.code;
 
   // Clear sensitive OTP state on target change or unmount (§2, J3)
@@ -55,9 +59,10 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
     if (auditPreview) return;
     setOtp('');
     setError('');
+    lockedOutRef.current = false;
     setLockedOut(false);
     setCodeSent(false);
-    setSeconds(OTP_RESEND_SECONDS);
+    setSeconds(otpCooldownSeconds ?? OTP_RESEND_SECONDS);
 
     const timer = setTimeout(() => {
       inputRef.current?.focus();
@@ -68,7 +73,7 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
       setOtp('');
       setError('');
     };
-  }, [auditPreview, verificationChannel, verificationTarget]);
+  }, [auditPreview, otpCooldownSeconds, verificationChannel, verificationTarget]);
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -77,7 +82,7 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
   }, [seconds]);
 
   const verify = useCallback(async (value = otp) => {
-    if (loading || isVerifyingRef.current || lockedOut) return;
+    if (loading || isVerifyingRef.current || lockedOutRef.current) return;
     if (value.length !== 6) {
       const msg = 'Enter the 6-digit verification code.';
       setError(msg);
@@ -98,20 +103,22 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
       const normalized = normalizeAuthError(requestError, 'otp');
       setError(normalized.message);
       if (normalized.isLockedOut) {
+        lockedOutRef.current = true;
         setLockedOut(true);
       }
       AccessibilityInfo.announceForAccessibility?.(normalized.message);
     } finally {
       setLoading(false);
       isVerifyingRef.current = false;
-      if (!lockedOut) {
+      if (!lockedOutRef.current) {
         inputRef.current?.focus();
       }
     }
-  }, [applyAuthSession, countryIso, isEmail, loading, lockedOut, otp, phone, verificationTarget]);
+  }, [applyAuthSession, countryIso, isEmail, loading, otp, phone, verificationTarget]);
 
   const resend = async () => {
-    if (resending || seconds > 0) return;
+    if (isResendingRef.current || resending || seconds > 0) return;
+    isResendingRef.current = true;
     setResending(true);
     setError('');
     setCodeSent(false);
@@ -128,6 +135,7 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
       }
       setSeconds(cooldown);
       setOtp('');
+      lockedOutRef.current = false;
       setLockedOut(false);
       setCodeSent(true);
       AccessibilityInfo.announceForAccessibility?.('A new verification code has been sent.');
@@ -140,6 +148,7 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
       setError(normalized.message);
       AccessibilityInfo.announceForAccessibility?.(normalized.message);
     } finally {
+      isResendingRef.current = false;
       setResending(false);
     }
   };

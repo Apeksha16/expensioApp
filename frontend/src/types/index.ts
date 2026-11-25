@@ -1,6 +1,7 @@
 export type AuthPhase = 'restoring' | 'onboarding' | 'login' | 'mobile' | 'email' | 'otp' | 'forgot_password' | 'reset_password' | 'setup' | 'main';
 
 export interface UserProfile {
+  id?: string;
   name: string;
   userId: string;
   monthlyIncome: number;

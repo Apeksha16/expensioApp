@@ -37,8 +37,9 @@ export interface AuthResponse {
 export interface CompleteOnboardingInput {
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
+  countryCode?: string;
   employmentType: 'salaried' | 'business' | 'student' | 'retired' | 'homemaker' | string;
   incomeAmountMinor: string;
   cashBalanceMinor: string;
@@ -305,12 +306,16 @@ export async function submitPasswordReset(payload: {
 
 export async function completeOnboarding(input: CompleteOnboardingInput): Promise<AuthResponse> {
   const currency = input.currency || 'INR';
+  const normalizedEmail = input.email?.trim().toLowerCase() || undefined;
+  const normalizedPhone = input.phone?.trim() || undefined;
+  const normalizedCountryCode = input.countryCode?.trim() || undefined;
   await Promise.all([
     onboardingApi.updateProfile({
       firstName: input.firstName,
       lastName: input.lastName,
-      email: input.email,
-      phone: input.phone,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      countryCode: normalizedCountryCode,
     }),
     onboardingApi.updateEmployment({
       employmentType: input.employmentType.toUpperCase(),
@@ -325,7 +330,7 @@ export async function completeOnboarding(input: CompleteOnboardingInput): Promis
   ]);
 
   const res = await onboardingApi.completeOnboarding();
-  const email = input.email.trim().toLowerCase();
+  const email = normalizedEmail ?? '';
 
   return {
     success: true,
@@ -338,7 +343,7 @@ export async function completeOnboarding(input: CompleteOnboardingInput): Promis
       name: `${input.firstName} ${input.lastName}`.trim(),
       username: res.data.username,
       email,
-      phone: input.phone,
+      phone: normalizedPhone ?? '',
       incomeAmountMinor: input.incomeAmountMinor,
       cashBalanceMinor: input.cashBalanceMinor,
       savingsAmountMinor: input.savingsAmountMinor ?? '0',

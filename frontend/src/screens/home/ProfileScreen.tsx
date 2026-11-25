@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Avatar } from '../../components/Avatar';
+import { CartoonAvatar } from '../../components/CartoonAvatar';
 import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -115,7 +117,6 @@ export function ProfileScreen({ navigation }: Props) {
     ? `${countryCode || '+91'} ${mobile.length > 4 ? `••••••${mobile.slice(-4)}` : mobile}`
     : 'Mobile number not added';
   const reportDestinationEmail = reportDraft.reportEmail || (email === 'Email not added' ? '' : email);
-  const avatar = getProfileAvatar(draftAvatarId);
   const hasPreferenceChanges = draftModules.join('|') !== preferredModuleIds.join('|');
   const hasReportChanges = reportDraft.reportFrequency !== reportFrequency
     || reportDraft.reportsEnabled !== reportsEnabled
@@ -260,7 +261,12 @@ export function ProfileScreen({ navigation }: Props) {
             onPress={openAvatarPicker}
             style={styles.avatarButton}
           >
-            <Text style={styles.avatarEmoji}>{avatar.emoji}</Text>
+            <Avatar
+              id={savedEmail || mobile || fullName}
+              name={fullName === 'Name not added' ? 'Expensio' : fullName}
+              presetId={draftAvatarId}
+              size={56}
+            />
             <View style={styles.editAvatarBadge}>
               <Ionicons name="pencil" size={12} color={colors.white} />
             </View>
@@ -561,7 +567,7 @@ export function ProfileScreen({ navigation }: Props) {
               </Pressable>
             </View>
             <View style={[styles.avatarPreview, { backgroundColor: getProfileAvatar(draftAvatarId).backgroundColor }]}>
-              <Text style={styles.avatarPreviewEmoji}>{getProfileAvatar(draftAvatarId).emoji}</Text>
+              <CartoonAvatar id={getProfileAvatar(draftAvatarId).id} size={76} />
             </View>
             <View style={styles.avatarGrid}>
               {profileAvatars.map((item) => {
@@ -570,12 +576,12 @@ export function ProfileScreen({ navigation }: Props) {
                   <Pressable
                     key={item.id}
                     accessibilityRole="radio"
-                    accessibilityLabel={`Select ${item.id} avatar`}
+                    accessibilityLabel={`Select ${item.name} avatar`}
                     accessibilityState={{ selected }}
                     onPress={() => setDraftAvatarId(item.id)}
                     style={[styles.avatarChoice, { backgroundColor: item.backgroundColor }, selected && styles.avatarChoiceSelected]}
                   >
-                    <Text style={styles.avatarChoiceEmoji}>{item.emoji}</Text>
+                    <CartoonAvatar id={item.id} size={46} />
                     {selected ? <View style={styles.avatarChoiceCheck}><Ionicons name="checkmark" size={13} color={colors.white} /></View> : null}
                   </Pressable>
                 );

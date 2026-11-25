@@ -35,6 +35,7 @@ import { FRIENDS_CONFIG } from '../../config/friendsConfig';
 import { useApp } from '../../context/AppContext';
 import {
   filterFriendshipsByQuery,
+  getAccountDataOwner,
   getInitials,
   sanitizeDisplayText,
 } from '../../services/friendsStore';
@@ -408,7 +409,19 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
   ]);
 
   const canGoBack = navigation.canGoBack();
-  const currentOwnerId = profile?.phone || profile?.email?.toLowerCase() || profile?.userId || null;
+  const currentOwnerId = getAccountDataOwner(profile);
+
+  const navigateToSplits = useCallback(() => {
+    const state = navigation.getState();
+    const nav = navigation as unknown as {
+      navigate: (name: string, params?: Record<string, unknown>) => void;
+    };
+    if (state?.routeNames?.includes('SplitHome')) {
+      nav.navigate('SplitHome');
+      return;
+    }
+    nav.navigate('Split', { screen: 'SplitHome' });
+  }, [navigation]);
 
   const segmentOptions = useMemo(
     () => [
@@ -806,7 +819,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         friendship={personSheetTarget}
         currentOwnerId={currentOwnerId}
         onClose={() => setPersonSheetTarget(null)}
-        onViewSplits={() => navigation.navigate('Split' as never)}
+        onViewSplits={navigateToSplits}
         onEditAvatar={(target) => runAfterSheetDismiss(() => setGuestEditorTarget(target))}
         onRemove={(target) => runAfterSheetDismiss(() => void openConfirmSheet(target, 'remove'))}
       />
@@ -819,7 +832,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         onSendRequest={sendFriendRequest}
         onCreateGuest={createGuestFriend}
         guestCount={friendCounts.guests}
-        currentUserId={profile?.userId}
+        currentUserId={profile?.id || profile?.userId}
         existingFriendships={friendships}
       />
 
@@ -832,7 +845,7 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
         onConfirmRemove={handleConfirmAction}
         onNavigateToSplits={() => {
           setConfirmTarget(null);
-          navigation.navigate('Split' as never);
+          navigateToSplits();
         }}
       />
 

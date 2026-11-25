@@ -4,11 +4,11 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Avatar } from '../../components/Avatar';
 import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { TransactionItem } from '../../components/TransactionItem';
 import type { AppModule } from '../../data/modules';
 import { useApp } from '../../context/AppContext';
-import { getProfileAvatar } from '../../data/avatars';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
 import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
@@ -22,7 +22,6 @@ export function DashboardScreen({ navigation }: Props) {
   const { profileState, profile, transactions } = useApp();
   const displayName = [profileState.firstName, profileState.lastName].filter(Boolean).join(' ').trim();
   const firstName = profileState.firstName.trim() || displayName.split(/\s+/)[0] || 'there';
-  const avatar = getProfileAvatar(profileState.avatarId);
   const preferredModules = profileState.preferredModuleIds
     .map((id) => moduleRegistryService.getModuleById(id))
     .filter((module): module is AppModule => module !== undefined && module.available);
@@ -83,7 +82,12 @@ export function DashboardScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('Profile')}
             style={({ pressed }) => [styles.avatarButton, pressed && styles.pressed]}
           >
-            <Text style={styles.avatar}>{avatar.emoji}</Text>
+            <Avatar
+              id={profile?.id || profileState.email || profileState.mobile}
+              name={displayName || firstName || 'Expensio'}
+              presetId={profileState.avatarId}
+              size={44}
+            />
             <View style={styles.avatarDot} />
           </Pressable>
         </View>

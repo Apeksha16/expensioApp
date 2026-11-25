@@ -10,7 +10,7 @@ import { colors, radius, shadows, spacing, typography } from '../theme';
 
 export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const { preferredModuleIds, friendCounts } = useApp();
+  const { preferredModuleIds, friendCounts, triggerGlobalAddFriend } = useApp();
   const tabs = preferredModuleIds
     .map((id) => moduleRegistryService.getModuleById(id))
     .filter((module): module is NonNullable<typeof module> => Boolean(
@@ -78,9 +78,15 @@ export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
             <Pressable
               key={module.id}
               accessibilityRole="button"
-              accessibilityLabel={module.name}
+              accessibilityLabel={isFriendsActive && route.name === 'Add' ? 'Add friend or guest' : module.name}
               accessibilityState={{ selected: focused }}
-              onPress={() => navigation.navigate(route.name as never)}
+              onPress={() => {
+                if (isFriendsActive && route.name === 'Add') {
+                  triggerGlobalAddFriend();
+                  return;
+                }
+                navigation.navigate(route.name as never);
+              }}
               style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
             >
               <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>

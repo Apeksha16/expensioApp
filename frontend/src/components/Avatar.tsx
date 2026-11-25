@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { getInitials, hashToneIndex } from '../services/friendsStore';
 import { colors, radius, typography } from '../theme';
+import { CARTOON_AVATARS, CartoonAvatar } from './CartoonAvatar';
 
 export type AvatarSize = 44 | 56 | 72 | number;
 
@@ -25,13 +26,17 @@ interface AvatarProps {
 }
 
 /**
- * Clean tonal initials avatar with optional cached photo URI.
- * Guests use a subtle dashed ring instead of cartoon illustrations (J11).
+ * Unified app-wide avatar component:
+ * - Renders a cached photo URI when provided and valid.
+ * - Renders the chosen CartoonAvatar preset when presetId matches a known preset.
+ * - Falls back to tonal initials when no avatar preset or photo exists.
+ * - Adds a subtle dashed outer ring for guests.
  */
 export const Avatar = React.memo(function Avatar({
   id,
   name,
   uri,
+  presetId,
   size = 44,
   isGuest = false,
   style,
@@ -45,6 +50,9 @@ export const Avatar = React.memo(function Avatar({
   const seed = id || name || 'expensio';
   const tone = TONAL_PALETTE[hashToneIndex(seed, TONAL_PALETTE.length)];
   const initials = getInitials(name, 'FR');
+  const hasKnownPreset = Boolean(
+    presetId && CARTOON_AVATARS.some((avatar) => avatar.id === presetId),
+  );
 
   const innerSize = isGuest ? Math.max(28, size - 6) : size;
   const fontStyle =
@@ -78,13 +86,6 @@ export const Avatar = React.memo(function Avatar({
           },
         ]}
       >
-        <Text
-          numberOfLines={1}
-          maxFontSizeMultiplier={1.2}
-          style={[fontStyle, { color: tone.fg }]}
-        >
-          {initials}
-        </Text>
         {uri && !imageError ? (
           <Image
             source={{ uri, cache: 'force-cache' }}
@@ -95,7 +96,17 @@ export const Avatar = React.memo(function Avatar({
             onError={() => setImageError(true)}
             accessibilityIgnoresInvertColors
           />
-        ) : null}
+        ) : hasKnownPreset ? (
+          <CartoonAvatar id={presetId} size={innerSize} />
+        ) : (
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+            style={[fontStyle, { color: tone.fg }]}
+          >
+            {initials}
+          </Text>
+        )}
       </View>
     </View>
   );

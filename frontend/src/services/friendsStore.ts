@@ -245,6 +245,16 @@ export function createPendingActionTracker(): PendingActionTracker {
   };
 }
 
+export function getAccountDataOwner(
+  user: { id?: string | null; email?: string | null; phone?: string | null } | null | undefined,
+): string | null {
+  const identity =
+    user?.id?.trim()
+    || user?.phone?.trim()
+    || user?.email?.trim().toLowerCase();
+  return identity ? identity.replace(/[^a-zA-Z0-9.\-_]/g, '_') : null;
+}
+
 export function isGuestOwnedByUser(
   friendship: Friendship,
   currentOwnerId?: string | null,

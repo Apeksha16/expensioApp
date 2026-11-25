@@ -53,6 +53,7 @@ const UNSCOPED_USER_KEYS: string[] = [
   STORAGE_KEYS.legacyPreferences,
   STORAGE_KEYS.onboardingDraft,
   STORAGE_KEYS.emailVerification,
+  STORAGE_KEYS.pendingVerification,
   STORAGE_KEYS.friendships,
   `${STORAGE_KEYS.friendships}_cache`,
 ];

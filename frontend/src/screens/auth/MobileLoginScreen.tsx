@@ -120,13 +120,13 @@ export function MobileLoginScreen() {
     try {
       if (mode === 'mobile') {
         const cleanPhone = phone.replace(/\D/g, '');
-        await sendOtp(cleanPhone, selected.code);
+        const res = await sendOtp(cleanPhone, selected.code);
         setPhoneCredentials(dial, cleanPhone);
-        setVerification('phone', cleanPhone);
+        setVerification('phone', cleanPhone, res.resendCooldownSeconds);
       } else {
         const target = email.trim().toLowerCase();
-        await sendEmailOtp(target);
-        setVerification('email', target);
+        const res = await sendEmailOtp(target);
+        setVerification('email', target, res.resendCooldownSeconds);
       }
       setAuthPhase('otp');
     } catch (requestError) {

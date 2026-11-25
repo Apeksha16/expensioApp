@@ -23,7 +23,7 @@ export function ResetPasswordScreen() {
     showToast,
   } = useApp();
 
-  const [credentialMode, setCredentialMode] = useState<RecoveryCredentialMode>('otp');
+  const [credentialMode, setCredentialMode] = useState<RecoveryCredentialMode>('token');
   const [otp, setOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');

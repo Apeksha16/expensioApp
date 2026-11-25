@@ -22,7 +22,6 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
-import { ApiError } from '../../services/api/apiClient';
 import { onboardingApi } from '../../services/api/onboardingApi';
 import { completeOnboarding } from '../../services/authApi';
 import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
@@ -380,11 +379,11 @@ export function ProfileSetupScreen() {
         });
         setStep(2);
       } catch (requestError) {
-        if (requestError instanceof ApiError && requestError.isNetworkError) {
-          setStep(2);
-        } else {
-          setError(requestError instanceof Error ? requestError.message : 'Unable to update profile');
-        }
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Unable to connect. Check your internet connection and tap Retry.',
+        );
       } finally {
         setLoading(false);
         isSubmittingRef.current = false;
@@ -423,11 +422,11 @@ export function ProfileSetupScreen() {
         });
         setStep(3);
       } catch (requestError) {
-        if (requestError instanceof ApiError && requestError.isNetworkError) {
-          setStep(3);
-        } else {
-          setError(requestError instanceof Error ? requestError.message : 'Unable to update employment details');
-        }
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Unable to connect. Check your internet connection and tap Retry.',
+        );
       } finally {
         setLoading(false);
         isSubmittingRef.current = false;
@@ -461,11 +460,11 @@ export function ProfileSetupScreen() {
         });
         setStep(4);
       } catch (requestError) {
-        if (requestError instanceof ApiError && requestError.isNetworkError) {
-          setStep(4);
-        } else {
-          setError(requestError instanceof Error ? requestError.message : 'Unable to update financial balances');
-        }
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Unable to connect. Check your internet connection and tap Retry.',
+        );
       } finally {
         setLoading(false);
         isSubmittingRef.current = false;
@@ -476,11 +475,14 @@ export function ProfileSetupScreen() {
     // Step 4: Finalize and complete account activation
     setLoading(true);
     try {
+      const normalizedEmail = onboardingDraft.email.trim().toLowerCase();
+      const normalizedPhone = (onboardingDraft.phone || phone).trim();
       const response = await completeOnboarding({
         firstName: onboardingDraft.firstName.trim(),
         lastName: onboardingDraft.lastName.trim(),
-        email: onboardingDraft.email.trim().toLowerCase(),
-        phone: onboardingDraft.phone || phone,
+        email: normalizedEmail || undefined,
+        phone: normalizedPhone || undefined,
+        countryCode: countryCode || undefined,
         employmentType: (selectedEmployment.backendType || onboardingDraft.employmentType).toUpperCase(),
         incomeAmountMinor: `${Math.round((Number(onboardingDraft.incomeRupees) || 0) * 100)}`,
         cashBalanceMinor: `${Math.round((Number(onboardingDraft.cashRupees) || 0) * 100)}`,
@@ -901,7 +903,7 @@ export function ProfileSetupScreen() {
           ) : null}
           {error ? <Text accessibilityRole="alert" style={styles.profileError}>{error}</Text> : null}
           <PrimaryButton
-            title={continueButtonText}
+            title={error ? 'Retry' : continueButtonText}
             variant="primary"
             disabled={!canContinue || loading}
             loading={loading}

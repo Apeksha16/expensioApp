@@ -42,6 +42,7 @@ import {
   createParticipantSnapshotMap,
   createPendingActionTracker,
   friendshipsToSelectableFriends,
+  getAccountDataOwner,
   isGuestOwnedByUser,
   partitionFriendships,
 } from '../services/friendsStore';
@@ -54,7 +55,13 @@ import { userApi } from '../services/api/userApi';
 import { authApi as backendAuthApi } from '../services/api/authApi';
 import { onboardingApi } from '../services/api/onboardingApi';
 import { clearSession, readSession, updateSession, writeSession } from '../core/storage/session';
-import { migrateLegacySecureStoreKeys } from '../core/storage/localPersistence';
+import {
+  migrateLegacySecureStoreKeys,
+  readJson,
+  removeValue,
+  STORAGE_KEYS,
+  writeJson,
+} from '../core/storage/localPersistence';
 import { readLocalData, writeLocalData } from '../core/storage/localData';
 import { avatarPreferenceService } from '../services/avatarPreferenceService';
 import { profileService, type ProfileRecord } from '../services/profileService';
@@ -75,6 +82,7 @@ interface AppState {
   verificationChannel: 'phone' | 'email';
   verificationTarget: string;
   verificationReturnPhase: 'mobile' | 'email';
+  otpCooldownSeconds: number | null;
   passwordResetEmail: string;
   setPasswordResetEmail: (email: string) => void;
   phoneVerified: boolean;
@@ -82,7 +90,7 @@ interface AppState {
   onboardingStep: number;
   onboardingDraft: OnboardingDraft;
   setPhoneCredentials: (countryCode: string, phone: string) => void;
-  setVerification: (channel: 'phone' | 'email', target: string) => void;
+  setVerification: (channel: 'phone' | 'email', target: string, cooldownSeconds?: number) => void;
   updateOnboardingDraft: (draft: Partial<OnboardingDraft>) => void;
   setOnboardingStep: (step: number) => void;
   profile: UserProfile | null;
@@ -185,10 +193,16 @@ const colorsForFriend = ['#146B45', '#D97706', '#7C3AED', '#2563EB', '#DB2777'];
 
 export const AppContext = createContext<AppState | null>(null);
 
-function getAccountDataOwner(user: Pick<UserProfile, 'email' | 'phone'> | null | undefined): string | null {
-  const identity = user?.phone?.trim() || user?.email?.trim().toLowerCase();
-  return identity ? identity.replace(/[^a-zA-Z0-9.\-_]/g, '_') : null;
+interface PendingVerificationState {
+  channel: 'phone' | 'email';
+  target: string;
+  returnPhase: 'mobile' | 'email';
+  phone?: string;
+  countryCode?: string;
+  createdAt: number;
 }
+
+const PENDING_VERIFICATION_TTL_MS = 15 * 60 * 1000;
 
 function isInCurrentMonth(transaction: Transaction, now = new Date()): boolean {
   if (typeof transaction.occurredAt === 'number') {
@@ -210,6 +224,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [verificationChannel, setVerificationChannel] = useState<'phone' | 'email'>('phone');
   const [verificationTarget, setVerificationTarget] = useState('');
   const [verificationReturnPhase, setVerificationReturnPhase] = useState<'mobile' | 'email'>('mobile');
+  const [otpCooldownSeconds, setOtpCooldownSeconds] = useState<number | null>(null);
   const [passwordResetEmail, setPasswordResetEmail] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
@@ -309,11 +324,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const refreshFriendsInternal = useCallback(async (
     mode: 'initial' | 'manual' | 'focus' | 'foreground' | 'poll' | 'realtime' | 'mutation' = 'manual',
-  ) => {
+  ): Promise<boolean> => {
     if (!FRIENDS_CONFIG.FRIENDS_ENABLED) {
       setFriendsLoading(false);
       setFriendsRefreshing(false);
-      return;
+      return true;
     }
     const ownerId = localDataOwnerRef.current;
     friendsFetchAbortRef.current?.abort();
@@ -335,7 +350,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ownerId,
         signal: controller.signal,
       });
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) return false;
 
       const all = [...data.accepted, ...data.incoming, ...data.outgoing];
       const prevIncomingIds = new Set(
@@ -361,8 +376,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         hasNewIncomingAlert: hasNewIncoming ? true : prev.hasNewIncomingAlert,
       }));
       friendsSyncRef.current?.recordSuccess();
+      return true;
     } catch (err) {
-      if (isAbortError(err) || controller.signal.aborted) return;
+      if (isAbortError(err) || controller.signal.aborted) return false;
       const normalized = normalizeFriendsError(err);
       setFriendsError(normalized.message);
       setFriendsNormalizedError(normalized);
@@ -385,6 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
       if (mode === 'manual') throw normalized;
+      return false;
     } finally {
       if (friendsFetchAbortRef.current === controller) {
         friendsFetchAbortRef.current = null;
@@ -465,6 +482,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setOnboardingStepState(1);
     setVerificationTarget('');
     setVerificationReturnPhase('mobile');
+    setOtpCooldownSeconds(null);
     setPasswordResetEmail('');
     setOnboardingDraft({
       firstName: '', lastName: '', email: '', phone: '', employmentType: '',
@@ -603,6 +621,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         reportEmail: nextPreferences.reportEmail,
       });
       if (!session?.user || !user) {
+        const pending = await readJson<PendingVerificationState>(STORAGE_KEYS.pendingVerification).catch(() => null);
+        await removeValue(STORAGE_KEYS.pendingVerification).catch(() => {});
+        if (
+          pending
+          && typeof pending.createdAt === 'number'
+          && Date.now() - pending.createdAt < PENDING_VERIFICATION_TTL_MS
+          && (pending.returnPhase === 'mobile' || pending.returnPhase === 'email')
+        ) {
+          if (pending.phone) setPhone(pending.phone);
+          if (pending.countryCode) setCountryCode(pending.countryCode);
+          setVerificationChannel(pending.channel);
+          setVerificationTarget(pending.target);
+          setVerificationReturnPhase(pending.returnPhase);
+          setAuthPhase(pending.returnPhase);
+          showToast('error', 'Your previous verification was interrupted. Request a new code to continue.');
+          return;
+        }
         setAuthPhase('onboarding');
         return;
       }
@@ -767,7 +802,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AppState>(
     () => ({
       authPhase,
-      setAuthPhase,
+      setAuthPhase: (phase) => {
+        if (phase !== 'otp') {
+          void removeValue(STORAGE_KEYS.pendingVerification).catch(() => {});
+        }
+        setAuthPhase(phase);
+      },
       restoreError,
       retryRestore: () => { void restoreLocalState(); },
       showToast,
@@ -776,6 +816,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       verificationChannel,
       verificationTarget,
       verificationReturnPhase,
+      otpCooldownSeconds,
       passwordResetEmail,
       setPasswordResetEmail,
       phoneVerified,
@@ -787,10 +828,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setPhone(number);
         setProfileState((current) => ({ ...current, countryCode: code, mobile: number }));
       },
-      setVerification: (channel, target) => {
+      setVerification: (channel, target, cooldownSeconds) => {
+        const returnPhase = channel === 'email' ? 'email' : 'mobile';
         setVerificationChannel(channel);
         setVerificationTarget(target);
-        setVerificationReturnPhase('mobile');
+        setVerificationReturnPhase(returnPhase);
+        setOtpCooldownSeconds(typeof cooldownSeconds === 'number' ? cooldownSeconds : null);
+        void writeJson(STORAGE_KEYS.pendingVerification, {
+          channel,
+          target,
+          returnPhase,
+          phone: channel === 'phone' ? target : phone,
+          countryCode,
+          createdAt: Date.now(),
+        } satisfies PendingVerificationState).catch(() => {});
       },
       updateOnboardingDraft: (draft) => {
         const ownerId = localDataOwnerRef.current;
@@ -1368,9 +1419,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         syncPendingActionState();
         try {
           await friendsApi.deleteRelationship(friendshipId, localDataOwnerRef.current);
-          triggerSuccessHaptic();
-          showToast('success', 'Friend removed from your directory.');
-          await refreshFriendsInternal('mutation');
+          const refreshed = await refreshFriendsInternal('mutation');
+          if (refreshed) {
+            triggerSuccessHaptic();
+            showToast('success', 'Friend removed from your directory.');
+          } else {
+            triggerErrorHaptic();
+            showToast('error', 'Friend removed on server, but list refresh failed. Tap Retry to sync.');
+          }
         } catch (err) {
           const normalized = normalizeFriendsError(err);
           triggerErrorHaptic();
@@ -1540,6 +1596,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (nextPhoneVerified && !phoneVerified) setPhoneVerified(true);
         const authenticatedUser = response.user;
         const nextProfile: UserProfile = {
+          id: authenticatedUser.id,
           name: authenticatedUser.name || '',
           userId: authenticatedUser.username || '',
           monthlyIncome: Number(authenticatedUser.incomeAmountMinor?.slice(0, -2) || authenticatedUser.salary || 0),
@@ -1628,6 +1685,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           email: authenticatedUser.email || current.email,
           phone: authenticatedUser.phone || current.phone,
         }));
+        void removeValue(STORAGE_KEYS.pendingVerification).catch(() => {});
+        setOtpCooldownSeconds(null);
         setAuthPhase(isFullyComplete ? 'main' : 'setup');
       },
       beginVerification: async (response, channel, target) => {
@@ -1636,6 +1695,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         const resolvedUser = response.user ?? { email: channel === 'email' ? target : undefined, phone: channel === 'phone' ? target : undefined };
         const nextProfile: UserProfile = {
+          id: resolvedUser.id,
           name: resolvedUser.name || '',
           userId: resolvedUser.username || '',
           monthlyIncome: Number(resolvedUser.incomeAmountMinor?.slice(0, -2) || resolvedUser.salary || 0),
@@ -1684,10 +1744,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setVerificationChannel(channel);
         setVerificationTarget(target);
         setVerificationReturnPhase(channel === 'email' ? 'email' : 'mobile');
+        setOtpCooldownSeconds(typeof response.resendCooldownSeconds === 'number' ? response.resendCooldownSeconds : null);
+        void writeJson(STORAGE_KEYS.pendingVerification, {
+          channel,
+          target,
+          returnPhase: channel === 'email' ? 'email' : 'mobile',
+          phone: channel === 'phone' ? target : nextProfile.phone,
+          countryCode,
+          createdAt: Date.now(),
+        } satisfies PendingVerificationState).catch(() => {});
         setAuthPhase('otp');
       },
     }),
-    [authPhase, restoreError, restoreLocalState, restoreAccountData, clearInMemoryUserState, persistLocalData, runWithLocalLock, notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences, friends, splitGroups, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, verificationReturnPhase, passwordResetEmail, phoneVerified, emailVerified, onboardingDraft, onboardingStep, friendships, acceptedFriendships, incomingFriendships, outgoingFriendships, friendCounts, friendsLoading, friendsRefreshing, friendsError, friendsNormalizedError, friendsSyncMeta, pendingFriendActionIds, addFriendTriggerCount, refreshFriends, refreshFriendsInternal, syncPendingActionState],
+    [authPhase, restoreError, restoreLocalState, restoreAccountData, clearInMemoryUserState, persistLocalData, runWithLocalLock, notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences, friends, splitGroups, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, verificationReturnPhase, otpCooldownSeconds, passwordResetEmail, phoneVerified, emailVerified, onboardingDraft, onboardingStep, friendships, acceptedFriendships, incomingFriendships, outgoingFriendships, friendCounts, friendsLoading, friendsRefreshing, friendsError, friendsNormalizedError, friendsSyncMeta, pendingFriendActionIds, addFriendTriggerCount, refreshFriends, refreshFriendsInternal, syncPendingActionState],
   );
 
   return (

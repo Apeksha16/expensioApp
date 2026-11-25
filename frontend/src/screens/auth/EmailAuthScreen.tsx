@@ -182,7 +182,7 @@ export function EmailAuthScreen({ auditPreview }: { auditPreview?: EmailAuthAudi
             label="Password"
             value={password}
             onChangeText={(value) => { setPassword(value.slice(0, 128)); setError(''); }}
-            placeholder={isRegister ? 'Create a strong password' : 'Enter your password'}
+            placeholder={isRegister ? 'Enter a password' : 'Enter your password'}
             secureTextEntry
             showPasswordToggle
             autoCapitalize="none"

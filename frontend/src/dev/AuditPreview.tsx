@@ -1,7 +1,7 @@
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import React, { useMemo } from 'react';
-import { LogBox } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { LogBox, Platform } from 'react-native';
 import { AddFriendSheet } from '../components/AddFriendSheet';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { FriendRemovalSheet } from '../components/FriendRemovalSheet';
@@ -231,8 +231,50 @@ function AuditTabShell({
 
 export function AuditPreview({ target }: { target: Exclude<AuditTarget, null> }) {
   LogBox.ignoreAllLogs(true);
+  const [liveTarget, setLiveTarget] = useState<Exclude<AuditTarget, null>>(target);
   const baseApp = useApp();
-  const activeFriendships = target === 'friends_search_empty' ? SEARCH_EMPTY_FRIENDSHIPS : SAMPLE_FRIENDSHIPS;
+
+  useEffect(() => {
+    setLiveTarget(target);
+  }, [target]);
+
+  useEffect(() => {
+    if (!__DEV__ || Platform.OS !== 'android') return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const poll = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:8099/target');
+        const next = (await res.text()).trim();
+        if (active && next && next !== 'null') {
+          setLiveTarget((prev) => (prev === next ? prev : (next as Exclude<AuditTarget, null>)));
+        }
+      } catch {
+        // Ignore when host audit controller is not running.
+      } finally {
+        if (active) {
+          timer = setTimeout(() => {
+            void poll();
+          }, 250);
+        }
+      }
+    };
+    void poll();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!__DEV__ || Platform.OS !== 'android') return;
+    const raf = requestAnimationFrame(() => {
+      void fetch(`http://127.0.0.1:8099/ack?t=${encodeURIComponent(liveTarget)}`).catch(() => {});
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [liveTarget]);
+
+  const activeFriendships = liveTarget === 'friends_search_empty' ? SEARCH_EMPTY_FRIENDSHIPS : SAMPLE_FRIENDSHIPS;
   const partitioned = useMemo(() => partitionFriendships(activeFriendships), [activeFriendships]);
 
   const mockValue = useMemo(
@@ -276,7 +318,7 @@ export function AuditPreview({ target }: { target: Exclude<AuditTarget, null> })
   );
 
   const renderContent = () => {
-    switch (target) {
+    switch (liveTarget) {
       case 'onboarding_dark':
         return <OnboardingScreen />;
       case 'auth_entry':
@@ -408,7 +450,7 @@ export function AuditPreview({ target }: { target: Exclude<AuditTarget, null> })
 
   return (
     <AppContext.Provider value={mockValue}>
-      <React.Fragment key={target}>{renderContent()}</React.Fragment>
+      <React.Fragment key={liveTarget}>{renderContent()}</React.Fragment>
     </AppContext.Provider>
   );
 }

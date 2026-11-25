@@ -208,7 +208,7 @@ export function ResetPasswordScreen() {
         label="New password"
         value={newPassword}
         onChangeText={(value) => { setNewPassword(value.slice(0, 128)); setError(''); }}
-        placeholder="Create a strong password"
+        placeholder="Enter new password"
         secureTextEntry
         showPasswordToggle
         autoCapitalize="none"

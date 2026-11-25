@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { cardChrome, colors, radius, spacing, typography } from '../theme';
+import { fontFamilies, cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { BudgetSummary } from '../types';
 import { formatINR } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   limit: {
     ...typography.body,
     color: colors.textTertiary,
-    fontWeight: '500',
+    fontFamily: fontFamilies.medium,
   },
   pctBadge: {
     backgroundColor: colors.accentSoft,

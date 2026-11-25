@@ -11,7 +11,7 @@ import type { AppModule } from '../../data/modules';
 import { useApp } from '../../context/AppContext';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
-import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
+import { fontFamilies, colors, layout, radius, shadows, spacing, typography } from '../../theme';
 import { formatINR, getGreeting } from '../../utils/format';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
@@ -261,7 +261,7 @@ export function DashboardScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.screenMargin,
     paddingTop: spacing.sm,
     paddingBottom: 150,
     gap: spacing.xl,
@@ -280,11 +280,11 @@ const styles = StyleSheet.create({
   heroCard: { minHeight: 256, overflow: 'hidden', justifyContent: 'space-between', padding: spacing.lg, borderRadius: radius.xxl, backgroundColor: colors.accentDark, ...shadows.card },
   heroTopline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, zIndex: 1 },
   heroMark: { width: 26, height: 26, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise },
-  heroEyebrow: { ...typography.micro, color: colors.heroTextMuted, fontWeight: '700', letterSpacing: 0.8, flex: 1 },
+  heroEyebrow: { ...typography.micro, color: colors.heroTextMuted, fontFamily: fontFamilies.bold, letterSpacing: 0.8, flex: 1 },
   todayPill: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: radius.full, backgroundColor: colors.heroGlass },
   todayDot: { width: 6, height: 6, borderRadius: radius.full, backgroundColor: colors.surprise },
   todayText: { ...typography.micro, color: colors.white },
-  balanceLabel: { ...typography.micro, color: colors.heroTextMuted, fontWeight: '700', letterSpacing: 0.9, marginTop: spacing.lg, zIndex: 1 },
+  balanceLabel: { ...typography.micro, color: colors.heroTextMuted, fontFamily: fontFamilies.bold, letterSpacing: 0.9, marginTop: spacing.lg, zIndex: 1 },
   balanceValue: { ...typography.h1, color: colors.white, marginTop: 2, zIndex: 1 },
   balanceDivider: { height: 1, backgroundColor: colors.heroGlassBorder, marginVertical: spacing.sm, zIndex: 1 },
   balanceStats: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, zIndex: 1 },

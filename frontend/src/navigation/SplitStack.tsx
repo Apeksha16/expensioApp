@@ -1,8 +1,8 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { FRIENDS_CONFIG } from '../config/friendsConfig';
+import { FriendsScreen } from '../screens/friends/FriendsScreen';
 import { CreateSplitScreen } from '../screens/split/CreateSplitScreen';
-import { FriendsScreen } from '../screens/split/FriendsScreen';
 import { SplitDetailScreen } from '../screens/split/SplitDetailScreen';
 import { SplitHomeScreen } from '../screens/split/SplitHomeScreen';
 

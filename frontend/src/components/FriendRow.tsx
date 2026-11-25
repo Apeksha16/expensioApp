@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import type { FriendRowInteractionStore } from '../services/friendRowInteractionStore';
 import { formatHandle, sanitizeDisplayText } from '../services/friendsStore';
-import { colors, layout, radius, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../theme';
 import type { Friend } from '../types';
 import { Avatar } from './Avatar';
 import { Badge } from './Badge';
@@ -381,11 +381,11 @@ const styles = StyleSheet.create({
   },
   balanceTextOwe: {
     color: colors.expense,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   balanceTextOwed: {
     color: colors.income,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   selectedCheck: {
     width: 24,

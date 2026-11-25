@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FRIENDS_CONFIG } from '../config/friendsConfig';
 import { useApp } from '../context/AppContext';
 import { moduleRegistryService } from '../services/moduleRegistryService';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { fontFamilies, colors, radius, shadows, spacing, typography } from '../theme';
 
 export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   moreAccessText: {
     ...typography.micro,
     color: colors.accent,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   moreDot: {
     width: 7,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     color: colors.accent,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   pressed: {
     opacity: 0.75,

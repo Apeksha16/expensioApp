@@ -19,7 +19,7 @@ import {
   sanitizeDisplayText,
   suggestUsernameSlug,
 } from '../services/friendsStore';
-import { colors, layout, radius, shadows, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, shadows, spacing, typography } from '../theme';
 import type { CreateGuestInput, Friendship, SearchCandidate } from '../types/friends';
 import { MAX_GUESTS_PER_OWNER } from '../types/friends';
 import { triggerErrorHaptic, triggerSuccessHaptic } from '../utils/haptics';
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   findHeroHintText: {
     ...typography.micro,
     color: colors.accentDark,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   clearBtn: {
     width: 44,

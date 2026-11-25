@@ -55,3 +55,85 @@ export function parseSafeDeepLink(rawUrl: string | null | undefined): ParsedDeep
 
   return null;
 }
+
+export type DeepLinkResolution =
+  | { kind: 'ignore' }
+  | { kind: 'auth_phase'; phase: 'reset_password'; token?: string }
+  | { kind: 'queue'; link: ParsedDeepLink }
+  | {
+      kind: 'navigate_main';
+      screen: 'Split';
+      params:
+        | { screen: 'Friends' }
+        | { screen: 'SplitHome' }
+        | { screen: 'SplitDetail'; params: { splitId: string } };
+    };
+
+export interface DeepLinkDispatchContext {
+  isAuthenticated: boolean;
+  friendsEnabled: boolean;
+  ownedSplitIds: ReadonlySet<string>;
+}
+
+/**
+ * Resolves a validated deep link against authentication state, feature flags,
+ * and split ownership before performing any navigation action (F-09).
+ */
+export function resolveDeepLinkNavigation(
+  rawOrParsed: string | ParsedDeepLink | null | undefined,
+  context: DeepLinkDispatchContext,
+): DeepLinkResolution {
+  const parsed =
+    typeof rawOrParsed === 'string'
+      ? parseSafeDeepLink(rawOrParsed)
+      : rawOrParsed ?? null;
+
+  if (!parsed) {
+    return { kind: 'ignore' };
+  }
+
+  if (parsed.route === 'reset-password') {
+    if (context.isAuthenticated) {
+      return { kind: 'ignore' };
+    }
+    return {
+      kind: 'auth_phase',
+      phase: 'reset_password',
+      token: parsed.token,
+    };
+  }
+
+  if (parsed.route === 'friends') {
+    if (!context.friendsEnabled) {
+      return { kind: 'ignore' };
+    }
+    if (!context.isAuthenticated) {
+      return { kind: 'queue', link: parsed };
+    }
+    return {
+      kind: 'navigate_main',
+      screen: 'Split',
+      params: { screen: 'Friends' },
+    };
+  }
+
+  if (parsed.route === 'splits') {
+    if (!context.isAuthenticated) {
+      return { kind: 'queue', link: parsed };
+    }
+    if (parsed.splitId && context.ownedSplitIds.has(parsed.splitId)) {
+      return {
+        kind: 'navigate_main',
+        screen: 'Split',
+        params: { screen: 'SplitDetail', params: { splitId: parsed.splitId } },
+      };
+    }
+    return {
+      kind: 'navigate_main',
+      screen: 'Split',
+      params: { screen: 'SplitHome' },
+    };
+  }
+
+  return { kind: 'ignore' };
+}

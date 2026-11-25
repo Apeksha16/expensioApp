@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useIsFocused } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { InputField } from '../../components/InputField';
@@ -12,7 +12,7 @@ import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
 import { OTP_RESEND_SECONDS } from '../../data/config';
 import type { MainTabParamList } from '../../navigation/MainTabs';
-import { emailVerificationService } from '../../services/emailChangeService';
+import { EMAIL_CHANGE_ENABLED, emailVerificationService } from '../../services/emailChangeService';
 import { colors, layout, radius, spacing, typography } from '../../theme';
 import { formatCountdown, normalizeAuthError } from '../../utils/errorNormalization';
 
@@ -35,6 +35,8 @@ export function EmailChangeScreen({ navigation }: Props) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [completed, setCompleted] = useState(false);
+  const sendingRef = useRef(false);
+  const verifyingRef = useRef(false);
 
   useEffect(() => {
     if (!expiresAt && !cooldownUntil) return undefined;
@@ -55,6 +57,13 @@ export function EmailChangeScreen({ navigation }: Props) {
   const expirySeconds = expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : 0;
 
   const sendCode = async (resend = false) => {
+    if (!EMAIL_CHANGE_ENABLED) {
+      const notice = 'Email updates are temporarily unavailable in this build.';
+      setError(notice);
+      showToast('error', notice);
+      return;
+    }
+    if (sendingRef.current) return;
     const normalizedEmail = email.trim().toLowerCase();
     if (!EMAIL_PATTERN.test(normalizedEmail)) {
       const notice = 'Enter a valid email address.';
@@ -70,6 +79,7 @@ export function EmailChangeScreen({ navigation }: Props) {
     }
     if (resend && resendSeconds > 0) return;
 
+    sendingRef.current = true;
     setSending(true);
     setError('');
     setSuccess('');
@@ -86,11 +96,19 @@ export function EmailChangeScreen({ navigation }: Props) {
       setError(notice);
       showToast('error', notice);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
 
   const verifyCode = async (code = otp) => {
+    if (!EMAIL_CHANGE_ENABLED) {
+      const notice = 'Email updates are temporarily unavailable in this build.';
+      setError(notice);
+      showToast('error', notice);
+      return;
+    }
+    if (verifyingRef.current) return;
     if (!codeSent) {
       const notice = 'Request a verification code first.';
       setError(notice);
@@ -109,6 +127,7 @@ export function EmailChangeScreen({ navigation }: Props) {
       showToast('error', notice);
       return;
     }
+    verifyingRef.current = true;
     setVerifying(true);
     setError('');
     setSuccess('');
@@ -129,6 +148,7 @@ export function EmailChangeScreen({ navigation }: Props) {
       setError(msg);
       showToast('error', msg);
     } finally {
+      verifyingRef.current = false;
       setVerifying(false);
     }
   };
@@ -181,7 +201,14 @@ export function EmailChangeScreen({ navigation }: Props) {
           <Text numberOfLines={1} style={styles.currentEmail}>{currentEmail || 'Email not added'}</Text>
         </View>
 
-        {!completed ? (
+        {!EMAIL_CHANGE_ENABLED ? (
+          <View style={styles.formCard}>
+            <Text style={styles.subtitle}>
+              Verified email updates require server support and are temporarily disabled in this build so your profile always stays synced with your account.
+            </Text>
+            <PrimaryButton title="Back to Profile" onPress={() => navigation.navigate('Profile')} />
+          </View>
+        ) : !completed ? (
           <View style={styles.formCard}>
             <InputField
               label="New email address"

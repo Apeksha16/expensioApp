@@ -3,10 +3,12 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
 import { CURRENT_USER_ID } from '../../data/splits';
 import type { SplitStackParamList } from '../../navigation/SplitStack';
-import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
 import { formatINR } from '../../utils/format';
 import {
   getFriendMeta,
@@ -43,11 +45,17 @@ export function SplitDetailScreen({ navigation, route }: Props) {
 
   if (!split || !status) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Text style={styles.back}>← Back</Text>
-        </Pressable>
-        <Text style={styles.title}>Split not found</Text>
+      <View style={[styles.container, { paddingTop: insets.top + spacing.xs }]}>
+        <ScreenStatusBar surface="light" />
+        <View style={styles.header}>
+          <ScreenHeader
+            tone="light"
+            title="Split details"
+            onBack={() => navigation.goBack()}
+            backAccessibilityLabel="Back to Splits"
+          />
+          <Text style={styles.title}>Split not found</Text>
+        </View>
       </View>
     );
   }
@@ -57,13 +65,15 @@ export function SplitDetailScreen({ navigation, route }: Props) {
   const myShare = split.shares.find((s) => s.friendId === CURRENT_USER_ID);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.xs }]}>
+      <ScreenStatusBar surface="light" />
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.navigate('SplitHome')} hitSlop={8} style={styles.backRow}>
-          <Text style={styles.backArrow}>←</Text>
-          <Text style={styles.back}>Splits</Text>
-        </Pressable>
-        <Text style={styles.title}>{split.title}</Text>
+        <ScreenHeader
+          tone="light"
+          title={split.title}
+          onBack={() => navigation.navigate('SplitHome')}
+          backAccessibilityLabel="Back to Splits"
+        />
         <Text style={styles.amount}>{formatINR(split.amount)}</Text>
         <Text style={styles.meta}>
           {split.date} · Paid by {payer.name} ·{' '}
@@ -164,7 +174,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.screenMargin,
     marginBottom: spacing.md,
   },
   backRow: {
@@ -210,7 +220,7 @@ const styles = StyleSheet.create({
     color: colors.expense,
   },
   scroll: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.screenMargin,
     gap: spacing.md,
   },
   statusCard: {

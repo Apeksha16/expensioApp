@@ -9,7 +9,7 @@ import { SegmentedControl } from '../../components/SegmentedControl';
 import { useApp } from '../../context/AppContext';
 import { OTP_RESEND_SECONDS } from '../../data/config';
 import { requestPasswordReset, submitPasswordReset } from '../../services/authApi';
-import { colors, layout, radius, spacing, typography } from '../../theme';
+import { colors, fontFamilies, layout, radius, spacing, typography } from '../../theme';
 import { formatCountdown, normalizeAuthError } from '../../utils/errorNormalization';
 import { maskEmail } from '../../utils/format';
 import { getPasswordRequirementChecks, validatePasswordPolicy } from '../../utils/validation';
@@ -19,13 +19,15 @@ type RecoveryCredentialMode = 'otp' | 'token';
 export function ResetPasswordScreen() {
   const {
     passwordResetEmail,
+    pendingResetToken,
+    setPendingResetToken,
     setAuthPhase,
     showToast,
   } = useApp();
 
   const [credentialMode, setCredentialMode] = useState<RecoveryCredentialMode>('token');
   const [otp, setOtp] = useState('');
-  const [resetToken, setResetToken] = useState('');
+  const [resetToken, setResetToken] = useState(pendingResetToken || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -34,6 +36,14 @@ export function ResetPasswordScreen() {
   const [resentNotice, setResentNotice] = useState(false);
   const [loading, setLoading] = useState(false);
   const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingResetToken) {
+      setResetToken(pendingResetToken);
+      setCredentialMode('token');
+      setPendingResetToken('');
+    }
+  }, [pendingResetToken, setPendingResetToken]);
 
   useEffect(() => {
     return () => {
@@ -270,7 +280,7 @@ const styles = StyleSheet.create({
   seconds: {
     ...typography.captionMedium,
     color: colors.accentDark,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
     fontVariant: ['tabular-nums'],
   },
   resendButton: {
@@ -280,13 +290,13 @@ const styles = StyleSheet.create({
   resendLink: {
     ...typography.captionMedium,
     color: colors.accent,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
     textDecorationLine: 'underline',
   },
   codeSentTag: {
     ...typography.micro,
     color: colors.income,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   checklist: {
     backgroundColor: colors.surfaceMuted,
@@ -307,7 +317,7 @@ const styles = StyleSheet.create({
   },
   checkLabelMet: {
     color: colors.accentDark,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   errorBox: {
     flexDirection: 'row',
@@ -325,6 +335,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ctaButton: {
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
   },
 });

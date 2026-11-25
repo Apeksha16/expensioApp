@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import { colors, layout, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, spacing, typography } from '../theme';
 
 interface SwipeRevealRowProps {
   children: React.ReactNode;
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   actionText: {
     ...typography.micro,
     color: colors.textInverse,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   foreground: {
     backgroundColor: colors.surface,

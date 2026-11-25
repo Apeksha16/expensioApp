@@ -9,7 +9,7 @@ import {
   TextStyle,
   ViewStyle,
 } from 'react-native';
-import { colors, layout, radius, shadows, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, shadows, spacing, typography } from '../theme';
 
 interface Props {
   title: string;
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   },
   labelMd: {
     ...typography.captionMedium,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   labelPrimary: {
     color: colors.textInverse,
@@ -199,11 +199,11 @@ const styles = StyleSheet.create({
   },
   labelLime: {
     color: colors.accentDark,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   labelDanger: {
     color: colors.textInverse,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   labelSecondary: {
     color: colors.textPrimary,

@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { cardChrome, colors, radius, spacing, typography } from '../theme';
+import { fontFamilies, cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { SavingsGoal } from '../types';
 import { formatINR, progressRatio } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   target: {
     ...typography.body,
     color: colors.textTertiary,
-    fontWeight: '400',
+    fontFamily: fontFamilies.regular,
   },
   bar: {
     marginBottom: spacing.xs,

@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useIsFocused } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
@@ -8,12 +9,14 @@ import { CurrencyInput } from '../../components/CurrencyInput';
 import { GoalCard } from '../../components/GoalCard';
 import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import type { AppModule } from '../../data/modules';
 import { useApp } from '../../context/AppContext';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
 import { localDateString, validateDate } from '../../services/moneyService';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, fontFamilies, layout, radius, spacing, typography } from '../../theme';
 import type { PaymentCadence, PaymentKind, RecurringPayment } from '../../types';
 import { formatINR, progressRatio } from '../../utils/format';
 
@@ -32,6 +35,7 @@ function isCompletedPayment(payment: RecurringPayment): boolean {
 
 export function ModuleLandingScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const {
     preferredModuleIds,
     transactions,
@@ -270,7 +274,13 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
 
   if (!currentModule) {
     return (
-      <View style={[styles.container, styles.centered]}>
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top + spacing.xs }]}>
+        <ScreenStatusBar surface="light" focused={isFocused} />
+        <ScreenHeader
+          tone="light"
+          title="Module"
+          onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        />
         <Text style={styles.title}>Module unavailable</Text>
         <Text style={styles.copy}>This destination is not available on this version.</Text>
       </View>
@@ -278,7 +288,15 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.xs }]}>
+      <ScreenStatusBar surface="light" focused={isFocused} />
+      <View style={styles.headerWrap}>
+        <ScreenHeader
+          tone="light"
+          title={currentModule.name}
+          onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        />
+      </View>
       <ScrollView
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="none"
@@ -672,12 +690,13 @@ function formatPaymentDate(value: string): string {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 150, gap: spacing.lg, width: '100%', maxWidth: 760, alignSelf: 'center' },
-  centered: { justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  headerWrap: { paddingHorizontal: layout.screenMargin, width: '100%', maxWidth: 760, alignSelf: 'center' },
+  content: { paddingHorizontal: layout.screenMargin, paddingTop: spacing.sm, paddingBottom: 150, gap: spacing.lg, width: '100%', maxWidth: 760, alignSelf: 'center' },
+  centered: { justifyContent: 'center', alignItems: 'center', padding: layout.screenMargin },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   headerIcon: { width: 52, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise },
   headerCopy: { flex: 1, gap: 2 },
-  kicker: { ...typography.micro, color: colors.accent, fontWeight: '700', letterSpacing: 0.9 },
+  kicker: { ...typography.micro, color: colors.accent, fontFamily: fontFamilies.bold, letterSpacing: 0.9 },
   title: { ...typography.h1, color: colors.textPrimary },
   copy: { ...typography.caption, color: colors.textSecondary, lineHeight: 19 },
   moduleList: { gap: spacing.md },
@@ -685,7 +704,7 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   sectionSub: { ...typography.caption, color: colors.textSecondary, lineHeight: 19 },
   summaryCard: { padding: spacing.lg, borderRadius: radius.xl, backgroundColor: colors.accentDark, gap: spacing.xs },
-  summaryLabel: { ...typography.micro, color: colors.surprise, letterSpacing: 0.8, fontWeight: '700' },
+  summaryLabel: { ...typography.micro, color: colors.surprise, letterSpacing: 0.8, fontFamily: fontFamilies.bold },
   summaryValue: { ...typography.h1, color: colors.white },
   summaryHint: { ...typography.caption, color: 'rgba(255,255,255,0.72)' },
   moduleRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
@@ -724,7 +743,7 @@ const styles = StyleSheet.create({
   chip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.full, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
   chipSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accentMuted },
   chipText: { ...typography.caption, color: colors.textSecondary, textTransform: 'capitalize' },
-  chipTextSelected: { color: colors.accentDark, fontWeight: '700' },
+  chipTextSelected: { color: colors.accentDark, fontFamily: fontFamilies.bold },
   error: { ...typography.caption, color: colors.expense },
   goalItem: { gap: spacing.xs },
   contributionHistory: { padding: spacing.md, gap: spacing.xs, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
@@ -740,5 +759,5 @@ const styles = StyleSheet.create({
   statLabel: { ...typography.caption, color: 'rgba(255,255,255,0.7)' },
   statValue: { ...typography.h3, color: colors.white },
   incomeText: { color: colors.surprise },
-  expenseText: { color: '#FFB8AF' },
+  expenseText: { color: colors.heroErrorAccent },
 });

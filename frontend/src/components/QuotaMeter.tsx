@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { fontFamilies, colors, radius, spacing, typography } from '../theme';
 
 interface QuotaMeterProps {
   used: number;
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   },
   labelDanger: {
     color: colors.expense,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   bars: {
     flexDirection: 'row',

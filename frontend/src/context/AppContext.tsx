@@ -51,6 +51,7 @@ import { createDefaultPreferences, clearPersistedUserSession } from '../services
 import { createSplitExpense } from '../utils/splits';
 import { triggerErrorHaptic, triggerSuccessHaptic } from '../utils/haptics';
 import { clearPendingAuthState, type AuthResponse } from '../services/authApi';
+import { EMAIL_CHANGE_ENABLED } from '../services/emailChangeService';
 import { userApi } from '../services/api/userApi';
 import { authApi as backendAuthApi } from '../services/api/authApi';
 import { onboardingApi } from '../services/api/onboardingApi';
@@ -85,6 +86,8 @@ interface AppState {
   otpCooldownSeconds: number | null;
   passwordResetEmail: string;
   setPasswordResetEmail: (email: string) => void;
+  pendingResetToken: string;
+  setPendingResetToken: (token: string) => void;
   phoneVerified: boolean;
   emailVerified: boolean;
   onboardingStep: number;
@@ -189,8 +192,6 @@ export interface OnboardingDraft {
   currency?: string;
 }
 
-const colorsForFriend = ['#146B45', '#D97706', '#7C3AED', '#2563EB', '#DB2777'];
-
 export const AppContext = createContext<AppState | null>(null);
 
 interface PendingVerificationState {
@@ -226,6 +227,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [verificationReturnPhase, setVerificationReturnPhase] = useState<'mobile' | 'email'>('mobile');
   const [otpCooldownSeconds, setOtpCooldownSeconds] = useState<number | null>(null);
   const [passwordResetEmail, setPasswordResetEmail] = useState('');
+  const [pendingResetToken, setPendingResetToken] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [onboardingStep, setOnboardingStepState] = useState(1);
@@ -484,6 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVerificationReturnPhase('mobile');
     setOtpCooldownSeconds(null);
     setPasswordResetEmail('');
+    setPendingResetToken('');
     setOnboardingDraft({
       firstName: '', lastName: '', email: '', phone: '', employmentType: '',
       incomeRupees: '', cashRupees: '', savingsRupees: '',
@@ -819,6 +822,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       otpCooldownSeconds,
       passwordResetEmail,
       setPasswordResetEmail,
+      pendingResetToken,
+      setPendingResetToken,
       phoneVerified,
       emailVerified,
       onboardingStep,
@@ -924,6 +929,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setProfileState((current) => ({ ...current, preferredModuleIds }));
       },
       updateProfileEmail: async (email) => {
+        if (!EMAIL_CHANGE_ENABLED) {
+          throw new Error('Verified email changes require server support and are disabled in this build.');
+        }
         const nextEmail = email.trim().toLowerCase();
         const currentEmail = profileState.email || onboardingDraft.email || profile?.email || '';
         if (nextEmail === currentEmail.trim().toLowerCase()) {
@@ -933,14 +941,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const session = await readSession();
         const ownerId = localDataOwnerRef.current;
         const previousStoredProfile = await profileService.getProfile(ownerId);
-        const accountUser = {
-          ...(profile ?? {}),
-          name: profile?.name || `${profileState.firstName} ${profileState.lastName}`.trim(),
-          email: nextEmail,
-          phone: profile?.phone || profileState.mobile || phone,
-          username: profile?.userId || nextEmail,
-        };
-        let accountUpdated = false;
         let profileUpdated = false;
         let updatedPreferences: ValidatedLocalPreferences | null = null;
         try {
@@ -1756,7 +1756,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthPhase('otp');
       },
     }),
-    [authPhase, restoreError, restoreLocalState, restoreAccountData, clearInMemoryUserState, persistLocalData, runWithLocalLock, notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences, friends, splitGroups, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, verificationReturnPhase, otpCooldownSeconds, passwordResetEmail, phoneVerified, emailVerified, onboardingDraft, onboardingStep, friendships, acceptedFriendships, incomingFriendships, outgoingFriendships, friendCounts, friendsLoading, friendsRefreshing, friendsError, friendsNormalizedError, friendsSyncMeta, pendingFriendActionIds, addFriendTriggerCount, refreshFriends, refreshFriendsInternal, syncPendingActionState],
+    [authPhase, restoreError, restoreLocalState, restoreAccountData, clearInMemoryUserState, persistLocalData, runWithLocalLock, notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences, friends, splitGroups, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, verificationReturnPhase, otpCooldownSeconds, passwordResetEmail, pendingResetToken, phoneVerified, emailVerified, onboardingDraft, onboardingStep, friendships, acceptedFriendships, incomingFriendships, outgoingFriendships, friendCounts, friendsLoading, friendsRefreshing, friendsError, friendsNormalizedError, friendsSyncMeta, pendingFriendActionIds, addFriendTriggerCount, refreshFriends, refreshFriendsInternal, syncPendingActionState],
   );
 
   return (

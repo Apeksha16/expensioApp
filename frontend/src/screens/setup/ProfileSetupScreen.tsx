@@ -24,7 +24,7 @@ import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
 import { onboardingApi } from '../../services/api/onboardingApi';
 import { completeOnboarding } from '../../services/authApi';
-import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
+import { fontFamilies, colors, layout, radius, shadows, spacing, typography } from '../../theme';
 import type { OnboardingConfigResponse, OnboardingStatusResponse } from '../../types/api';
 import { formatINRInput } from '../../utils/format';
 import { logger } from '../../utils/logger';
@@ -972,7 +972,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  stepCountText: { ...typography.label, color: colors.accentDark, fontWeight: '800' },
+  stepCountText: { ...typography.label, color: colors.accentDark, fontFamily: fontFamilies.extrabold },
   stepCountDivider: { ...typography.label, color: colors.textTertiary },
   stepCountMuted: { ...typography.label, color: colors.textSecondary },
   progressWrap: { gap: spacing.xs },
@@ -1011,16 +1011,16 @@ const styles = StyleSheet.create({
   contactSectionHint: { ...typography.microTag, color: colors.textTertiary },
   nameRow: { flexDirection: 'row', gap: spacing.xs },
   nameFieldWrap: { flex: 1, minWidth: 0, gap: spacing.xs },
-  nameLabel: { ...typography.micro, color: colors.textSecondary, fontWeight: '700' },
+  nameLabel: { ...typography.micro, color: colors.textSecondary, fontFamily: fontFamilies.bold },
   nameInputWrap: {
     height: layout.inputHeight,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.sm,
     gap: spacing.xs,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     backgroundColor: colors.background,
   },
   nameInputWrapFocused: {
@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
     height: '100%',
     color: colors.accentDark,
     ...typography.captionMedium,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
     paddingVertical: 0,
   },
   verifiedFields: { gap: spacing.xs },
@@ -1050,7 +1050,7 @@ const styles = StyleSheet.create({
   contactIcon: { width: 34, height: 34, borderRadius: radius.sm, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   contactCopy: { flex: 1, minWidth: 0, gap: 1 },
   contactLabel: { ...typography.microTag, color: colors.textTertiary, letterSpacing: 0.7 },
-  contactValue: { ...typography.captionMedium, color: colors.accentDark, fontWeight: '700' },
+  contactValue: { ...typography.captionMedium, color: colors.accentDark, fontFamily: fontFamilies.bold },
   verifiedBadge: { height: 24, borderRadius: radius.full, backgroundColor: colors.accentSoft, flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, paddingHorizontal: spacing.xs },
   verifiedText: { ...typography.microTag, color: colors.accent },
 
@@ -1073,7 +1073,7 @@ const styles = StyleSheet.create({
   employmentIconWrapActive: { backgroundColor: colors.heroGlass },
   employmentSelection: { width: 22, height: 22, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   employmentSelectionActive: { backgroundColor: colors.white, borderColor: colors.white },
-  employmentLabel: { ...typography.captionMedium, color: colors.accentDark, fontWeight: '700', marginTop: spacing.xs },
+  employmentLabel: { ...typography.captionMedium, color: colors.accentDark, fontFamily: fontFamilies.bold, marginTop: spacing.xs },
   employmentDetail: { ...typography.micro, color: colors.textSecondary },
   employmentDetailActive: { color: colors.heroTextMuted },
   activeText: { color: colors.white },
@@ -1149,7 +1149,7 @@ const styles = StyleSheet.create({
   reviewMoneyTitle: { ...typography.rowTitle, color: colors.accentDark },
   reviewMoneySubtitle: { ...typography.caption, color: colors.textSecondary },
   reviewTextAction: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
-  reviewTextActionLabel: { ...typography.captionMedium, color: colors.accentDark, fontWeight: '700' },
+  reviewTextActionLabel: { ...typography.captionMedium, color: colors.accentDark, fontFamily: fontFamilies.bold },
   reviewIncomeAmount: { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.borderLight, gap: spacing.xxs },
   reviewAmountLabel: { ...typography.micro, color: colors.textSecondary },
   reviewAmountValue: { ...typography.h2, color: colors.accentDark },

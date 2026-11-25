@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useIsFocused } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -6,16 +7,19 @@ import { Avatar } from '../../components/Avatar';
 import { CartoonAvatar } from '../../components/CartoonAvatar';
 import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { profileAvatars, getProfileAvatar } from '../../data/avatars';
 import { type AppModuleId, PREFERRED_MODULE_LIMIT } from '../../data/modules';
+import { EMAIL_CHANGE_ENABLED } from '../../services/emailChangeService';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import type { ReportDayOfWeek, ReportFrequency } from '../../core/storage/preferences';
 import { formatLocalReportDate, getNextReportDates } from '../../services/reportScheduleService';
 import type { ReportPreferenceChanges } from '../../services/reportPreferenceService';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, fontFamilies, layout, radius, spacing, typography } from '../../theme';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 const reportOptions: { value: ReportFrequency; label: string }[] = [
@@ -35,6 +39,7 @@ const weekdays: { value: ReportDayOfWeek; label: string; short: string }[] = [
 
 export function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const {
     profileState,
     showToast,
@@ -249,10 +254,10 @@ export function ProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.xs }]}>
+      <ScreenStatusBar surface="light" focused={isFocused} />
+      <ScreenHeader tone="light" title="Profile" />
       <ScrollView keyboardShouldPersistTaps="always" keyboardDismissMode="none" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <Text style={styles.kicker}>YOUR SPACE</Text>
-        <Text style={styles.pageTitle}>Profile</Text>
 
         <View style={styles.identityCard}>
           <Pressable
@@ -297,13 +302,17 @@ export function ProfileScreen({ navigation }: Props) {
               <Text style={styles.infoLabel}>EMAIL ADDRESS</Text>
               <Text numberOfLines={1} style={styles.infoValue}>{email}</Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => navigation.navigate('EmailChange')}
-              style={styles.editEmailButton}
-            >
-              <Text style={styles.editEmailText}>Edit</Text>
-            </Pressable>
+            {EMAIL_CHANGE_ENABLED ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('EmailChange')}
+                style={styles.editEmailButton}
+              >
+                <Text style={styles.editEmailText}>Edit</Text>
+              </Pressable>
+            ) : (
+              <Ionicons name="lock-closed-outline" size={15} color={colors.textTertiary} />
+            )}
           </View>
           <Pressable accessibilityRole="button" onPress={() => setProfileEditorOpen(true)} style={styles.editProfileButton}>
             <Ionicons name="pencil-outline" size={17} color={colors.accent} />
@@ -625,8 +634,8 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg },
-  scroll: { paddingBottom: 150, gap: spacing.sm },
+  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: layout.screenMargin },
+  scroll: { paddingTop: spacing.xs, paddingBottom: 150, gap: spacing.sm },
   kicker: { ...typography.label, color: colors.accent, letterSpacing: 1.4 },
   pageTitle: { ...typography.h1, color: colors.textPrimary, marginTop: -spacing.xs },
   identityCard: { marginTop: spacing.sm, padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.accentDark, borderWidth: 1, borderColor: colors.accentDark, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -645,7 +654,7 @@ const styles = StyleSheet.create({
   infoCard: { paddingHorizontal: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   editProfileButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   editProfileButtonText: { ...typography.captionMedium, color: colors.accent },
-  profileModal: { width: '100%', maxWidth: 460, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, alignSelf: 'center', gap: spacing.md, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.background },
+  profileModal: { width: '100%', maxWidth: 460, paddingHorizontal: layout.screenMargin, paddingTop: spacing.sm, alignSelf: 'center', gap: spacing.md, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.background },
   profileSaveButton: { flex: 1 },
   infoRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   infoIcon: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
@@ -661,7 +670,7 @@ const styles = StyleSheet.create({
   selectedList: { gap: spacing.xs },
   selectedRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xs, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
   orderBadge: { width: 24, height: 24, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
-  orderText: { color: colors.white, fontSize: 11, fontWeight: '700' },
+  orderText: { color: colors.white, fontSize: 11, fontFamily: fontFamilies.bold },
   selectedModuleName: { flex: 1, ...typography.captionMedium, color: colors.textPrimary },
   reorderButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
   reorderDisabled: { opacity: 0.35 },
@@ -672,8 +681,8 @@ const styles = StyleSheet.create({
   moduleOptionDisabled: { opacity: 0.5 },
   moduleOptionIcon: { width: 26, alignItems: 'center' },
   moduleOptionName: { flex: 1, minWidth: 0, ...typography.micro, color: colors.textSecondary },
-  moduleOptionNameSelected: { color: colors.accentDark, fontWeight: '700' },
-  moduleOrder: { fontSize: 10, fontWeight: '800', color: colors.accent },
+  moduleOptionNameSelected: { color: colors.accentDark, fontFamily: fontFamilies.bold },
+  moduleOrder: { fontSize: 10, fontFamily: fontFamilies.extrabold, color: colors.accent },
   preferenceHint: { ...typography.micro, color: colors.textTertiary, lineHeight: 16 },
   saveButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.accent },
   saveButtonDisabled: { backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.border },
@@ -683,7 +692,7 @@ const styles = StyleSheet.create({
   frequencyOption: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, paddingHorizontal: 2 },
   frequencyOptionActive: { backgroundColor: colors.accent },
   frequencyText: { ...typography.micro, color: colors.textSecondary },
-  frequencyTextActive: { color: colors.white, fontWeight: '700' },
+  frequencyTextActive: { color: colors.white, fontFamily: fontFamilies.bold },
   reportCard: { padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: spacing.md },
   reportToggle: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   reportToggleCopy: { flex: 1, gap: 2 },
@@ -700,7 +709,7 @@ const styles = StyleSheet.create({
   dayOption: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs, borderRadius: radius.md, backgroundColor: colors.background },
   dayOptionActive: { backgroundColor: colors.accent },
   dayOptionText: { ...typography.captionMedium, color: colors.textSecondary },
-  dayOptionTextActive: { color: colors.white, fontWeight: '700' },
+  dayOptionTextActive: { color: colors.white, fontFamily: fontFamilies.bold },
   fixedDates: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   fixedDate: { minHeight: 40, textAlignVertical: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.background, ...typography.captionMedium, color: colors.textPrimary },
   monthDayOptions: { gap: spacing.xs, paddingVertical: 2 },
@@ -719,7 +728,7 @@ const styles = StyleSheet.create({
   logoutDisabled: { opacity: 0.6 },
   logoutText: { ...typography.bodySemibold, color: colors.expense },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
-  avatarModal: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, backgroundColor: colors.background, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, gap: spacing.md },
+  avatarModal: { paddingHorizontal: layout.screenMargin, paddingTop: spacing.sm, backgroundColor: colors.background, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, gap: spacing.md },
   modalHandle: { width: 42, height: 4, alignSelf: 'center', borderRadius: 2, backgroundColor: colors.border },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   modalTitle: { ...typography.h2, color: colors.textPrimary },

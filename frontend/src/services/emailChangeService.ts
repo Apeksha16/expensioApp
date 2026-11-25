@@ -4,6 +4,38 @@ import { verificationApi } from './api/verificationApi';
 export const EMAIL_CHANGE_OTP_LIFETIME_MS = 5 * 60 * 1000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Ship-gated off until the backend exposes an authenticated email-change commit
+ * endpoint (/v1/users/me ignores email updates and /v1/verification/email/verify
+ * only promotes PENDING_VERIFICATION accounts). Prevents client/server email drift (F-13).
+ */
+export const EMAIL_CHANGE_ENABLED = false;
+
+export interface SingleFlightGuard {
+  run: <T>(task: () => Promise<T>) => Promise<T | undefined>;
+  isInFlight: () => boolean;
+}
+
+/**
+ * Synchronous single-flight lock preventing duplicate concurrent submits before
+ * React state updates flush (F-13).
+ */
+export function createSingleFlightGuard(): SingleFlightGuard {
+  let inFlight = false;
+  return {
+    isInFlight: () => inFlight,
+    run: async <T>(task: () => Promise<T>): Promise<T | undefined> => {
+      if (inFlight) return undefined;
+      inFlight = true;
+      try {
+        return await task();
+      } finally {
+        inFlight = false;
+      }
+    },
+  };
+}
+
 interface StoredEmailChangeChallenge {
   email: string;
   challengeId: string;

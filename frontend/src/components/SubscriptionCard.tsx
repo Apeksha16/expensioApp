@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { cardChrome, colors, radius, spacing, typography } from '../theme';
+import { fontFamilies, cardChrome, colors, radius, spacing, typography } from '../theme';
 import type { Subscription } from '../types';
 import { formatINR } from '../utils/format';
 
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
   mo: {
     ...typography.micro,
     color: colors.textTertiary,
-    fontWeight: '400',
+    fontFamily: fontFamilies.regular,
   },
 });

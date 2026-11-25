@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import type { FriendRowInteractionStore } from '../services/friendRowInteractionStore';
 import { formatHandle, sanitizeDisplayText } from '../services/friendsStore';
-import { colors, layout, radius, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../theme';
 import type { Friendship } from '../types/friends';
 import { formatCompactAge } from '../utils/format';
 import { Avatar } from './Avatar';
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   acceptText: {
     ...typography.captionMedium,
     color: colors.textInverse,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   declineBtn: {
     width: layout.headerButtonSize,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   cancelText: {
     ...typography.captionMedium,
     color: colors.expense,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   pressed: {
     opacity: 0.85,

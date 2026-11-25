@@ -15,7 +15,7 @@ import { useApp } from '../../context/AppContext';
 import { OTP_RESEND_SECONDS } from '../../data/config';
 import { countryCodes } from '../../data/mock';
 import { sendEmailOtp, sendOtp, verifyEmailOtp, verifyOtp } from '../../services/authApi';
-import { colors, layout, radius, spacing, typography } from '../../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../../theme';
 import { formatCountdown, normalizeAuthError } from '../../utils/errorNormalization';
 import { maskEmail, maskPhone } from '../../utils/format';
 
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   targetText: {
     ...typography.bodyMedium,
     color: colors.heroText,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   editBadge: {
     width: 28,
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   seconds: {
     ...typography.captionMedium,
     color: colors.accentDark,
-    fontWeight: '800',
+    fontFamily: fontFamilies.extrabold,
     fontVariant: ['tabular-nums'],
   },
   resendButton: {
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   resendLink: {
     ...typography.captionMedium,
     color: colors.accentDark,
-    fontWeight: '800',
+    fontFamily: fontFamilies.extrabold,
     textDecorationLine: 'underline',
   },
   sentPill: {
@@ -372,9 +372,9 @@ const styles = StyleSheet.create({
   sentPillText: {
     ...typography.micro,
     color: colors.accentDark,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   verifyButton: {
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
   },
 });

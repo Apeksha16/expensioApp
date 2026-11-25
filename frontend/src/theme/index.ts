@@ -117,9 +117,10 @@ export const layout = {
   segmentHeight: 42,
   rowDividerInset: 72,
   bottomFadeHeight: 16,
+  // Standardized form input height (56 dp) and corner radius (radius.lg = 18 dp)
   inputHeight: 56,
+  // Primary CTA standard height (56 dp). Compact header/banner pills use 44 dp (headerButtonSize) or 46 dp (PrimaryButton size="md").
   buttonHeight: 56,
-  authButtonHeight: 60,
   headerButtonSize: 44,
   iconTileSize: 52,
   maxContentWidth: 520,
@@ -136,24 +137,25 @@ export const radius = {
   full: 999,
 } as const;
 
+// Per-weight custom font families only (omit fontWeight so Android does not fall back to system Roboto).
 export const typography = {
-  display: { fontSize: 40, lineHeight: 44, fontWeight: '800' as const, letterSpacing: -1.4, fontFamily: fontFamilies.extrabold },
-  hero: { fontSize: 34, lineHeight: 38, fontWeight: '800' as const, letterSpacing: -1.1, fontFamily: fontFamilies.extrabold },
-  h1: { fontSize: 30, lineHeight: 36, fontWeight: '700' as const, letterSpacing: -0.7, fontFamily: fontFamilies.bold },
-  h2: { fontSize: 22, lineHeight: 28, fontWeight: '700' as const, letterSpacing: -0.4, fontFamily: fontFamilies.bold },
-  h3: { fontSize: 17, lineHeight: 22, fontWeight: '600' as const, letterSpacing: -0.2, fontFamily: fontFamilies.semibold },
-  otpDigit: { fontSize: 25, lineHeight: 30, fontWeight: '800' as const, fontFamily: fontFamilies.extrabold },
-  rowTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600' as const, letterSpacing: -0.15, fontFamily: fontFamilies.semibold },
-  body: { fontSize: 16, lineHeight: 23, fontWeight: '400' as const, letterSpacing: -0.1, fontFamily: fontFamilies.regular },
-  bodyMedium: { fontSize: 16, lineHeight: 22, fontWeight: '500' as const, letterSpacing: -0.1, fontFamily: fontFamilies.medium },
-  bodySemibold: { fontSize: 16, lineHeight: 22, fontWeight: '600' as const, letterSpacing: -0.15, fontFamily: fontFamilies.semibold },
-  caption: { fontSize: 13, lineHeight: 18, fontWeight: '400' as const, fontFamily: fontFamilies.regular },
-  captionMedium: { fontSize: 13, lineHeight: 18, fontWeight: '500' as const, fontFamily: fontFamilies.medium },
-  label: { fontSize: 12, lineHeight: 16, fontWeight: '600' as const, letterSpacing: 0.8, fontFamily: fontFamilies.semibold },
-  eyebrow: { fontSize: 12, lineHeight: 16, fontWeight: '700' as const, letterSpacing: 1.4, fontFamily: fontFamilies.bold },
-  tag: { fontSize: 11, lineHeight: 14, fontWeight: '600' as const, letterSpacing: 0.7, fontFamily: fontFamilies.semibold },
-  micro: { fontSize: 11, lineHeight: 15, fontWeight: '500' as const, letterSpacing: 0.2, fontFamily: fontFamilies.medium },
-  microTag: { fontSize: 10, lineHeight: 13, fontWeight: '700' as const, letterSpacing: 0.3, fontFamily: fontFamilies.bold },
+  display: { fontSize: 40, lineHeight: 44, letterSpacing: -1.4, fontFamily: fontFamilies.extrabold },
+  hero: { fontSize: 34, lineHeight: 38, letterSpacing: -1.1, fontFamily: fontFamilies.extrabold },
+  h1: { fontSize: 30, lineHeight: 36, letterSpacing: -0.7, fontFamily: fontFamilies.bold },
+  h2: { fontSize: 22, lineHeight: 28, letterSpacing: -0.4, fontFamily: fontFamilies.bold },
+  h3: { fontSize: 17, lineHeight: 22, letterSpacing: -0.2, fontFamily: fontFamilies.semibold },
+  otpDigit: { fontSize: 25, lineHeight: 30, fontFamily: fontFamilies.extrabold },
+  rowTitle: { fontSize: 16, lineHeight: 21, letterSpacing: -0.15, fontFamily: fontFamilies.semibold },
+  body: { fontSize: 16, lineHeight: 23, letterSpacing: -0.1, fontFamily: fontFamilies.regular },
+  bodyMedium: { fontSize: 16, lineHeight: 22, letterSpacing: -0.1, fontFamily: fontFamilies.medium },
+  bodySemibold: { fontSize: 16, lineHeight: 22, letterSpacing: -0.15, fontFamily: fontFamilies.semibold },
+  caption: { fontSize: 13, lineHeight: 18, fontFamily: fontFamilies.regular },
+  captionMedium: { fontSize: 13, lineHeight: 18, fontFamily: fontFamilies.medium },
+  label: { fontSize: 12, lineHeight: 16, letterSpacing: 0.8, fontFamily: fontFamilies.semibold },
+  eyebrow: { fontSize: 12, lineHeight: 16, letterSpacing: 1.4, fontFamily: fontFamilies.bold },
+  tag: { fontSize: 11, lineHeight: 14, letterSpacing: 0.7, fontFamily: fontFamilies.semibold },
+  micro: { fontSize: 11, lineHeight: 15, letterSpacing: 0.2, fontFamily: fontFamilies.medium },
+  microTag: { fontSize: 10, lineHeight: 13, letterSpacing: 0.3, fontFamily: fontFamilies.bold },
 } as const;
 
 export const shadows = {

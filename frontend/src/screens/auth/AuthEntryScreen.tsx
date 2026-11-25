@@ -1,18 +1,108 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React from 'react';
+import * as AuthSession from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LegalDocumentSheet, type LegalDocKind } from '../../components/LegalDocumentSheet';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { ScreenStatusBar } from '../../components/ScreenStatusBar';
+import { ENV } from '../../config/env';
 import { useApp } from '../../context/AppContext';
-import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
+import { authenticateGoogle } from '../../services/authApi';
+import { colors, fontFamilies, layout, radius, shadows, spacing, typography } from '../../theme';
+import { normalizeAuthError } from '../../utils/errorNormalization';
+
+function GoogleSignInButton({
+  onAuthenticated,
+  onError,
+}: {
+  onAuthenticated: (idToken: string) => Promise<void>;
+  onError: (message: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'com.expensio.app',
+    path: 'oauthredirect',
+  });
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: ENV.GOOGLE_CLIENT_ID,
+    iosClientId: ENV.GOOGLE_CLIENT_ID,
+    androidClientId: ENV.GOOGLE_CLIENT_ID,
+    webClientId: ENV.GOOGLE_CLIENT_ID,
+    redirectUri,
+  });
+
+  useEffect(() => {
+    if (!response) return;
+    if (response.type === 'success') {
+      const idToken = response.params?.id_token || response.authentication?.idToken;
+      if (!idToken) {
+        submittingRef.current = false;
+        setLoading(false);
+        onError('Google did not return an ID token. Please try again.');
+        return;
+      }
+      void onAuthenticated(idToken).finally(() => {
+        submittingRef.current = false;
+        setLoading(false);
+      });
+    } else if (response.type === 'error') {
+      submittingRef.current = false;
+      setLoading(false);
+      onError(response.error?.message || 'Google sign-in failed. Please try again.');
+    } else {
+      submittingRef.current = false;
+      setLoading(false);
+    }
+  }, [onAuthenticated, onError, response]);
+
+  const startGoogleAuth = async () => {
+    if (loading || submittingRef.current || !request) return;
+    submittingRef.current = true;
+    setLoading(true);
+    onError('');
+    try {
+      await promptAsync();
+    } catch (err) {
+      submittingRef.current = false;
+      setLoading(false);
+      onError(normalizeAuthError(err, 'login').message);
+    }
+  };
+
+  return (
+    <PrimaryButton
+      title="Continue with Google"
+      icon="logo-google"
+      variant="secondary"
+      surface="dark"
+      loading={loading}
+      disabled={!request || loading}
+      onPress={() => void startGoogleAuth()}
+      style={styles.ctaButton}
+    />
+  );
+}
 
 export function AuthEntryScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { setAuthPhase } = useApp();
+  const { setAuthPhase, applyAuthSession } = useApp();
+  const [googleError, setGoogleError] = useState('');
+  const [legalDoc, setLegalDoc] = useState<LegalDocKind | null>(null);
   const cardWidth = Math.min(width, layout.maxContentWidth);
+
+  const handleGoogleIdToken = async (idToken: string) => {
+    try {
+      const res = await authenticateGoogle(idToken);
+      await applyAuthSession({ ...res, verifiedChannel: 'email' });
+    } catch (err) {
+      setGoogleError(normalizeAuthError(err, 'login').message);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -102,15 +192,26 @@ export function AuthEntryScreen() {
             onPress={() => setAuthPhase('email')}
             style={styles.ctaButton}
           />
+          {ENV.GOOGLE_CLIENT_ID ? (
+            <GoogleSignInButton
+              onAuthenticated={handleGoogleIdToken}
+              onError={setGoogleError}
+            />
+          ) : null}
+          {googleError ? (
+            <Text accessibilityRole="alert" style={styles.errorBanner}>{googleError}</Text>
+          ) : null}
         </View>
 
         <Text style={styles.terms}>
           By continuing, you agree to our{' '}
-          <Text style={styles.termLink}>Terms</Text>
+          <Text accessibilityRole="button" onPress={() => setLegalDoc('terms')} style={styles.termLink}>Terms</Text>
           {' '}and{' '}
-          <Text style={styles.termLink}>Privacy Policy</Text>.
+          <Text accessibilityRole="button" onPress={() => setLegalDoc('privacy')} style={styles.termLink}>Privacy Policy</Text>.
         </Text>
       </ScrollView>
+
+      <LegalDocumentSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
     </View>
   );
 }
@@ -200,7 +301,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...typography.captionMedium,
     color: colors.accentDark,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   placeholderValue: {
     width: 42,
@@ -212,7 +313,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...typography.captionMedium,
     color: colors.heroText,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   middleTrack: {
     height: 5,
@@ -236,7 +337,7 @@ const styles = StyleSheet.create({
   trendText: {
     ...typography.micro,
     color: colors.accentDark,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   chart: {
     height: 78,
@@ -281,7 +382,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   ctaButton: {
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
+  },
+  errorBanner: {
+    ...typography.caption,
+    color: colors.heroErrorAccent,
+    textAlign: 'center',
   },
   terms: {
     ...typography.caption,
@@ -291,7 +397,7 @@ const styles = StyleSheet.create({
   },
   termLink: {
     color: colors.heroText,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
     textDecorationLine: 'underline',
   },
 });

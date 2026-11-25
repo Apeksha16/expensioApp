@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { fontFamilies, colors, radius, shadows, spacing, typography } from '../theme';
 
 interface GuestQuotaRingProps {
   used: number;
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   tooltipText: {
     ...typography.captionMedium,
     color: colors.textInverse,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   tooltipSub: {
     ...typography.micro,

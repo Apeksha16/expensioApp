@@ -10,13 +10,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthHeroShell } from '../../components/AuthHeroShell';
+import { LegalDocumentSheet, type LegalDocKind } from '../../components/LegalDocumentSheet';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_COUNTRY_DIAL } from '../../data/config';
 import { countryCodes } from '../../data/mock';
 import { sendEmailOtp, sendOtp } from '../../services/authApi';
-import { colors, layout, radius, spacing, typography } from '../../theme';
+import { colors, fontFamilies, layout, radius, spacing, typography } from '../../theme';
 import { normalizeAuthError } from '../../utils/errorNormalization';
 import { isValidIndianMobile } from '../../utils/validation';
 
@@ -60,6 +61,7 @@ export function MobileLoginScreen() {
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocKind | null>(null);
   const [loading, setLoading] = useState(false);
   const isSubmittingRef = useRef(false);
 
@@ -166,9 +168,9 @@ export function MobileLoginScreen() {
             />
             <Text style={styles.terms}>
               By continuing, you agree to our{' '}
-              <Text accessibilityRole="link" style={styles.termLink}>Terms</Text>
+              <Text accessibilityRole="button" onPress={() => setLegalDoc('terms')} style={styles.termLink}>Terms</Text>
               {' '}and{' '}
-              <Text accessibilityRole="link" style={styles.termLink}>Privacy Policy</Text>.
+              <Text accessibilityRole="button" onPress={() => setLegalDoc('privacy')} style={styles.termLink}>Privacy Policy</Text>.
             </Text>
           </>
         )}
@@ -252,6 +254,8 @@ export function MobileLoginScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      <LegalDocumentSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
     </>
   );
 }
@@ -263,10 +267,10 @@ const styles = StyleSheet.create({
   label: {
     ...typography.captionMedium,
     color: colors.accentDark,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   inputRow: {
-    height: layout.authButtonHeight,
+    height: layout.inputHeight,
     borderRadius: radius.lg,
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -300,7 +304,7 @@ const styles = StyleSheet.create({
   flagGreen: { flex: 1, backgroundColor: colors.income },
   flagWheel: { width: 8, height: 8, borderRadius: radius.full, borderWidth: 1, borderColor: colors.toneSlateFg },
   countryEmoji: { ...typography.h2 },
-  dial: { ...typography.h3, color: colors.accentDark, fontWeight: '700' },
+  dial: { ...typography.h3, color: colors.accentDark, fontFamily: fontFamilies.bold },
   input: {
     flex: 1,
     minWidth: 0,
@@ -318,7 +322,7 @@ const styles = StyleSheet.create({
     color: colors.expense,
   },
   sendButton: {
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
   },
   terms: {
     ...typography.caption,
@@ -328,7 +332,7 @@ const styles = StyleSheet.create({
   },
   termLink: {
     color: colors.heroText,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
     textDecorationLine: 'underline',
   },
   overlay: {

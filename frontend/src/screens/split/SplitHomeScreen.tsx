@@ -23,7 +23,7 @@ import { SplitListItem } from '../../components/SplitListItem';
 import { FRIENDS_CONFIG } from '../../config/friendsConfig';
 import { useApp } from '../../context/AppContext';
 import type { SplitStackParamList } from '../../navigation/SplitStack';
-import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
 import { formatINR } from '../../utils/format';
 import { computeSplitBalances } from '../../utils/splits';
 
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.screenMargin,
     paddingBottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
   },
   scroll: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.screenMargin,
     paddingBottom: 180,
     gap: spacing.md,
     width: '100%',

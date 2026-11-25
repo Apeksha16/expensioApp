@@ -9,7 +9,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { colors, layout, radius, shadows, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, shadows, spacing, typography } from '../theme';
 
 export interface SegmentOption<T extends string> {
   key: T;
@@ -182,18 +182,18 @@ const styles = StyleSheet.create({
   label: {
     ...typography.captionMedium,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   labelPrimary: {
     color: colors.accent,
   },
   labelActive: {
     color: colors.accentDark,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   labelPrimaryActive: {
     color: colors.textInverse,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   badge: {
     minWidth: 20,

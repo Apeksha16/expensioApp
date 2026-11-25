@@ -15,10 +15,12 @@ import { FriendRow } from '../../components/FriendRow';
 import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProgressBar } from '../../components/ProgressBar';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
 import { CURRENT_USER_ID } from '../../data/splits';
 import type { SplitStackParamList } from '../../navigation/SplitStack';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, layout, radius, spacing, typography } from '../../theme';
 import type { SplitMethod } from '../../types';
 import { formatINR } from '../../utils/format';
 import { buildEqualShares, getFriendMeta } from '../../utils/splits';
@@ -150,20 +152,19 @@ export function CreateSplitScreen({ navigation, route }: Props) {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <ScreenStatusBar surface="light" />
       <View
         style={[
           styles.container,
-          { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.lg },
+          { paddingTop: insets.top + spacing.xs, paddingBottom: insets.bottom + spacing.lg },
         ]}
       >
-        <Pressable
-          onPress={() => (step === 1 ? navigation.goBack() : setStep((s) => s - 1))}
-          hitSlop={8}
-          style={styles.backRow}
-        >
-          <Text style={styles.backArrow}>{step === 1 ? '←' : '←'}</Text>
-          <Text style={styles.back}>{step === 1 ? 'Cancel' : 'Back'}</Text>
-        </Pressable>
+        <ScreenHeader
+          tone="light"
+          title="Create split"
+          onBack={() => (step === 1 ? navigation.goBack() : setStep((s) => s - 1))}
+          backAccessibilityLabel={step === 1 ? 'Cancel split' : 'Previous step'}
+        />
 
         <Text style={styles.stepLabel}>
           Step {step} of {STEPS}
@@ -392,7 +393,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.screenMargin,
   },
   back: {
     ...typography.bodyMedium,

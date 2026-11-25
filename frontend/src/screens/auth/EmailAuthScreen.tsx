@@ -7,7 +7,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { useApp } from '../../context/AppContext';
 import { authenticateEmail } from '../../services/authApi';
-import { colors, layout, radius, spacing, typography } from '../../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../../theme';
 import { normalizeAuthError } from '../../utils/errorNormalization';
 import { getPasswordRequirementChecks, validatePasswordPolicy } from '../../utils/validation';
 
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   forgotLink: {
     ...typography.captionMedium,
     color: colors.accent,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   checklist: {
     backgroundColor: colors.surfaceMuted,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   checkLabelMet: {
     color: colors.accentDark,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   errorBox: {
     flexDirection: 'row',
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   submitButton: {
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
   },
   switchBtn: {
     minHeight: layout.headerButtonSize,

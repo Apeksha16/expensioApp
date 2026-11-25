@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { colors, layout, radius, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../theme';
 
 interface ScreenHeaderProps {
   tone?: 'dark' | 'light';
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   brandMarkText: {
     ...typography.h3,
     color: colors.accentDark,
-    fontWeight: '800',
+    fontFamily: fontFamilies.extrabold,
   },
   brandText: {
     ...typography.h2,

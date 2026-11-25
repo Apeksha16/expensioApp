@@ -6,7 +6,7 @@ import { CurrencyInput } from '../../components/CurrencyInput';
 import { InputField } from '../../components/InputField';
 import { TransactionItem } from '../../components/TransactionItem';
 import { useApp } from '../../context/AppContext';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, layout, radius, spacing, typography } from '../../theme';
 import type { Transaction } from '../../types';
 import { validateDate } from '../../services/moneyService';
 
@@ -300,7 +300,7 @@ export function ActivityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg },
+  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: layout.screenMargin },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   kicker: { ...typography.label, color: colors.accent, letterSpacing: 1.4 },
   title: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.xs },

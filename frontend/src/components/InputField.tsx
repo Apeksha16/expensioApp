@@ -8,7 +8,7 @@ import {
   TextInputProps,
   View,
 } from 'react-native';
-import { colors, layout, radius, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../theme';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.captionMedium,
     color: colors.textSecondary,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
   field: {
     minHeight: layout.inputHeight,

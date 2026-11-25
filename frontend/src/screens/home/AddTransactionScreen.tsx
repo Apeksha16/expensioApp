@@ -8,7 +8,7 @@ import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useApp } from '../../context/AppContext';
 import type { MainTabParamList } from '../../navigation/MainTabs';
-import { colors, radius, spacing, typography } from '../../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../../theme';
 import { formatTransactionDate } from '../../utils/format';
 import { localDateString, validateDate } from '../../services/moneyService';
 
@@ -189,7 +189,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  container: { paddingHorizontal: spacing.lg },
+  container: { paddingHorizontal: layout.screenMargin },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   headerIcon: { width: 48, height: 48, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise },
   headerCopy: { flex: 1, gap: spacing.xxs },
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   categoryChip: { minHeight: 34, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.full, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
   categoryChipSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accentMuted },
   categoryText: { ...typography.micro, color: colors.textSecondary },
-  categoryTextSelected: { color: colors.accentDark, fontWeight: '700' },
+  categoryTextSelected: { color: colors.accentDark, fontFamily: fontFamilies.bold },
   metaRows: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   metaRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   metaIcon: { width: 30, height: 30, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },

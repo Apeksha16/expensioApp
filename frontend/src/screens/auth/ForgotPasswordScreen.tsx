@@ -146,6 +146,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ctaButton: {
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
   },
 });

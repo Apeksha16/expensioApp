@@ -19,7 +19,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, layout, radius, shadows, spacing, typography } from '../theme';
+import { fontFamilies, colors, layout, radius, shadows, spacing, typography } from '../theme';
 import {
   CARTOON_AVATARS,
   CartoonAvatar,
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   avatarNameText: {
     ...typography.captionMedium,
     color: colors.accentDark,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
     textAlign: 'center',
   },
   selectButton: {

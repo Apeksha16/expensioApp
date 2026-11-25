@@ -17,7 +17,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
 import { onboardingSlides } from '../../data/mock';
-import { colors, layout, radius, spacing, typography } from '../../theme';
+import { fontFamilies, colors, layout, radius, spacing, typography } from '../../theme';
 import type { OnboardingSlide } from '../../types';
 
 export function OnboardingScreen() {
@@ -183,12 +183,12 @@ const styles = StyleSheet.create({
   brandMarkText: {
     ...typography.h3,
     color: colors.accentDark,
-    fontWeight: '800',
+    fontFamily: fontFamilies.extrabold,
   },
   brandLight: {
     ...typography.h3,
     color: colors.white,
-    fontWeight: '800',
+    fontFamily: fontFamilies.extrabold,
     letterSpacing: -0.8,
   },
   brandDark: {
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   skip: {
     ...typography.bodyMedium,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   skipLight: {
     color: colors.heroTextMuted,
@@ -257,13 +257,13 @@ const styles = StyleSheet.create({
   },
   ctaDark: {
     width: '100%',
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
     shadowOpacity: 0,
     elevation: 0,
   },
   ctaLight: {
     width: '100%',
-    minHeight: layout.authButtonHeight,
+    minHeight: layout.buttonHeight,
     backgroundColor: colors.accentDark,
     shadowOpacity: 0,
     elevation: 0,

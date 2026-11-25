@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { fontFamilies, colors, radius, spacing, typography } from '../theme';
 
 export type BadgeVariant = 'neutral' | 'tag' | 'accent' | 'lime' | 'warning' | 'danger' | 'dark';
 
@@ -86,13 +86,13 @@ const styles = StyleSheet.create({
   },
   textTag: {
     ...typography.micro,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   textSm: {
     ...typography.microTag,
   },
   textMd: {
     ...typography.micro,
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
   },
 });

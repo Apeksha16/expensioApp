@@ -1,5 +1,5 @@
 import { readSession } from '../core/storage/session';
-import { removeValue, STORAGE_KEYS } from '../core/storage/localPersistence';
+import { removeSecureValue, removeValue, STORAGE_KEYS } from '../core/storage/localPersistence';
 import { authApi } from './api/authApi';
 import { verificationApi } from './api/verificationApi';
 import { onboardingApi } from './api/onboardingApi';
@@ -67,16 +67,21 @@ export function clearPendingAuthState(): void {
  * created by older dev builds.
  */
 export async function purgeLegacyInsecureAuthKeys(email?: string | null, phone?: string | null): Promise<void> {
-  const removals: Array<Promise<void>> = [];
+  const keys: string[] = [];
   if (email) {
     const clean = email.trim().toLowerCase().replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    removals.push(removeValue(`${STORAGE_KEYS.localAccountPrefix}${clean}`));
-    removals.push(removeValue(`${STORAGE_KEYS.localOtpPrefix}email_${clean}`));
+    keys.push(`${STORAGE_KEYS.localAccountPrefix}${clean}`);
+    keys.push(`${STORAGE_KEYS.localOtpPrefix}email_${clean}`);
   }
   if (phone) {
     const cleanPhone = phone.trim().replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    removals.push(removeValue(`${STORAGE_KEYS.localAccountByPhonePrefix}${cleanPhone}`));
-    removals.push(removeValue(`${STORAGE_KEYS.localOtpPrefix}phone_${cleanPhone}`));
+    keys.push(`${STORAGE_KEYS.localAccountByPhonePrefix}${cleanPhone}`);
+    keys.push(`${STORAGE_KEYS.localOtpPrefix}phone_${cleanPhone}`);
+  }
+  const removals: Array<Promise<void>> = [];
+  for (const key of keys) {
+    removals.push(removeValue(key));
+    removals.push(removeSecureValue(key));
   }
   await Promise.allSettled(removals);
 }

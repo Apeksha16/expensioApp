@@ -15,7 +15,18 @@ const isDevRuntime =
     ? runtimeGlobal.__DEV__
     : rawEnv.NODE_ENV !== 'production';
 
+// Ship-gate Friends off in release builds until Spring Boot /api/v1/friends/* ships (F-01 Track A).
+const friendsEnabled = isDevRuntime
+  ? rawEnv.FRIENDS_ENABLED !== 'false'
+  : rawEnv.FRIENDS_ENABLED === 'true';
+
 export const FRIENDS_CONFIG = {
+  /**
+   * Release feature gate for the entire Friends surface (Home tile, Splits entry,
+   * Friends tab/stack, and background sync). Off in production until backend ships.
+   */
+  FRIENDS_ENABLED: friendsEnabled,
+
   /**
    * Proposed REST prefix from the Friends spec (/api/v1/friends).
    * Change here in one place if the Spring Boot server mounts at /v1/friends.
@@ -27,7 +38,7 @@ export const FRIENDS_CONFIG = {
    * In dev/test, defaults to true until Spring Boot /api/v1/friends routes go live
    * (override with USE_FRIENDS_MOCK=false to hit live server).
    */
-  USE_FRIENDS_MOCK: isDevRuntime && rawEnv.USE_FRIENDS_MOCK !== 'false',
+  USE_FRIENDS_MOCK: isDevRuntime && friendsEnabled && rawEnv.USE_FRIENDS_MOCK !== 'false',
 
   /**
    * Gate guest avatar editing UI behind a flag until
@@ -35,7 +46,7 @@ export const FRIENDS_CONFIG = {
    */
   ENABLE_GUEST_AVATAR_EDIT:
     rawEnv.ENABLE_GUEST_AVATAR_EDIT === 'true'
-    || (isDevRuntime && rawEnv.USE_FRIENDS_MOCK !== 'false' && rawEnv.ENABLE_GUEST_AVATAR_EDIT !== 'false'),
+    || (isDevRuntime && friendsEnabled && rawEnv.USE_FRIENDS_MOCK !== 'false' && rawEnv.ENABLE_GUEST_AVATAR_EDIT !== 'false'),
 
   /**
    * Optional real-time SSE/WebSocket adapter (off by default per §4).
@@ -45,7 +56,7 @@ export const FRIENDS_CONFIG = {
   /**
    * Light foreground polling while Friends screen is visible.
    */
-  ENABLE_POLLING: rawEnv.ENABLE_FRIENDS_POLLING !== 'false',
+  ENABLE_POLLING: friendsEnabled && rawEnv.ENABLE_FRIENDS_POLLING !== 'false',
   POLL_INTERVAL_MS: 25_000,
   POLL_MAX_BACKOFF_MS: 120_000,
 

@@ -38,7 +38,6 @@ import type {
 import { apiClient } from '../services/api/apiClient';
 import { friendsApi, readFriendsCache } from '../services/api/friendsApi';
 import { FriendsApiError, isAbortError, normalizeFriendsError } from '../services/api/friendsErrors';
-import { setMockDebtInspector } from '../services/api/friendsMockAdapter';
 import {
   createParticipantSnapshotMap,
   createPendingActionTracker,
@@ -55,6 +54,7 @@ import { userApi } from '../services/api/userApi';
 import { authApi as backendAuthApi } from '../services/api/authApi';
 import { onboardingApi } from '../services/api/onboardingApi';
 import { clearSession, readSession, updateSession, writeSession } from '../core/storage/session';
+import { migrateLegacySecureStoreKeys } from '../core/storage/localPersistence';
 import { readLocalData, writeLocalData } from '../core/storage/localData';
 import { avatarPreferenceService } from '../services/avatarPreferenceService';
 import { profileService, type ProfileRecord } from '../services/profileService';
@@ -310,6 +310,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshFriendsInternal = useCallback(async (
     mode: 'initial' | 'manual' | 'focus' | 'foreground' | 'poll' | 'realtime' | 'mutation' = 'manual',
   ) => {
+    if (!FRIENDS_CONFIG.FRIENDS_ENABLED) {
+      setFriendsLoading(false);
+      setFriendsRefreshing(false);
+      return;
+    }
     const ownerId = localDataOwnerRef.current;
     friendsFetchAbortRef.current?.abort();
     const controller = new AbortController();
@@ -404,11 +409,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearInMemoryUserState = useCallback(() => {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+      toastTimer.current = null;
+    }
+    setToast(null);
     friendsFetchAbortRef.current?.abort();
     friendsFetchAbortRef.current = null;
     friendsSyncRef.current?.stopAll();
+    isFriendsVisibleRef.current = false;
     apiClient.cancelAllRequests();
     clearPendingAuthState();
+    operationLocksRef.current.clear();
     pendingActionTrackerRef.current.clear();
     syncPendingActionState();
     localDataOwnerRef.current = null;
@@ -452,6 +464,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEmailVerified(false);
     setOnboardingStepState(1);
     setVerificationTarget('');
+    setVerificationReturnPhase('mobile');
+    setPasswordResetEmail('');
     setOnboardingDraft({
       firstName: '', lastName: '', email: '', phone: '', employmentType: '',
       incomeRupees: '', cashRupees: '', savingsRupees: '',
@@ -461,6 +475,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const restoreAccountData = useCallback(async (ownerId: string | null) => {
     if (localDataOwnerRef.current !== ownerId) {
       // Zero-frame isolation when switching accounts
+      const defaultPrefs = createDefaultPreferences();
+      setProfile(null);
+      setPreferences(defaultPrefs);
+      setProfileState({
+        firstName: '',
+        lastName: '',
+        mobile: '',
+        countryCode: '+91',
+        email: '',
+        avatarId: defaultPrefs.avatarId,
+        preferredModuleIds: defaultPrefs.preferredModuleIds,
+        reportFrequency: defaultPrefs.reportFrequency,
+        reportsEnabled: defaultPrefs.reportsEnabled,
+        reportDayOfWeek: defaultPrefs.reportDayOfWeek,
+        reportDayOfMonth: defaultPrefs.reportDayOfMonth,
+        reportEmail: '',
+      });
+      setOnboardingDraft({
+        firstName: '', lastName: '', email: '', phone: '', employmentType: '',
+        incomeRupees: '', cashRupees: '', savingsRupees: '',
+      });
       setFriendships([]);
       setFriends([]);
       setSplitGroups([]);
@@ -482,7 +517,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [localData, groups, cachedFriends] = await Promise.all([
       readLocalData(ownerId),
       getSplitGroups(ownerId),
-      readFriendsCache(ownerId),
+      FRIENDS_CONFIG.FRIENDS_ENABLED ? readFriendsCache(ownerId) : Promise.resolve(null),
     ]);
     if (localDataOwnerRef.current !== ownerId) return;
 
@@ -493,7 +528,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setRecurringPayments(localData.recurringPayments);
     setSplitGroups(groups);
 
-    if (cachedFriends) {
+    if (cachedFriends && FRIENDS_CONFIG.FRIENDS_ENABLED) {
       const allCached = [
         ...cachedFriends.grouped.accepted,
         ...cachedFriends.grouped.incoming,
@@ -512,7 +547,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Revalidate in background (cached-first: never block cold-start or login first paint)
-    if (ownerId) {
+    if (ownerId && FRIENDS_CONFIG.FRIENDS_ENABLED) {
       void refreshFriendsInternal('initial');
     }
   }, [refreshFriendsInternal]);
@@ -524,6 +559,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const session = await readSession();
       const sessionUser = session?.user as unknown as UserProfile | undefined;
       const ownerId = session?.dataOwnerId ?? getAccountDataOwner(sessionUser);
+      await migrateLegacySecureStoreKeys(ownerId);
       const [savedPreferences, storedProfile, storedDraft] = await Promise.all([
         getLocalPreferences(ownerId),
         profileService.getProfile(ownerId),
@@ -662,13 +698,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      setMockDebtInspector((personId) => computeLocalRemovalPreflight(personId));
-      return () => setMockDebtInspector(null);
+    if (__DEV__ && FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
+      const mod = require('../services/api/friendsMockAdapter') as typeof import('../services/api/friendsMockAdapter');
+      mod.setMockDebtInspector((personId) => computeLocalRemovalPreflight(personId));
+      return () => mod.setMockDebtInspector(null);
     }
   }, [computeLocalRemovalPreflight]);
 
   useEffect(() => {
+    if (!FRIENDS_CONFIG.FRIENDS_ENABLED) return;
     const controller = new FriendsSyncController({
       onSync: async (reason) => {
         if (authPhase !== 'main') return;

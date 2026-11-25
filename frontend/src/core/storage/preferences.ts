@@ -185,28 +185,15 @@ export async function readPreferences(ownerId?: string | null): Promise<LocalPre
   const saved = parseStoredPreferences(moduleValue, avatarValue, reportValue);
   if (saved) return saved;
 
-  if (ownerId && moduleValue === null && avatarValue === null && reportValue === null) {
-    const legacyKeys = preferenceKeys();
-    const legacyValues = await Promise.all([
-      readObject(legacyKeys.modules),
-      readObject(legacyKeys.avatar),
-      readObject(legacyKeys.reports),
-    ]);
-    if (legacyValues.some((value) => value !== null)) {
-      const legacySaved = parseStoredPreferences(legacyValues[0], legacyValues[1], legacyValues[2]);
-      if (legacySaved) {
-        await writePreferences(legacySaved, ownerId);
-        await Promise.all(Object.values(legacyKeys).map((key) => removeValue(key)));
-        return legacySaved;
-      }
-    }
+  if (!ownerId) {
+    const legacy = await readLegacyPreferences();
+    const initial = legacy ?? defaults();
+    await writePreferences(initial, ownerId);
+    if (legacy) await removeValue(STORAGE_KEYS.legacyPreferences);
+    return initial;
   }
 
-  const legacy = await readLegacyPreferences();
-  const initial = legacy ?? defaults();
-  await writePreferences(initial, ownerId);
-  if (legacy) await removeValue(STORAGE_KEYS.legacyPreferences);
-  return initial;
+  return defaults();
 }
 
 export async function writePreferences(preferences: LocalPreferences, ownerId?: string | null): Promise<void> {

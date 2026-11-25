@@ -10,10 +10,31 @@ const distDir = path.resolve(__dirname, '../.test-dist/cjs');
 
 // In-memory SecureStore + React Native stub before loading compiled modules
 const secureStoreMap = new Map();
+const asyncStorageMap = new Map();
 const mockPlatform = { OS: 'ios' };
 const originalLoad = Module._load;
 
 Module._load = function patchedLoad(request, parent, isMain) {
+  if (request === '@react-native-async-storage/async-storage') {
+    const adapter = {
+      getItem: async (key) => (asyncStorageMap.has(key) ? asyncStorageMap.get(key) : null),
+      setItem: async (key, value) => {
+        asyncStorageMap.set(key, String(value));
+      },
+      removeItem: async (key) => {
+        asyncStorageMap.delete(key);
+      },
+      getAllKeys: async () => Array.from(asyncStorageMap.keys()),
+      multiRemove: async (keys) => {
+        for (const key of keys) asyncStorageMap.delete(key);
+      },
+    };
+    return {
+      __esModule: true,
+      default: adapter,
+      ...adapter,
+    };
+  }
   if (request === 'expo-secure-store') {
     return {
       getItemAsync: async (key) => (secureStoreMap.has(key) ? secureStoreMap.get(key) : null),
@@ -240,6 +261,7 @@ test('Display text sanitizer strips RTL/zero-width spoofing and password policy 
 
 test('SecureStore token lifecycle & Account A -> Logout -> Account B zero-leak cleanup', async () => {
   secureStoreMap.clear();
+  asyncStorageMap.clear();
 
   // Simulate Account A signed in with tokens, draft, cached friends, and legacy insecure key
   await writeSession({
@@ -324,6 +346,7 @@ test('Friends 250-item partition & search benchmark completes within UI frame bu
 
 test('ApiClient executes single-flight refresh on concurrent 401s and clears session when refresh fails', async () => {
   secureStoreMap.clear();
+  asyncStorageMap.clear();
   await writeSession({
     accessToken: 'expired.access',
     refreshToken: 'valid.refresh',

@@ -132,14 +132,6 @@ export async function readLocalData(ownerId?: string | null): Promise<LocalAppDa
     return emptyData();
   }
   if (parsed === null) {
-    if (ownerId) {
-      const legacyData = await readJson<unknown>(STORAGE_KEYS.localData);
-      if (legacyData !== null) {
-        await writeJson(key, legacyData);
-        await removeValue(STORAGE_KEYS.localData);
-        return readLocalData(ownerId);
-      }
-    }
     return emptyData();
   }
   if (

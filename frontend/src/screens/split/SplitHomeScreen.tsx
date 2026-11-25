@@ -20,6 +20,7 @@ import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SplitBalanceHeader } from '../../components/SplitBalanceHeader';
 import { SplitListItem } from '../../components/SplitListItem';
+import { FRIENDS_CONFIG } from '../../config/friendsConfig';
 import { useApp } from '../../context/AppContext';
 import type { SplitStackParamList } from '../../navigation/SplitStack';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
@@ -35,7 +36,9 @@ export function SplitHomeScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      prefetchFriends();
+      if (FRIENDS_CONFIG.FRIENDS_ENABLED) {
+        prefetchFriends();
+      }
     }, [prefetchFriends]),
   );
   const [groupEditorOpen, setGroupEditorOpen] = useState(false);
@@ -98,25 +101,27 @@ export function SplitHomeScreen({ navigation }: Props) {
           <Text style={styles.title}>Splits</Text>
           <Text style={styles.subtitle}>Track who owes who</Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            friendCounts.incoming > 0
-              ? `Open Friends, ${friendCounts.incoming} incoming friend request${friendCounts.incoming === 1 ? '' : 's'}`
-              : 'Open Friends'
-          }
-          style={styles.iconBtn}
-          onPress={() => navigation.navigate('Friends')}
-        >
-          <Ionicons name="people-outline" size={20} color={colors.accent} />
-          {friendCounts.incoming > 0 ? (
-            <View style={styles.incomingBadge}>
-              <Text style={styles.incomingBadgeText}>
-                {friendCounts.incoming > 9 ? '9+' : friendCounts.incoming}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
+        {FRIENDS_CONFIG.FRIENDS_ENABLED ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              friendCounts.incoming > 0
+                ? `Open Friends, ${friendCounts.incoming} incoming friend request${friendCounts.incoming === 1 ? '' : 's'}`
+                : 'Open Friends'
+            }
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('Friends')}
+          >
+            <Ionicons name="people-outline" size={20} color={colors.accent} />
+            {friendCounts.incoming > 0 ? (
+              <View style={styles.incomingBadge}>
+                <Text style={styles.incomingBadgeText}>
+                  {friendCounts.incoming > 9 ? '9+' : friendCounts.incoming}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView
@@ -195,16 +200,22 @@ export function SplitHomeScreen({ navigation }: Props) {
               </View>
               <Text style={styles.emptyTitle}>No groups yet</Text>
               <Text style={styles.emptyCopy}>Create a local group from friends you’ve added, then start a split with them.</Text>
-              <Pressable accessibilityRole="button" onPress={() => friends.length ? openGroupEditor() : navigation.navigate('Friends')} style={styles.emptyAction}>
-                <Text style={styles.emptyActionText}>{friends.length ? 'Create a group' : 'Add friends first'}</Text>
-                <Ionicons name="arrow-forward" size={15} color={colors.accentDark} />
-              </Pressable>
+              {friends.length > 0 || FRIENDS_CONFIG.FRIENDS_ENABLED ? (
+                <Pressable accessibilityRole="button" onPress={() => friends.length ? openGroupEditor() : navigation.navigate('Friends')} style={styles.emptyAction}>
+                  <Text style={styles.emptyActionText}>{friends.length ? 'Create a group' : 'Add friends first'}</Text>
+                  <Ionicons name="arrow-forward" size={15} color={colors.accentDark} />
+                </Pressable>
+              ) : null}
             </View>
           )}
         </View>
 
         <View>
-          <SectionHeader title="Recent splits" actionLabel="Friends →" onAction={() => navigation.navigate('Friends')} />
+          <SectionHeader
+            title="Recent splits"
+            actionLabel={FRIENDS_CONFIG.FRIENDS_ENABLED ? 'Friends →' : undefined}
+            onAction={FRIENDS_CONFIG.FRIENDS_ENABLED ? () => navigation.navigate('Friends') : undefined}
+          />
           {splits.length ? (
             <View style={styles.list}>
               {splits.map((split) => (

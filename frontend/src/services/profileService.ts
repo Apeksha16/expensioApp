@@ -59,19 +59,6 @@ async function getLocalProfile(ownerId?: string | null): Promise<ProfileRecord> 
     return EMPTY_PROFILE;
   }
   if (stored === null) {
-    if (ownerId) {
-      try {
-        const legacy = await readJson<unknown>(STORAGE_KEYS.profile);
-        if (legacy !== null && isProfileRecord(legacy)) {
-          await writeJson(key, normalizeProfile(legacy));
-          await removeValue(STORAGE_KEYS.profile);
-          return normalizeProfile(legacy);
-        }
-      } catch (error) {
-        if (!(error instanceof CorruptStoredDataError)) throw error;
-        await removeValue(STORAGE_KEYS.profile);
-      }
-    }
     return EMPTY_PROFILE;
   }
   if (!isProfileRecord(stored)) {

@@ -3,6 +3,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FRIENDS_CONFIG } from '../config/friendsConfig';
 import { useApp } from '../context/AppContext';
 import { moduleRegistryService } from '../services/moduleRegistryService';
 import { colors, radius, shadows, spacing, typography } from '../theme';
@@ -55,7 +56,7 @@ export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              friendCounts.incoming > 0
+              FRIENDS_CONFIG.FRIENDS_ENABLED && friendCounts.incoming > 0
                 ? `Open all modules, ${friendCounts.incoming} incoming friend request${friendCounts.incoming === 1 ? '' : 's'}`
                 : 'Open all modules'
             }
@@ -64,7 +65,7 @@ export function BottomNavigation({ state, navigation }: BottomTabBarProps) {
           >
             <Ionicons name="grid-outline" size={15} color={colors.accent} />
             <Text style={styles.moreAccessText}>All modules</Text>
-            {friendCounts.incoming > 0 ? <View style={styles.moreDot} /> : null}
+            {FRIENDS_CONFIG.FRIENDS_ENABLED && friendCounts.incoming > 0 ? <View style={styles.moreDot} /> : null}
           </Pressable>
         </View>
       ) : null}

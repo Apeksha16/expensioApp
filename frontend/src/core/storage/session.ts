@@ -1,4 +1,10 @@
-import { CorruptStoredDataError, readJson, removeValue, STORAGE_KEYS, writeJson } from './localPersistence';
+import {
+  CorruptStoredDataError,
+  readSecureJson,
+  removeSecureValue,
+  STORAGE_KEYS,
+  writeSecureJson,
+} from './localPersistence';
 
 export interface StoredSession {
   accessToken: string;
@@ -15,7 +21,7 @@ export interface StoredSession {
 export async function readSession(): Promise<StoredSession | null> {
   let parsed: unknown;
   try {
-    parsed = await readJson<unknown>(STORAGE_KEYS.session);
+    parsed = await readSecureJson<unknown>(STORAGE_KEYS.session);
   } catch (error) {
     if (!(error instanceof CorruptStoredDataError)) throw error;
     await clearSession();
@@ -36,7 +42,7 @@ export async function readSession(): Promise<StoredSession | null> {
 }
 
 export function writeSession(session: StoredSession): Promise<void> {
-  return writeJson(STORAGE_KEYS.session, session);
+  return writeSecureJson(STORAGE_KEYS.session, session);
 }
 
 export async function updateSession(updater: (session: StoredSession) => StoredSession): Promise<StoredSession | null> {
@@ -48,5 +54,5 @@ export async function updateSession(updater: (session: StoredSession) => StoredS
 }
 
 export function clearSession(): Promise<void> {
-  return removeValue(STORAGE_KEYS.session);
+  return removeSecureValue(STORAGE_KEYS.session);
 }

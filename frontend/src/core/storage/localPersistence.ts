@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -30,6 +31,8 @@ export interface KeyValueStorage {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
   remove(key: string): Promise<void>;
+  getAllKeys?(): Promise<readonly string[]>;
+  multiRemove?(keys: string[]): Promise<void>;
 }
 
 export class CorruptStoredDataError extends Error {
@@ -44,19 +47,20 @@ export function sanitizeStorageKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9.\-_]/g, '_') || 'default_key';
 }
 
-const secureStoreAdapter: KeyValueStorage = Platform.OS === 'web'
+// Web tokens must never be persisted to localStorage (XSS exposure).
+// On web, session storage is strictly in-memory; persistent secure keychain storage is native-only.
+const webMemorySecureMap = new Map<string, string>();
+
+const defaultSecureStorageAdapter: KeyValueStorage = Platform.OS === 'web'
   ? {
     async get(key) {
-      if (typeof globalThis.localStorage === 'undefined') throw new Error('Browser storage is unavailable.');
-      return globalThis.localStorage.getItem(key);
+      return webMemorySecureMap.has(key) ? webMemorySecureMap.get(key)! : null;
     },
     async set(key, value) {
-      if (typeof globalThis.localStorage === 'undefined') throw new Error('Browser storage is unavailable.');
-      globalThis.localStorage.setItem(key, value);
+      webMemorySecureMap.set(key, value);
     },
     async remove(key) {
-      if (typeof globalThis.localStorage === 'undefined') throw new Error('Browser storage is unavailable.');
-      globalThis.localStorage.removeItem(key);
+      webMemorySecureMap.delete(key);
     },
   }
   : {
@@ -65,23 +69,36 @@ const secureStoreAdapter: KeyValueStorage = Platform.OS === 'web'
     remove: (key) => SecureStore.deleteItemAsync(sanitizeStorageKey(key)),
   };
 
-let storage: KeyValueStorage = secureStoreAdapter;
+const defaultAppStorageAdapter: KeyValueStorage = {
+  get: (key) => AsyncStorage.getItem(sanitizeStorageKey(key)),
+  set: (key, value) => AsyncStorage.setItem(sanitizeStorageKey(key), value),
+  remove: (key) => AsyncStorage.removeItem(sanitizeStorageKey(key)),
+  getAllKeys: () => AsyncStorage.getAllKeys(),
+  multiRemove: (keys) => AsyncStorage.multiRemove(keys),
+};
+
+let secureStorage: KeyValueStorage = defaultSecureStorageAdapter;
+let appStorage: KeyValueStorage = defaultAppStorageAdapter;
 
 export function configureLocalStorage(adapter: KeyValueStorage): void {
-  storage = adapter;
+  appStorage = adapter;
+}
+
+export function configureSecureStorage(adapter: KeyValueStorage): void {
+  secureStorage = adapter;
 }
 
 export function readText(key: string): Promise<string | null> {
-  return storage.get(key);
+  return appStorage.get(key);
 }
 
 export async function writeText(key: string, value: string): Promise<void> {
-  if (await storage.get(key) === value) return;
-  await storage.set(key, value);
+  if (await appStorage.get(key) === value) return;
+  await appStorage.set(key, value);
 }
 
 export function removeValue(key: string): Promise<void> {
-  return storage.remove(key);
+  return appStorage.remove(key);
 }
 
 export async function readJson<T>(key: string): Promise<T | null> {
@@ -96,4 +113,97 @@ export async function readJson<T>(key: string): Promise<T | null> {
 
 export async function writeJson(key: string, value: unknown): Promise<void> {
   await writeText(key, JSON.stringify(value));
+}
+
+export async function listAppStorageKeys(): Promise<string[]> {
+  if (typeof appStorage.getAllKeys === 'function') {
+    const keys = await appStorage.getAllKeys();
+    return [...keys];
+  }
+  return [];
+}
+
+export async function removeAppStorageKeys(keys: string[]): Promise<void> {
+  if (!keys.length) return;
+  if (typeof appStorage.multiRemove === 'function') {
+    await appStorage.multiRemove(keys);
+    return;
+  }
+  await Promise.allSettled(keys.map((key) => appStorage.remove(key)));
+}
+
+export async function readSecureJson<T>(key: string): Promise<T | null> {
+  const raw = await secureStorage.get(key);
+  if (raw === null) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new CorruptStoredDataError(key);
+  }
+}
+
+export async function writeSecureJson(key: string, value: unknown): Promise<void> {
+  const serialized = JSON.stringify(value);
+  if (await secureStorage.get(key) === serialized) return;
+  await secureStorage.set(key, serialized);
+}
+
+export function removeSecureValue(key: string): Promise<void> {
+  return secureStorage.remove(key);
+}
+
+function buildBulkMigrationKeys(ownerId?: string | null): string[] {
+  const keys: string[] = [
+    STORAGE_KEYS.legacyPreferences,
+    STORAGE_KEYS.profile,
+    STORAGE_KEYS.avatar,
+    STORAGE_KEYS.modulePreferences,
+    STORAGE_KEYS.reportPreferences,
+    STORAGE_KEYS.emailVerification,
+    STORAGE_KEYS.onboardingDraft,
+    STORAGE_KEYS.localData,
+    STORAGE_KEYS.splitGroups,
+    STORAGE_KEYS.friendships,
+    `${STORAGE_KEYS.friendships}_cache`,
+  ];
+  if (ownerId) {
+    const clean = sanitizeStorageKey(ownerId.trim().toLowerCase());
+    keys.push(
+      `${STORAGE_KEYS.profileAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.avatarAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.modulePreferencesAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.reportPreferencesAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.onboardingDraftAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.localDataAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.splitGroupsAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.friendshipsAccountPrefix}${clean}`,
+      `${STORAGE_KEYS.friendshipsAccountPrefix}cache_${clean}`,
+    );
+  }
+  return keys;
+}
+
+/**
+ * One-time, crash-safe, idempotent migration of bulk app data out of SecureStore
+ * into AsyncStorage. Verifies the target write before deleting the old SecureStore entry.
+ */
+export async function migrateLegacySecureStoreKeys(ownerId?: string | null): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const candidateKeys = buildBulkMigrationKeys(ownerId);
+  for (const key of candidateKeys) {
+    try {
+      const secureVal = await secureStorage.get(key);
+      if (secureVal === null) continue;
+
+      const existingAppVal = await appStorage.get(key);
+      if (existingAppVal === null) {
+        await appStorage.set(key, secureVal);
+        const verified = await appStorage.get(key);
+        if (verified !== secureVal) continue;
+      }
+      await secureStorage.remove(key);
+    } catch {
+      // Leave SecureStore entry intact if migration fails partway so next boot retries safely
+    }
+  }
 }

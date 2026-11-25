@@ -23,7 +23,14 @@ import {
   isRetryableFriendsReadError,
   normalizeFriendsError,
 } from './friendsErrors';
-import { friendsMockAdapter } from './friendsMockAdapter';
+import { logger } from '../../utils/logger';
+
+function getDevMockAdapter(): typeof import('./friendsMockAdapter').friendsMockAdapter | null {
+  if (__DEV__ && FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
+    return (require('./friendsMockAdapter') as typeof import('./friendsMockAdapter')).friendsMockAdapter;
+  }
+  return null;
+}
 
 export interface FriendsCachePayload {
   grouped: FriendsGroupedData;
@@ -87,7 +94,10 @@ export async function readFriendsCache(ownerId?: string | null): Promise<Friends
       grouped: partitionFriendships(all),
       cachedAt: typeof raw.cachedAt === 'number' ? raw.cachedAt : Date.now(),
     };
-  } catch {
+  } catch (err) {
+    logger.warn('[friendsApi] Failed to read friends cache', {
+      error: err instanceof Error ? err.message : 'unknown',
+    });
     return null;
   }
 }
@@ -109,8 +119,10 @@ export async function writeFriendsCache(
   };
   try {
     await writeJson(cacheStorageKey(ownerId), payload);
-  } catch {
-    // Non-fatal cache write error
+  } catch (err) {
+    logger.warn('[friendsApi] Failed to write friends cache', {
+      error: err instanceof Error ? err.message : 'unknown',
+    });
   }
   return cachedAt;
 }
@@ -123,8 +135,10 @@ export async function clearFriendsCache(ownerId?: string | null): Promise<void> 
     }
     await removeValue(STORAGE_KEYS.friendships);
     await removeValue(`${STORAGE_KEYS.friendships}_cache`);
-  } catch {
-    // Best-effort cleanup
+  } catch (err) {
+    logger.warn('[friendsApi] Failed to clear friends cache', {
+      error: err instanceof Error ? err.message : 'unknown',
+    });
   }
 }
 
@@ -162,8 +176,13 @@ export const friendsApi = {
   async listFriends(options: ListFriendsOptions = {}): Promise<FriendsGroupedData> {
     const { ownerId, signal, page, limit = FRIENDS_CONFIG.LIST_PAGE_SIZE, cursor } = options;
 
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      const grouped = await friendsMockAdapter.listFriends(ownerId, signal);
+    if (!FRIENDS_CONFIG.FRIENDS_ENABLED) {
+      return partitionFriendships([]);
+    }
+
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      const grouped = await mockAdapter.listFriends(ownerId, signal);
       await writeFriendsCache(grouped, ownerId);
       return grouped;
     }
@@ -208,8 +227,9 @@ export const friendsApi = {
       cursor,
     } = options;
 
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      return friendsMockAdapter.searchCandidates(trimmed, currentUserId, ownerId, signal);
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      return mockAdapter.searchCandidates(trimmed, currentUserId, ownerId, signal);
     }
 
     return withSafeReadRetry(async () => {
@@ -229,8 +249,9 @@ export const friendsApi = {
     targetUser: Pick<FriendPerson, 'id' | 'displayName' | 'username' | 'avatarId'>,
     ownerId?: string | null,
   ): Promise<Friendship> {
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      return friendsMockAdapter.sendRequest(targetUser, ownerId);
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      return mockAdapter.sendRequest(targetUser, ownerId);
     }
 
     try {
@@ -249,8 +270,9 @@ export const friendsApi = {
    * POST /api/v1/friends/{friendshipId}/accept
    */
   async acceptRequest(friendshipId: string, ownerId?: string | null): Promise<Friendship> {
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      return friendsMockAdapter.acceptRequest(friendshipId, ownerId);
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      return mockAdapter.acceptRequest(friendshipId, ownerId);
     }
 
     try {
@@ -273,8 +295,9 @@ export const friendsApi = {
     friendshipId: string,
     ownerId?: string | null,
   ): Promise<PreflightRemovalResult | null> {
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      return friendsMockAdapter.checkRemovalPreflight(friendshipId, ownerId);
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      return mockAdapter.checkRemovalPreflight(friendshipId, ownerId);
     }
 
     try {
@@ -294,8 +317,9 @@ export const friendsApi = {
    * DELETE /api/v1/friends/{friendshipId}
    */
   async deleteRelationship(friendshipId: string, ownerId?: string | null): Promise<void> {
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      await friendsMockAdapter.deleteRelationship(friendshipId, ownerId);
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      await mockAdapter.deleteRelationship(friendshipId, ownerId);
       return;
     }
 
@@ -314,8 +338,9 @@ export const friendsApi = {
    * POST /api/v1/friends/guests
    */
   async createGuest(input: CreateGuestInput, ownerId?: string | null): Promise<Friendship> {
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      return friendsMockAdapter.createGuest(input, ownerId);
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      return mockAdapter.createGuest(input, ownerId);
     }
 
     try {
@@ -342,8 +367,9 @@ export const friendsApi = {
     payload: UpdateGuestAvatarInput,
     ownerId?: string | null,
   ): Promise<Friendship> {
-    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
-      return friendsMockAdapter.updateGuestAvatar(guestId, payload, ownerId);
+    const mockAdapter = getDevMockAdapter();
+    if (mockAdapter) {
+      return mockAdapter.updateGuestAvatar(guestId, payload, ownerId);
     }
 
     try {

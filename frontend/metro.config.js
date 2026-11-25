@@ -29,6 +29,25 @@ if (fs.existsSync(envFile)) {
 
 const config = getDefaultConfig(__dirname);
 
+// Strip dev-only harness and mock adapter from non-dev (release) bundles (F-03)
+const defaultResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (!context.dev) {
+    const normalized = moduleName.replace(/\\/g, '/');
+    if (
+      normalized.includes('friendsMockAdapter')
+      || normalized.includes('/dev/AuditPreview')
+      || normalized.includes('/dev/auditTarget')
+    ) {
+      return { type: 'empty' };
+    }
+  }
+  if (defaultResolveRequest) {
+    return defaultResolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 // Inject clean environment variables into the client runtime bundle
 const originalSerializer = config.serializer.customSerializer;
 config.serializer.customSerializer = async (entryPoint, preModules, graph, options) => {

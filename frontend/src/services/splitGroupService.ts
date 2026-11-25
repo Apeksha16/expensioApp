@@ -30,19 +30,8 @@ export async function getSplitGroups(ownerId?: string | null): Promise<SplitGrou
     await removeValue(key);
     return [];
   }
-  if (stored === null && ownerId) {
-    try {
-      const legacy = await readJson<unknown>(STORAGE_KEYS.splitGroups);
-      if (legacy !== null) {
-        const groups = Array.isArray(legacy) ? legacy.filter(isSplitGroup) : [];
-        await writeJson(key, groups);
-        await removeValue(STORAGE_KEYS.splitGroups);
-        return groups;
-      }
-    } catch (error) {
-      if (!(error instanceof CorruptStoredDataError)) throw error;
-      await removeValue(STORAGE_KEYS.splitGroups);
-    }
+  if (stored === null) {
+    return [];
   }
   return Array.isArray(stored) ? stored.filter(isSplitGroup) : [];
 }

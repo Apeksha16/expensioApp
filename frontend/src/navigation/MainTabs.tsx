@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { BottomNavigation } from '../components/BottomNavigation';
+import { FRIENDS_CONFIG } from '../config/friendsConfig';
 import { colors } from '../theme';
 import { DashboardScreen } from '../screens/home/DashboardScreen';
 import { ActivityScreen } from '../screens/home/ActivityScreen';
@@ -48,7 +49,7 @@ export function MainTabs() {
         component={SplitStack}
         options={{ headerShown: false }}
       />
-      <Tab.Screen name="Friends" component={FriendsScreen} />
+      {FRIENDS_CONFIG.FRIENDS_ENABLED ? <Tab.Screen name="Friends" component={FriendsScreen} /> : null}
       <Tab.Screen name="Budgets" component={ModuleLandingScreen} />
       <Tab.Screen name="Reports" component={ModuleLandingScreen} />
       <Tab.Screen name="Goals" component={ModuleLandingScreen} />

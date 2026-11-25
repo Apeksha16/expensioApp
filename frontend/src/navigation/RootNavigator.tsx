@@ -4,8 +4,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenStatusBar } from '../components/ScreenStatusBar';
 import { useApp } from '../context/AppContext';
-import { AUDIT_TARGET } from '../dev/auditTarget';
-import { AuditPreview } from '../dev/AuditPreview';
 import { AuthEntryScreen } from '../screens/auth/AuthEntryScreen';
 import { EmailAuthScreen } from '../screens/auth/EmailAuthScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -43,10 +41,6 @@ const styles = StyleSheet.create({
 
 export function RootNavigator() {
   const { authPhase, restoreError, retryRestore } = useApp();
-
-  if (__DEV__ && AUDIT_TARGET !== null) {
-    return <AuditPreview target={AUDIT_TARGET} />;
-  }
 
   if (restoreError) {
     return (

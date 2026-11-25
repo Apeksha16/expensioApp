@@ -31,10 +31,23 @@ export function CreateSplitScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { friends, splitGroups, addSplit } = useApp();
 
+  const groupId = route.params?.groupId;
+  const activeGroup = useMemo(
+    () => (groupId ? splitGroups.find((group) => group.id === groupId) : undefined),
+    [groupId, splitGroups],
+  );
+  const selectableFriends = useMemo(() => {
+    if (!activeGroup) return friends;
+    const memberSet = new Set(activeGroup.friendIds);
+    return friends.filter((friend) => memberSet.has(friend.id));
+  }, [activeGroup, friends]);
+
   const [step, setStep] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>(() => {
-    const groupId = route.params?.groupId;
-    return splitGroups.find((group) => group.id === groupId)?.friendIds ?? [];
+    const group = splitGroups.find((g) => g.id === groupId);
+    if (!group) return [];
+    const activeIds = new Set(friends.map((f) => f.id));
+    return group.friendIds.filter((id) => activeIds.has(id));
   });
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState(0);
@@ -167,16 +180,26 @@ export function CreateSplitScreen({ navigation, route }: Props) {
             <View style={styles.section}>
               <Text style={styles.title}>Select friends</Text>
               <Text style={styles.subtitle}>
-                You'll be included automatically.
+                {activeGroup
+                  ? `Group "${activeGroup.name}" members only. You'll be included automatically.`
+                  : "You'll be included automatically."}
               </Text>
-              {friends.map((friend) => (
-                <FriendRow
-                  key={friend.id}
-                  friend={friend}
-                  selected={selectedIds.includes(friend.id)}
-                  onPress={() => toggleFriend(friend.id)}
-                />
-              ))}
+              {selectableFriends.length ? (
+                selectableFriends.map((friend) => (
+                  <FriendRow
+                    key={friend.id}
+                    friend={friend}
+                    selected={selectedIds.includes(friend.id)}
+                    onPress={() => toggleFriend(friend.id)}
+                  />
+                ))
+              ) : (
+                <Text style={styles.subtitle}>
+                  {activeGroup
+                    ? 'No active friends remain in this group. Add friends to continue.'
+                    : 'No accepted friends or guests yet. Add a friend first.'}
+                </Text>
+              )}
             </View>
           ) : null}
 

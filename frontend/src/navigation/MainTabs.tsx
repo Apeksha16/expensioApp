@@ -8,6 +8,7 @@ import { AddTransactionScreen } from '../screens/home/AddTransactionScreen';
 import { ModuleLandingScreen } from '../screens/home/ModuleLandingScreen';
 import { ProfileScreen } from '../screens/home/ProfileScreen';
 import { EmailChangeScreen } from '../screens/home/EmailChangeScreen';
+import { FriendsScreen } from '../screens/friends/FriendsScreen';
 import { SplitStack } from './SplitStack';
 
 export type MainTabParamList = {
@@ -15,6 +16,7 @@ export type MainTabParamList = {
   Activity: undefined;
   Add: { type?: 'expense' | 'income' } | undefined;
   Split: undefined;
+  Friends: undefined;
   Budgets: undefined;
   Reports: undefined;
   Goals: undefined;
@@ -46,6 +48,7 @@ export function MainTabs() {
         component={SplitStack}
         options={{ headerShown: false }}
       />
+      <Tab.Screen name="Friends" component={FriendsScreen} />
       <Tab.Screen name="Budgets" component={ModuleLandingScreen} />
       <Tab.Screen name="Reports" component={ModuleLandingScreen} />
       <Tab.Screen name="Goals" component={ModuleLandingScreen} />

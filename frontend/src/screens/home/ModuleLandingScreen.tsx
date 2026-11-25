@@ -3,6 +3,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge } from '../../components/Badge';
 import { CurrencyInput } from '../../components/CurrencyInput';
 import { GoalCard } from '../../components/GoalCard';
 import { InputField } from '../../components/InputField';
@@ -37,6 +38,7 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
     budgets,
     goals,
     recurringPayments,
+    friendCounts,
     addBudget,
     updateBudget,
     removeBudget,
@@ -85,7 +87,7 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
       navigation.navigate('Add', { type: 'expense' });
       return;
     }
-    navigation.navigate(module.route);
+    navigation.navigate(module.route as never);
   };
 
   const isCurrentMonth = (transaction: (typeof transactions)[number]) => {
@@ -307,6 +309,13 @@ export function ModuleLandingScreen({ navigation, route }: Props) {
                   <Text style={styles.rowTitle}>{module.name}</Text>
                   <Text style={styles.rowSub}>{module.description}</Text>
                 </View>
+                {module.id === 'friends' && friendCounts.incoming > 0 ? (
+                  <Badge
+                    label={`${friendCounts.incoming} pending`}
+                    variant="lime"
+                    size="sm"
+                  />
+                ) : null}
                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
               </Pressable>
             ))}

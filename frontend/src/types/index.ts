@@ -1,4 +1,4 @@
-export type AuthPhase = 'restoring' | 'onboarding' | 'login' | 'mobile' | 'email' | 'otp' | 'setup' | 'main';
+export type AuthPhase = 'restoring' | 'onboarding' | 'login' | 'mobile' | 'email' | 'otp' | 'forgot_password' | 'reset_password' | 'setup' | 'main';
 
 export interface UserProfile {
   name: string;
@@ -115,7 +115,21 @@ export interface Friend {
   userId: string;
   initials: string;
   color: string;
+  avatarId?: string | null;
+  avatarUri?: string | null;
+  isGuest?: boolean;
+  friendshipId?: string;
+  ownerUserId?: string | null;
 }
+
+export interface ParticipantSnapshot {
+  name: string;
+  initials: string;
+  color: string;
+  isGuest?: boolean;
+}
+
+export * from './friends';
 
 export interface SplitGroup {
   id: string;
@@ -140,6 +154,7 @@ export interface SplitExpense {
   date: string;
   method: SplitMethod;
   shares: SplitShare[];
+  participantSnapshots?: Record<string, ParticipantSnapshot>;
   note?: string;
   createdAt: number;
   ledgerTransactionId?: string;

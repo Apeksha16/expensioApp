@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   localDataAccountPrefix: 'expensio_local_data_account_',
   splitGroups: 'expensio_split_groups',
   splitGroupsAccountPrefix: 'expensio_split_groups_account_',
+  friendships: 'expensio_friendships',
+  friendshipsAccountPrefix: 'expensio_friendships_account_',
   localAccountPrefix: 'expensio_local_account_',
   localAccountByPhonePrefix: 'expensio_local_account_phone_',
   localOtpPrefix: 'expensio_local_otp_',

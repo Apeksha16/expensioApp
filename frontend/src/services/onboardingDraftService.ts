@@ -40,16 +40,6 @@ export const onboardingDraftService = {
       return EMPTY_ONBOARDING_DRAFT;
     }
     if (!stored || typeof stored !== 'object') {
-      if (ownerId) {
-        try {
-          const globalStored = await readJson<unknown>(STORAGE_KEYS.onboardingDraft);
-          if (globalStored && typeof globalStored === 'object') {
-            return { ...EMPTY_ONBOARDING_DRAFT, ...(globalStored as Record<string, unknown>) };
-          }
-        } catch {
-          // ignore fallback error
-        }
-      }
       return EMPTY_ONBOARDING_DRAFT;
     }
     return { ...EMPTY_ONBOARDING_DRAFT, ...(stored as Record<string, unknown>) };
@@ -58,9 +48,6 @@ export const onboardingDraftService = {
   async saveDraft(draft: OnboardingDraftRecord, ownerId?: string | null): Promise<OnboardingDraftRecord> {
     const key = draftKey(ownerId);
     await writeJson(key, draft);
-    if (ownerId) {
-      await writeJson(STORAGE_KEYS.onboardingDraft, draft).catch(() => {});
-    }
     return draft;
   },
 
@@ -72,8 +59,6 @@ export const onboardingDraftService = {
 
   async clearDraft(ownerId?: string | null): Promise<void> {
     await removeValue(draftKey(ownerId));
-    if (ownerId) {
-      await removeValue(STORAGE_KEYS.onboardingDraft).catch(() => {});
-    }
+    await removeValue(STORAGE_KEYS.onboardingDraft).catch(() => {});
   },
 };

@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   dot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
   statLabel: {
     ...typography.micro,
@@ -108,7 +108,6 @@ const styles = StyleSheet.create({
   },
   statValue: {
     ...typography.captionMedium,
-    fontSize: 14,
     fontWeight: '600',
   },
   bar: {

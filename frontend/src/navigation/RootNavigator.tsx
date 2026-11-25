@@ -1,15 +1,21 @@
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import React from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { PrimaryButton } from '../components/PrimaryButton';
+import { ScreenStatusBar } from '../components/ScreenStatusBar';
 import { useApp } from '../context/AppContext';
-import { colors } from '../theme';
-import { MobileLoginScreen } from '../screens/auth/MobileLoginScreen';
+import { AUDIT_TARGET } from '../dev/auditTarget';
+import { AuditPreview } from '../dev/AuditPreview';
 import { AuthEntryScreen } from '../screens/auth/AuthEntryScreen';
 import { EmailAuthScreen } from '../screens/auth/EmailAuthScreen';
+import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
+import { MobileLoginScreen } from '../screens/auth/MobileLoginScreen';
 import { OtpScreen } from '../screens/auth/OtpScreen';
+import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { ProfileSetupScreen } from '../screens/setup/ProfileSetupScreen';
+import { colors, spacing, typography } from '../theme';
 import { MainTabs } from './MainTabs';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 const styles = StyleSheet.create({
   restoring: {
@@ -19,47 +25,41 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   errorTitle: {
+    ...typography.h2,
     color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
     textAlign: 'center',
   },
   errorMessage: {
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-  },
-  errorButton: {
-    minHeight: 48,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  errorButtonText: {
-    color: colors.textInverse,
-    fontWeight: '700',
   },
   errorContent: {
     alignItems: 'center',
-    paddingHorizontal: 28,
-    gap: 16,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
   },
 });
 
 export function RootNavigator() {
   const { authPhase, restoreError, retryRestore } = useApp();
 
+  if (__DEV__ && AUDIT_TARGET !== null) {
+    return <AuditPreview target={AUDIT_TARGET} />;
+  }
+
   if (restoreError) {
     return (
       <View style={styles.restoring}>
+        <ScreenStatusBar surface="light" />
         <View style={styles.errorContent}>
           <Text style={styles.errorTitle}>Could not load saved data</Text>
           <Text style={styles.errorMessage}>{restoreError}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Retry loading saved data" onPress={retryRestore} style={styles.errorButton}>
-            <Text style={styles.errorButtonText}>Try again</Text>
-          </Pressable>
+          <PrimaryButton
+            title="Try again"
+            accessibilityLabel="Retry loading saved data"
+            onPress={retryRestore}
+          />
         </View>
       </View>
     );
@@ -68,6 +68,7 @@ export function RootNavigator() {
   if (authPhase === 'restoring') {
     return (
       <View style={styles.restoring}>
+        <ScreenStatusBar surface="light" />
         <ActivityIndicator accessibilityLabel="Loading saved profile and preferences" color={colors.accent} />
       </View>
     );
@@ -80,6 +81,10 @@ export function RootNavigator() {
       return <MobileLoginScreen />;
     case 'email':
       return <EmailAuthScreen />;
+    case 'forgot_password':
+      return <ForgotPasswordScreen />;
+    case 'reset_password':
+      return <ResetPasswordScreen />;
     case 'otp':
       return <OtpScreen />;
     case 'setup':
@@ -106,5 +111,4 @@ export function RootNavigator() {
     default:
       return <OnboardingScreen />;
   }
-
 }

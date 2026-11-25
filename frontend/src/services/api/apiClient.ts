@@ -1,32 +1,17 @@
 import { ENV } from '../../config/env';
 import { clearSession, readSession, writeSession, type StoredSession } from '../../core/storage/session';
-import type { ApiErrorOptions, ApiResponse, AuthTokens } from '../../types/api';
+import type { ApiResponse, AuthTokens } from '../../types/api';
+import { parseRetryAfterHeader } from '../../utils/errorNormalization';
+import { logger } from '../../utils/logger';
+import { ApiError } from './apiError';
 
-/**
- * Custom API Error containing HTTP status, request correlation ID, and backend code.
- */
-export class ApiError extends Error {
-  readonly status: number;
-  readonly code?: string;
-  readonly requestId?: string;
-  readonly data?: unknown;
-  readonly isNetworkError: boolean;
-
-  constructor(options: ApiErrorOptions) {
-    super(options.message);
-    this.name = 'ApiError';
-    this.status = options.status;
-    this.code = options.code;
-    this.requestId = options.requestId;
-    this.data = options.data;
-    this.isNetworkError = options.isNetworkError ?? false;
-  }
-}
+export { ApiError };
 
 export interface RequestOptions {
   headers?: Record<string, string>;
   requiresAuth?: boolean;
   timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 interface InternalRequestOptions extends RequestOptions {
@@ -38,28 +23,60 @@ interface InternalRequestOptions extends RequestOptions {
 /**
  * ApiClient
  * Solely responsible for backend connection build-up, request lifecycle,
- * token injection, 401 refresh-token rotation, timeouts, and error normalization.
+ * token injection, single-flight 401 refresh-token rotation, timeouts,
+ * Retry-After handling, request cancellation on logout, and redacted dev logging.
  */
 export class ApiClient {
   private readonly customBaseUrl?: string;
   private readonly defaultTimeoutMs: number;
   private refreshPromise: Promise<string | null> | null = null;
+  private unauthorizedListeners = new Set<() => void>();
+  private activeControllers = new Set<AbortController>();
+  private sessionGeneration = 0;
 
   constructor(baseUrl?: string, defaultTimeoutMs?: number) {
     this.customBaseUrl = baseUrl;
     this.defaultTimeoutMs = defaultTimeoutMs || ENV.TIMEOUT_MS;
   }
 
+  onUnauthorized(listener: () => void): () => void {
+    this.unauthorizedListeners.add(listener);
+    return () => {
+      this.unauthorizedListeners.delete(listener);
+    };
+  }
+
   /**
-   * Retrieves the current base URL dynamically from ENV.
+   * Aborts all in-flight requests and bumps the session generation so
+   * stale refresh promises or queued retries never restore an old session.
    */
+  cancelAllRequests(): void {
+    this.sessionGeneration += 1;
+    this.refreshPromise = null;
+    for (const controller of this.activeControllers) {
+      try {
+        controller.abort();
+      } catch {
+        // Ignore abort errors
+      }
+    }
+    this.activeControllers.clear();
+  }
+
+  private notifyUnauthorized(): void {
+    for (const listener of this.unauthorizedListeners) {
+      try {
+        listener();
+      } catch {
+        // Ignore listener errors
+      }
+    }
+  }
+
   getBaseUrl(): string {
     return (this.customBaseUrl || ENV.API_BASE_URL).replace(/\/+$/, '');
   }
 
-  /**
-   * Core request dispatcher
-   */
   async request<T>(endpoint: string, options: InternalRequestOptions = {}): Promise<ApiResponse<T>> {
     const {
       method = 'GET',
@@ -67,9 +84,17 @@ export class ApiClient {
       headers: customHeaders = {},
       requiresAuth = true,
       timeoutMs = this.defaultTimeoutMs,
+      signal: externalSignal,
       retryCount = 0,
     } = options;
 
+    if (externalSignal?.aborted) {
+      const abortErr = new Error('Request cancelled');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    }
+
+    const generationAtStart = this.sessionGeneration;
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${this.getBaseUrl()}${cleanEndpoint}`;
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -81,19 +106,34 @@ export class ApiClient {
       ...customHeaders,
     };
 
-    // Auto-inject Bearer Token when authentication is required
     if (requiresAuth && !headers.Authorization) {
       const session = await readSession();
+      if (this.sessionGeneration !== generationAtStart) {
+        const abortErr = new Error('Request cancelled');
+        abortErr.name = 'AbortError';
+        throw abortErr;
+      }
       if (session?.accessToken) {
         headers.Authorization = `Bearer ${session.accessToken}`;
       }
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    this.activeControllers.add(controller);
+    let timedOut = false;
+    const onExternalAbort = () => controller.abort();
+    externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
 
     if (ENV.ENABLE_NETWORK_LOGS) {
-      console.log(`[ApiClient] 🚀 ${method} ${url}`, { headers, body });
+      const sanitizedHeaders = {
+        ...headers,
+        ...(headers.Authorization ? { Authorization: 'Bearer [REDACTED]' } : {}),
+      };
+      logger.debug(`[ApiClient] -> ${method} ${url}`, { headers: sanitizedHeaders, body });
     }
 
     let response: Response;
@@ -106,13 +146,20 @@ export class ApiClient {
       });
     } catch (err: unknown) {
       clearTimeout(timer);
+      this.activeControllers.delete(controller);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
       const isAbort = (err as { name?: string })?.name === 'AbortError';
+      if (isAbort && !timedOut && (externalSignal?.aborted || this.sessionGeneration !== generationAtStart)) {
+        const cancelErr = new Error('Request cancelled');
+        cancelErr.name = 'AbortError';
+        throw cancelErr;
+      }
       const message = isAbort
         ? 'Request timed out. Please check your internet connection and try again.'
         : 'Unable to connect. Please check your internet connection and try again.';
 
       if (ENV.ENABLE_NETWORK_LOGS) {
-        console.warn(`[ApiClient] ❌ Connection error on ${method} ${url}:`, err);
+        logger.warn(`[ApiClient] Connection error on ${method} ${url}`, { status: isAbort ? 408 : 0 });
       }
 
       throw new ApiError({
@@ -123,15 +170,28 @@ export class ApiClient {
       });
     } finally {
       clearTimeout(timer);
+      this.activeControllers.delete(controller);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
     }
 
-    // Automatic Token Refresh on 401 Unauthorized (Single retry guarded)
+    if (this.sessionGeneration !== generationAtStart) {
+      const cancelErr = new Error('Request cancelled');
+      cancelErr.name = 'AbortError';
+      throw cancelErr;
+    }
+
+    // Automatic single-flight Token Refresh on 401 Unauthorized
     if (response.status === 401 && requiresAuth && retryCount === 0) {
       if (ENV.ENABLE_NETWORK_LOGS) {
-        console.log(`[ApiClient] 🔄 401 received on ${url}. Refreshing access token...`);
+        logger.debug(`[ApiClient] 401 received on ${url}. Refreshing access token...`);
       }
 
-      const refreshedToken = await this.refreshTokenFlow();
+      const refreshedToken = await this.refreshTokenFlow(generationAtStart);
+      if (this.sessionGeneration !== generationAtStart) {
+        const cancelErr = new Error('Request cancelled');
+        cancelErr.name = 'AbortError';
+        throw cancelErr;
+      }
       if (refreshedToken) {
         return this.request<T>(endpoint, {
           ...options,
@@ -142,6 +202,7 @@ export class ApiClient {
           retryCount: retryCount + 1,
         });
       }
+      this.notifyUnauthorized();
     }
 
     let json: unknown;
@@ -152,20 +213,23 @@ export class ApiClient {
     }
 
     if (ENV.ENABLE_NETWORK_LOGS) {
-      console.log(`[ApiClient] 📥 ${response.status} ${method} ${url}`, json);
+      logger.debug(`[ApiClient] <- ${response.status} ${method} ${url}`, json);
     }
 
     if (!response.ok) {
       const errorPayload = json as { message?: string; error?: string; code?: string; data?: unknown } | null;
+      const retryAfterSeconds = response.status === 429
+        ? parseRetryAfterHeader(response.headers?.get?.('Retry-After'))
+        : undefined;
       const message =
         errorPayload?.message ||
         errorPayload?.error ||
         `Request failed with HTTP status ${response.status}`;
 
       if (ENV.ENABLE_NETWORK_LOGS) {
-        console.warn(`[ApiClient] ❌ ${response.status} ${method} ${url}:`, {
+        logger.warn(`[ApiClient] ${response.status} ${method} ${url}`, {
           error: message,
-          payload: json,
+          code: errorPayload?.code,
         });
       }
 
@@ -175,6 +239,7 @@ export class ApiClient {
         code: errorPayload?.code,
         requestId,
         data: errorPayload?.data,
+        retryAfterSeconds,
       });
     }
 
@@ -182,9 +247,11 @@ export class ApiClient {
   }
 
   /**
-   * Thread-safe refresh token exchange with mutex promise to prevent concurrent refresh storms
+   * Single-flight refresh token rotation.
+   * Only clears the stored session when the server rejects the refresh token
+   * (or none exists), preserving session if a transient network error occurred.
    */
-  private async refreshTokenFlow(): Promise<string | null> {
+  private async refreshTokenFlow(generationAtStart: number): Promise<string | null> {
     if (this.refreshPromise) {
       return this.refreshPromise;
     }
@@ -192,22 +259,37 @@ export class ApiClient {
     this.refreshPromise = (async () => {
       try {
         const session = await readSession();
+        if (this.sessionGeneration !== generationAtStart) return null;
         if (!session?.refreshToken) {
           await clearSession();
           return null;
         }
 
-        const refreshRes = await fetch(`${this.getBaseUrl()}/v1/auth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ refreshToken: session.refreshToken }),
-        });
+        const controller = new AbortController();
+        this.activeControllers.add(controller);
+        const timer = setTimeout(() => controller.abort(), this.defaultTimeoutMs);
+        let refreshRes: Response;
+        try {
+          refreshRes = await fetch(`${this.getBaseUrl()}/v1/auth/refresh`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({ refreshToken: session.refreshToken }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+          this.activeControllers.delete(controller);
+        }
+
+        if (this.sessionGeneration !== generationAtStart) return null;
 
         if (!refreshRes.ok) {
-          await clearSession();
+          if (refreshRes.status === 400 || refreshRes.status === 401 || refreshRes.status === 403) {
+            await clearSession();
+          }
           return null;
         }
 
@@ -228,7 +310,7 @@ export class ApiClient {
         await clearSession();
         return null;
       } catch {
-        await clearSession();
+        // Do not wipe stored session on transient offline/timeout errors
         return null;
       } finally {
         this.refreshPromise = null;
@@ -237,10 +319,6 @@ export class ApiClient {
 
     return this.refreshPromise;
   }
-
-  // ---------------------------------------------------------------------------
-  // Convenience HTTP Methods
-  // ---------------------------------------------------------------------------
 
   get<T>(endpoint: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });

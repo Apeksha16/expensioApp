@@ -253,4 +253,5 @@ export interface ApiErrorOptions {
   requestId?: string;
   data?: unknown;
   isNetworkError?: boolean;
+  retryAfterSeconds?: number;
 }

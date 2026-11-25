@@ -23,6 +23,48 @@ const COMMON_WEAK_PASSWORDS = new Set([
   'expensio123',
 ]);
 
+export interface PasswordRequirementCheck {
+  id: 'length' | 'upper' | 'lower' | 'digit' | 'special' | 'common';
+  label: string;
+  met: boolean;
+}
+
+export function getPasswordRequirementChecks(password: string): PasswordRequirementCheck[] {
+  const value = password || '';
+  return [
+    {
+      id: 'length',
+      label: '8–128 characters',
+      met: value.length >= 8 && value.length <= 128,
+    },
+    {
+      id: 'upper',
+      label: 'One uppercase letter (A–Z)',
+      met: /[A-Z]/.test(value),
+    },
+    {
+      id: 'lower',
+      label: 'One lowercase letter (a–z)',
+      met: /[a-z]/.test(value),
+    },
+    {
+      id: 'digit',
+      label: 'One number (0–9)',
+      met: /[0-9]/.test(value),
+    },
+    {
+      id: 'special',
+      label: 'One special character (!@#$%…)',
+      met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?~`]/.test(value),
+    },
+    {
+      id: 'common',
+      label: 'Not a common password',
+      met: value.length > 0 && !COMMON_WEAK_PASSWORDS.has(value.toLowerCase()),
+    },
+  ];
+}
+
 /**
  * Validates password against backend PasswordPolicyService:
  * - 8 to 128 characters

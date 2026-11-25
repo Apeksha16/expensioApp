@@ -1,12 +1,14 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useState } from 'react';
 import {
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TextInputProps,
   View,
 } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, layout, radius, spacing, typography } from '../theme';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -14,6 +16,7 @@ interface Props extends TextInputProps {
   leftElement?: React.ReactNode;
   rightElement?: React.ReactNode;
   fieldStyle?: object;
+  showPasswordToggle?: boolean;
 }
 
 export const InputField = forwardRef<React.ElementRef<typeof TextInput>, Props>(function InputField(
@@ -24,6 +27,8 @@ export const InputField = forwardRef<React.ElementRef<typeof TextInput>, Props>(
     rightElement,
     fieldStyle,
     style,
+    secureTextEntry,
+    showPasswordToggle = Boolean(secureTextEntry),
     onFocus,
     onBlur,
     ...rest
@@ -31,6 +36,9 @@ export const InputField = forwardRef<React.ElementRef<typeof TextInput>, Props>(
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+
+  const effectiveSecureTextEntry = Boolean(secureTextEntry) && !revealed;
 
   return (
     <View style={styles.wrap}>
@@ -47,6 +55,7 @@ export const InputField = forwardRef<React.ElementRef<typeof TextInput>, Props>(
         <TextInput
           ref={ref}
           placeholderTextColor={colors.textTertiary}
+          secureTextEntry={effectiveSecureTextEntry}
           style={[styles.input, style]}
           onFocus={(event) => {
             setFocused(true);
@@ -58,9 +67,29 @@ export const InputField = forwardRef<React.ElementRef<typeof TextInput>, Props>(
           }}
           {...rest}
         />
+        {showPasswordToggle ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+            accessibilityState={{ checked: revealed }}
+            onPress={() => setRevealed((prev) => !prev)}
+            hitSlop={4}
+            style={({ pressed }) => [styles.eyeButton, pressed && styles.eyePressed]}
+          >
+            <Ionicons
+              name={revealed ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+        ) : null}
         {rightElement}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 });
@@ -72,12 +101,13 @@ const styles = StyleSheet.create({
   label: {
     ...typography.captionMedium,
     color: colors.textSecondary,
+    fontWeight: '700',
   },
   field: {
-    minHeight: 56,
+    minHeight: layout.inputHeight,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
     flexDirection: 'row',
@@ -85,16 +115,28 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   fieldFocused: {
-    borderColor: colors.accent,
+    borderColor: colors.accentDark,
   },
   fieldError: {
     borderColor: colors.expense,
   },
   input: {
     flex: 1,
+    minWidth: 0,
     ...typography.body,
     color: colors.textPrimary,
     paddingVertical: spacing.sm,
+  },
+  eyeButton: {
+    width: layout.headerButtonSize,
+    height: layout.headerButtonSize,
+    marginRight: -spacing.xs,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyePressed: {
+    backgroundColor: colors.surfaceMuted,
   },
   error: {
     ...typography.caption,

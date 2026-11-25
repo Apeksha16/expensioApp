@@ -13,25 +13,22 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useFonts } from 'expo-font';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurrencyInput } from '../../components/CurrencyInput';
 import { CartoonAvatar, DEFAULT_CARTOON_AVATAR_ID } from '../../components/CartoonAvatar';
 import { AvatarPickerBottomSheet } from '../../components/AvatarPickerBottomSheet';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
 import { ApiError } from '../../services/api/apiClient';
 import { onboardingApi } from '../../services/api/onboardingApi';
 import { completeOnboarding } from '../../services/authApi';
+import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
 import type { OnboardingConfigResponse, OnboardingStatusResponse } from '../../types/api';
 import { formatINRInput } from '../../utils/format';
+import { logger } from '../../utils/logger';
 
 interface EmploymentOption {
   value: string;
@@ -188,13 +185,6 @@ function SequentialProgressBar({ activeStep, stepMeta }: SequentialProgressBarPr
 }
 
 export function ProfileSetupScreen() {
-  const [fontsLoaded] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
-  });
   const insets = useSafeAreaInsets();
   const {
     setAuthPhase, phone, countryCode, verificationChannel, verificationTarget,
@@ -515,14 +505,6 @@ export function ProfileSetupScreen() {
     }
   };
 
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.fontLoading}>
-        <ActivityIndicator color="#C8F169" />
-      </View>
-    );
-  }
-
   // Verified contacts calculation
   const rawPhone = onboardingDraft.phone || phone;
   const phoneDigits = rawPhone.replace(/\D/g, '');
@@ -590,7 +572,7 @@ export function ProfileSetupScreen() {
 
   const heroDetails = {
     1: {
-      title: 'First, the basics.',
+      title: 'First, the basics',
       subtitle: 'A few details help us make your money space feel like yours.',
     },
     2: {
@@ -598,11 +580,11 @@ export function ProfileSetupScreen() {
       subtitle: 'Choose what fits best. You can update this any time.',
     },
     3: {
-      title: 'Start with what you have.',
+      title: 'Start with what you have',
       subtitle: 'Add your current cash and savings to give your money a clear starting point.',
     },
     4: {
-      title: 'Your money, your way.',
+      title: 'Your money, your way',
       subtitle: 'Take a quick look. You can go back and change anything before you begin.',
     },
   }[activeStep as 1 | 2 | 3 | 4] || {
@@ -621,13 +603,14 @@ export function ProfileSetupScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.profileScreen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScreenStatusBar surface="light" />
       <View style={styles.profileFrame}>
         <ScrollView
           ref={scrollViewRef}
           style={styles.profileFormScroll}
-          contentContainerStyle={[styles.profileContent, { paddingTop: insets.top + 10 }]}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode="none"
+          contentContainerStyle={[styles.profileContent, { paddingTop: insets.top + spacing.xs }]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
           onScroll={(e) => {
             scrollOffsetY.current = e.nativeEvent.contentOffset.y;
@@ -643,29 +626,20 @@ export function ProfileSetupScreen() {
             checkScroll(scrollOffsetY.current, scrollLayoutHeight.current, scrollContentHeight.current);
           }}
         >
-          {/* Header */}
-          <View style={styles.profileHeader}>
-            <Pressable
-              onPress={goBack}
-              accessibilityRole="button"
-              accessibilityLabel={step === 1 ? 'Back to mobile login' : 'Go back to previous step'}
-              hitSlop={8}
-              style={styles.profileBackButton}
-            >
-              <Ionicons name="chevron-back" size={21} color="#0B2B1F" />
-            </Pressable>
-            <View style={styles.brandLockup}>
-              <View style={styles.brandMark}>
-                <Text style={styles.brandMarkText}>e</Text>
+          {/* Shared Header */}
+          <ScreenHeader
+            tone="light"
+            onBack={goBack}
+            backAccessibilityLabel={step === 1 ? 'Back to sign in' : 'Go back to previous step'}
+            showBrand
+            rightElement={(
+              <View style={styles.stepCount}>
+                <Text style={styles.stepCountText}>{String(activeStep).padStart(2, '0')}</Text>
+                <Text style={styles.stepCountDivider}>/</Text>
+                <Text style={styles.stepCountMuted}>04</Text>
               </View>
-              <Text style={styles.brandText}>expensio</Text>
-            </View>
-            <View style={styles.stepCount}>
-              <Text style={styles.stepCountText}>{String(activeStep).padStart(2, '0')}</Text>
-              <Text style={styles.stepCountDivider}>/</Text>
-              <Text style={styles.stepCountMuted}>04</Text>
-            </View>
-          </View>
+            )}
+          />
 
           {/* Progress Bar with sequential smooth filling animation */}
           <SequentialProgressBar
@@ -696,7 +670,7 @@ export function ProfileSetupScreen() {
                   <Text style={styles.photoHint}>Choose a cartoon character that represents you.</Text>
                 </View>
                 <View style={styles.photoAction}>
-                  <Ionicons name="color-palette-outline" size={19} color="#0B2B1F" />
+                  <Ionicons name="color-palette-outline" size={19} color={colors.accentDark} />
                 </View>
               </Pressable>
 
@@ -768,10 +742,10 @@ export function ProfileSetupScreen() {
                     >
                       <View style={styles.employmentCardTop}>
                         <View style={[styles.employmentIconWrap, selected && styles.employmentIconWrapActive]}>
-                          <Ionicons name={item.icon} size={20} color={selected ? '#FFFFFF' : '#1F6B3D'} />
+                          <Ionicons name={item.icon} size={20} color={selected ? colors.white : colors.accent} />
                         </View>
                         <View style={[styles.employmentSelection, selected && styles.employmentSelectionActive]}>
-                          {selected ? <Ionicons name="checkmark" size={13} color="#0B2B1F" /> : null}
+                          {selected ? <Ionicons name="checkmark" size={13} color={colors.accentDark} /> : null}
                         </View>
                       </View>
                       <Text style={[styles.employmentLabel, selected && styles.activeText]}>{item.label}</Text>
@@ -788,7 +762,7 @@ export function ProfileSetupScreen() {
                     <Text style={styles.incomeTitle}>Your typical monthly income</Text>
                   </View>
                   <View style={styles.incomeAccent}>
-                    <Ionicons name="trending-up" size={18} color="#0B2B1F" />
+                    <Ionicons name="trending-up" size={18} color={colors.accentDark} />
                   </View>
                 </View>
                 <CurrencyInput
@@ -807,7 +781,7 @@ export function ProfileSetupScreen() {
           {activeStep === 3 ? (
             <View style={styles.moneySection}>
               <View style={styles.moneyPrivacyNote}>
-                <Ionicons name="lock-closed-outline" size={16} color="#1F6B3D" />
+                <Ionicons name="lock-closed-outline" size={16} color={colors.accent} />
                 <Text style={styles.moneyPrivacyText}>Your balances are self-reported and editable.</Text>
               </View>
 
@@ -852,19 +826,19 @@ export function ProfileSetupScreen() {
                     </Text>
                   </View>
                   <View style={styles.reviewEditButton}>
-                    <Ionicons name="create-outline" size={17} color="#FFFFFF" />
+                    <Ionicons name="create-outline" size={17} color={colors.white} />
                   </View>
                 </View>
                 <View style={styles.reviewProfileDivider} />
                 {onboardingDraft.email ? (
                   <View style={styles.reviewContactRow}>
-                    <Ionicons name="mail-outline" size={15} color="#C8F169" />
+                    <Ionicons name="mail-outline" size={15} color={colors.surprise} />
                     <Text style={styles.reviewContactText} numberOfLines={1}>{onboardingDraft.email}</Text>
                   </View>
                 ) : null}
                 {(onboardingDraft.phone || phone) ? (
                   <View style={styles.reviewContactRow}>
-                    <Ionicons name="call-outline" size={15} color="#C8F169" />
+                    <Ionicons name="call-outline" size={15} color={colors.surprise} />
                     <Text style={styles.reviewContactText} numberOfLines={1}>{onboardingDraft.phone || phone}</Text>
                   </View>
                 ) : null}
@@ -873,7 +847,7 @@ export function ProfileSetupScreen() {
               <View style={styles.reviewMoneyCard}>
                 <View style={styles.reviewMoneyHeader}>
                   <View style={styles.reviewMoneyIcon}>
-                    <Ionicons name="briefcase-outline" size={17} color="#1F6B3D" />
+                    <Ionicons name="briefcase-outline" size={17} color={colors.accent} />
                   </View>
                   <View style={styles.reviewMoneyHeaderCopy}>
                     <Text style={styles.reviewMoneyTitle}>Work & income</Text>
@@ -897,14 +871,14 @@ export function ProfileSetupScreen() {
                 </View>
                 <View style={styles.reviewBalanceRow}>
                   <View style={styles.reviewBalanceTile}>
-                    <Ionicons name="cash-outline" size={16} color="#1F6B3D" />
+                    <Ionicons name="cash-outline" size={16} color={colors.accent} />
                     <Text style={styles.reviewBalanceLabel}>Cash</Text>
                     <Text style={styles.reviewBalanceValue}>
                       {currencySymbol}{formatINRInput(onboardingDraft.cashRupees || '0') || '0'}
                     </Text>
                   </View>
                   <View style={styles.reviewBalanceTile}>
-                    <Ionicons name="leaf-outline" size={16} color="#1F6B3D" />
+                    <Ionicons name="leaf-outline" size={16} color={colors.accent} />
                     <Text style={styles.reviewBalanceLabel}>Savings</Text>
                     <Text style={styles.reviewBalanceValue}>
                       {currencySymbol}{formatINRInput(onboardingDraft.savingsRupees || '0') || '0'}
@@ -917,35 +891,22 @@ export function ProfileSetupScreen() {
         </ScrollView>
 
         {/* Unified Pinned Footer */}
-        <View style={[styles.profileFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={[styles.profileFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
           {canScrollDown ? (
             <LinearGradient
-              colors={['rgba(244, 243, 236, 0)', 'rgba(255, 255, 255, 0.45)', 'rgba(244, 243, 236, 0.9)', '#F4F3EC']}
+              colors={[colors.backgroundTransparent, colors.background]}
               pointerEvents="none"
               style={styles.bottomScrollFade}
             />
           ) : null}
           {error ? <Text accessibilityRole="alert" style={styles.profileError}>{error}</Text> : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={continueButtonText}
-            accessibilityState={{ disabled: !canContinue, busy: loading }}
+          <PrimaryButton
+            title={continueButtonText}
+            variant="primary"
             disabled={!canContinue || loading}
+            loading={loading}
             onPress={() => void next()}
-            style={({ pressed }) => [
-              styles.profileContinue,
-              canContinue && styles.profileContinueEnabled,
-              pressed && canContinue && styles.profileContinuePressed,
-            ]}
-          >
-            {loading ? (
-              <ActivityIndicator color={canContinue ? '#F4F3EC' : '#8FA698'} />
-            ) : (
-              <Text style={[styles.profileContinueText, canContinue && styles.profileContinueTextEnabled]}>
-                {continueButtonText}
-              </Text>
-            )}
-          </Pressable>
+          />
           <Text style={styles.profileFooterHint}>{footerHint}</Text>
         </View>
 
@@ -956,7 +917,7 @@ export function ProfileSetupScreen() {
           onSelect={(avatarId) => {
             setSelectedAvatarId(avatarId);
             void saveAvatarPreference(avatarId).catch((err) => {
-              console.warn('Could not save avatar preference', err);
+              logger.warn('Could not save avatar preference', err);
             });
           }}
           onClose={() => setAvatarPickerOpen(false)}
@@ -967,231 +928,230 @@ export function ProfileSetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  fontLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F4F3EC' },
-  profileScreen: { flex: 1, backgroundColor: '#F4F3EC' },
-  profileFrame: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center' },
-  profileContent: { flexGrow: 1, paddingHorizontal: 22, paddingBottom: 24, gap: 24 },
-  profileHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  profileBackButton: { width: 44, height: 44, borderRadius: 15, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E8DE', alignItems: 'center', justifyContent: 'center' },
-  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandMark: { width: 28, height: 28, borderRadius: 9, backgroundColor: '#C8F169', alignItems: 'center', justifyContent: 'center' },
-  brandMarkText: { color: '#0B2B1F', fontSize: 16, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  brandText: { color: '#0B2B1F', fontSize: 17, fontWeight: '800', letterSpacing: -0.5, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  stepCount: { minWidth: 56, height: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: 12, backgroundColor: '#E8EDDF' },
-  stepCountText: { color: '#0B2B1F', fontSize: 12, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  stepCountDivider: { color: '#9AA99B', fontSize: 12 },
-  stepCountMuted: { color: '#849187', fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  progressWrap: { gap: 10 },
-  progressMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  progressEyebrow: { color: '#718177', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  progressCurrent: { color: '#1F6B3D', fontSize: 10, fontWeight: '800', letterSpacing: 0.8, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  progressSegments: { flexDirection: 'row', gap: 6 },
-  progressSegmentTrack: { flex: 1, height: 5, borderRadius: 5, backgroundColor: '#DDE3D8', overflow: 'hidden' },
-  progressSegmentFill: { height: '100%', borderRadius: 5, backgroundColor: '#1F6B3D' },
-  progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressLabel: { color: '#89958B', fontSize: 10, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
-  progressLabelActive: { color: '#0B2B1F', fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  profileHero: { gap: 6, paddingTop: 4 },
-  profileTitle: { color: '#0B2B1F', fontSize: 32, lineHeight: 39, fontWeight: '800', letterSpacing: -1.1, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  profileSubtitle: { maxWidth: 330, color: '#68766D', fontSize: 14, lineHeight: 21, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-
-  // Step 1: Profile card
-  profileCard: { padding: 18, borderRadius: 25, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E7EAE1', gap: 17, shadowColor: '#143A2C', shadowOffset: { width: 0, height: 9 }, shadowOpacity: 0.06, shadowRadius: 18, elevation: 3 },
-  photoRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatar: { width: 68, height: 68, borderRadius: 23, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  cameraBadge: { position: 'absolute', right: -4, bottom: -4, width: 28, height: 28, borderRadius: 10, borderWidth: 2.5, borderColor: '#FFFFFF', backgroundColor: '#C8F169', alignItems: 'center', justifyContent: 'center' },
-  photoCopy: { flex: 1, minWidth: 0, gap: 4 },
-  photoTitle: { color: '#0B2B1F', fontSize: 14, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  photoHint: { color: '#7A887F', fontSize: 11, lineHeight: 16, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-  photoAction: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#EFF3E9', alignItems: 'center', justifyContent: 'center' },
-  formDivider: { height: 1, backgroundColor: '#EEF0E9' },
-  formSectionTitle: { color: '#173B2C', fontSize: 14, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  contactSectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  contactSectionHint: { color: '#8B978D', fontSize: 10, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
-  nameRow: { flexDirection: 'row', gap: 10 },
-  nameFieldWrap: { flex: 1, minWidth: 0, gap: 7 },
-  nameLabel: { color: '#44584B', fontSize: 11, lineHeight: 16, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  nameInputWrap: {
-    height: 54,
+  fontLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  profileScreen: { flex: 1, backgroundColor: colors.background },
+  profileFrame: { flex: 1, width: '100%', maxWidth: layout.maxContentWidth, alignSelf: 'center' },
+  profileContent: { flexGrow: 1, paddingHorizontal: layout.screenMargin, paddingBottom: spacing.lg, gap: spacing.lg },
+  stepCount: {
+    minWidth: 56,
+    height: 34,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 10,
-    borderRadius: 14,
+    justifyContent: 'center',
+    gap: 3,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#E0E5DC',
-    backgroundColor: '#F9FAF7',
+    borderColor: colors.borderLight,
+  },
+  stepCountText: { ...typography.label, color: colors.accentDark, fontWeight: '800' },
+  stepCountDivider: { ...typography.label, color: colors.textTertiary },
+  stepCountMuted: { ...typography.label, color: colors.textSecondary },
+  progressWrap: { gap: spacing.xs },
+  progressMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  progressEyebrow: { ...typography.microTag, color: colors.textSecondary, letterSpacing: 1.2 },
+  progressCurrent: { ...typography.microTag, color: colors.accent, letterSpacing: 0.8 },
+  progressSegments: { flexDirection: 'row', gap: spacing.xxs },
+  progressSegmentTrack: { flex: 1, height: 5, borderRadius: radius.xs, backgroundColor: colors.border, overflow: 'hidden' },
+  progressSegmentFill: { height: '100%', borderRadius: radius.xs, backgroundColor: colors.accent },
+  progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  progressLabel: { ...typography.microTag, color: colors.textTertiary },
+  progressLabelActive: { color: colors.accentDark },
+  profileHero: { gap: spacing.xs, paddingTop: spacing.xxs },
+  profileTitle: { ...typography.h1, color: colors.accentDark },
+  profileSubtitle: { maxWidth: 330, ...typography.bodyMedium, color: colors.textSecondary },
+
+  // Step 1: Profile card
+  profileCard: {
+    padding: layout.cardPadding,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+    ...shadows.soft,
+  },
+  photoRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  avatar: { width: 68, height: 68, borderRadius: radius.xl, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  photoCopy: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  photoTitle: { ...typography.rowTitle, color: colors.accentDark },
+  photoHint: { ...typography.micro, color: colors.textSecondary },
+  photoAction: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
+  formDivider: { height: 1, backgroundColor: colors.borderLight },
+  formSectionTitle: { ...typography.rowTitle, color: colors.accentDark },
+  contactSectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
+  contactSectionHint: { ...typography.microTag, color: colors.textTertiary },
+  nameRow: { flexDirection: 'row', gap: spacing.xs },
+  nameFieldWrap: { flex: 1, minWidth: 0, gap: spacing.xs },
+  nameLabel: { ...typography.micro, color: colors.textSecondary, fontWeight: '700' },
+  nameInputWrap: {
+    height: layout.inputHeight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    gap: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   nameInputWrapFocused: {
-    borderColor: '#1F6B3D',
-    shadowColor: '#C8F169',
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 2,
+    borderColor: colors.accent,
   },
   nameInput: {
     flex: 1,
     height: '100%',
-    color: '#0B2B1F',
-    fontSize: 14,
+    color: colors.accentDark,
+    ...typography.captionMedium,
     fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
     paddingVertical: 0,
   },
-  verifiedFields: { gap: 8 },
-  contactField: { minHeight: 58, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 14, backgroundColor: '#F9FAF7', borderWidth: 1, borderColor: '#E8ECE4', flexDirection: 'row', alignItems: 'center', gap: 10 },
-  contactIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: '#E8F0E2', alignItems: 'center', justifyContent: 'center' },
+  verifiedFields: { gap: spacing.xs },
+  contactField: {
+    minHeight: 58,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  contactIcon: { width: 34, height: 34, borderRadius: radius.sm, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   contactCopy: { flex: 1, minWidth: 0, gap: 1 },
-  contactLabel: { color: '#87938A', fontSize: 9, lineHeight: 13, fontWeight: '800', letterSpacing: 0.7, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  contactValue: { color: '#173B2C', fontSize: 13, lineHeight: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  verifiedBadge: { height: 23, borderRadius: 999, backgroundColor: '#E5F3DC', flexDirection: 'row', alignItems: 'center', gap: 3, paddingLeft: 7, paddingRight: 8 },
-  verifiedText: { color: '#1F6B3D', fontSize: 10, lineHeight: 14, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  contactLabel: { ...typography.microTag, color: colors.textTertiary, letterSpacing: 0.7 },
+  contactValue: { ...typography.captionMedium, color: colors.accentDark, fontWeight: '700' },
+  verifiedBadge: { height: 24, borderRadius: radius.full, backgroundColor: colors.accentSoft, flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, paddingHorizontal: spacing.xs },
+  verifiedText: { ...typography.microTag, color: colors.accent },
 
   // Step 2: Work & income
-  workSection: { gap: 20 },
-  employmentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  workSection: { gap: spacing.md },
+  employmentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   employmentCard: {
     width: '48%',
     minHeight: 118,
-    padding: 14,
-    borderRadius: 20,
+    padding: spacing.sm,
+    borderRadius: radius.xl,
     borderWidth: 1.5,
-    borderColor: '#E7EAE1',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     justifyContent: 'space-between',
   },
-  employmentActive: { backgroundColor: '#0B2B1F', borderColor: '#0B2B1F' },
+  employmentActive: { backgroundColor: colors.accentDark, borderColor: colors.accentDark },
   employmentCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  employmentIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#E8F0E2', alignItems: 'center', justifyContent: 'center' },
-  employmentIconWrapActive: { backgroundColor: 'rgba(255,255,255,0.16)' },
-  employmentSelection: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#D4DDD2', alignItems: 'center', justifyContent: 'center' },
-  employmentSelectionActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
-  employmentLabel: { color: '#0B2B1F', fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', marginTop: 8 },
-  employmentDetail: { color: '#68766D', fontSize: 11, lineHeight: 15, fontFamily: 'PlusJakartaSans_500Medium' },
-  employmentDetailActive: { color: 'rgba(255,255,255,0.72)' },
-  activeText: { color: '#FFFFFF' },
+  employmentIconWrap: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  employmentIconWrapActive: { backgroundColor: colors.heroGlass },
+  employmentSelection: { width: 22, height: 22, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  employmentSelectionActive: { backgroundColor: colors.white, borderColor: colors.white },
+  employmentLabel: { ...typography.captionMedium, color: colors.accentDark, fontWeight: '700', marginTop: spacing.xs },
+  employmentDetail: { ...typography.micro, color: colors.textSecondary },
+  employmentDetailActive: { color: colors.heroTextMuted },
+  activeText: { color: colors.white },
   incomePanel: {
-    padding: 18,
-    gap: 14,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    padding: layout.cardPadding,
+    gap: spacing.sm,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E7EAE1',
-    shadowColor: '#143A2C',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 2,
+    borderColor: colors.border,
+    ...shadows.soft,
   },
-  incomePanelHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  incomePanelHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
   incomeHeadingCopy: { flex: 1, gap: 2 },
-  incomeEyebrow: { color: '#718177', fontSize: 10, fontWeight: '800', letterSpacing: 1.1, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  incomeTitle: { color: '#0B2B1F', fontSize: 16, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  incomeAccent: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#DDF3A4', alignItems: 'center', justifyContent: 'center' },
-  incomeHint: { color: '#7A887F', fontSize: 11, lineHeight: 16, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
+  incomeEyebrow: { ...typography.microTag, color: colors.textSecondary, letterSpacing: 1.1 },
+  incomeTitle: { ...typography.rowTitle, color: colors.accentDark },
+  incomeAccent: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.toneLimeBg, alignItems: 'center', justifyContent: 'center' },
+  incomeHint: { ...typography.micro, color: colors.textSecondary },
 
   // Step 3: Balances
-  moneySection: { gap: 16 },
+  moneySection: { gap: spacing.md },
   moneyPrivacyNote: {
     minHeight: 46,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E7EAE1',
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.xs,
   },
-  moneyPrivacyText: { color: '#44584B', fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', flex: 1 },
-  moneyFields: { gap: 14 },
+  moneyPrivacyText: { ...typography.captionMedium, color: colors.textSecondary, flex: 1 },
+  moneyFields: { gap: spacing.sm },
 
   // Step 4: Review
-  reviewSection: { gap: 16 },
+  reviewSection: { gap: spacing.md },
   reviewProfileCard: {
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: '#0B2B1F',
-    gap: 12,
-    shadowColor: '#0B2B1F',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    elevation: 4,
+    padding: layout.cardPadding,
+    borderRadius: radius.xl,
+    backgroundColor: colors.accentDark,
+    gap: spacing.sm,
+    ...shadows.card,
   },
-  reviewProfileTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  reviewProfileTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   reviewAvatar: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   reviewProfileIdentity: { flex: 1, minWidth: 0, gap: 2 },
-  reviewProfileEyebrow: { color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '800', letterSpacing: 0.9, fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  reviewProfileName: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  reviewEditButton: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
-  reviewProfileDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 4 },
-  reviewContactRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  reviewContactText: { color: 'rgba(255,255,255,0.88)', fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium', flex: 1 },
+  reviewProfileEyebrow: { ...typography.microTag, color: colors.heroTextMuted, letterSpacing: 0.9 },
+  reviewProfileName: { ...typography.h3, color: colors.white },
+  reviewEditButton: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.heroGlass, alignItems: 'center', justifyContent: 'center' },
+  reviewProfileDivider: { height: 1, backgroundColor: colors.heroGlassBorder, marginVertical: spacing.xxs },
+  reviewContactRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  reviewContactText: { ...typography.captionMedium, color: colors.heroText, flex: 1 },
   reviewMoneyCard: {
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    padding: layout.cardPadding,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E7EAE1',
-    gap: 16,
-    shadowColor: '#143A2C',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 2,
+    borderColor: colors.border,
+    gap: spacing.md,
+    ...shadows.soft,
   },
-  reviewMoneyHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  reviewMoneyIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#E8F0E2', alignItems: 'center', justifyContent: 'center' },
+  reviewMoneyHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  reviewMoneyIcon: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   reviewMoneyHeaderCopy: { flex: 1, gap: 2 },
-  reviewMoneyTitle: { color: '#0B2B1F', fontSize: 15, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  reviewMoneySubtitle: { color: '#68766D', fontSize: 12, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-  reviewTextAction: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: '#EFF3E9' },
-  reviewTextActionLabel: { color: '#0B2B1F', fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
-  reviewIncomeAmount: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: '#F9FAF7', borderWidth: 1, borderColor: '#E8ECE4', gap: 4 },
-  reviewAmountLabel: { color: '#68766D', fontSize: 11, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
-  reviewAmountValue: { color: '#0B2B1F', fontSize: 24, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  reviewAmountSuffix: { color: '#68766D', fontSize: 12, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
-  reviewBalanceRow: { flexDirection: 'row', gap: 10 },
-  reviewBalanceTile: { flex: 1, minWidth: 0, padding: 12, borderRadius: 16, backgroundColor: '#F9FAF7', borderWidth: 1, borderColor: '#E8ECE4', gap: 4 },
-  reviewBalanceLabel: { color: '#68766D', fontSize: 11, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
-  reviewBalanceValue: { color: '#0B2B1F', fontSize: 16, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
+  reviewMoneyTitle: { ...typography.rowTitle, color: colors.accentDark },
+  reviewMoneySubtitle: { ...typography.caption, color: colors.textSecondary },
+  reviewTextAction: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
+  reviewTextActionLabel: { ...typography.captionMedium, color: colors.accentDark, fontWeight: '700' },
+  reviewIncomeAmount: { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.borderLight, gap: spacing.xxs },
+  reviewAmountLabel: { ...typography.micro, color: colors.textSecondary },
+  reviewAmountValue: { ...typography.h2, color: colors.accentDark },
+  reviewAmountSuffix: { ...typography.caption, color: colors.textSecondary },
+  reviewBalanceRow: { flexDirection: 'row', gap: spacing.xs },
+  reviewBalanceTile: { flex: 1, minWidth: 0, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.borderLight, gap: spacing.xxs },
+  reviewBalanceLabel: { ...typography.micro, color: colors.textSecondary },
+  reviewBalanceValue: { ...typography.rowTitle, color: colors.accentDark },
 
   // Unified Footer
   profileFooter: {
     position: 'relative',
-    paddingHorizontal: 22,
-    paddingTop: 12,
-    gap: 10,
-    backgroundColor: '#F4F3EC',
+    paddingHorizontal: layout.screenMargin,
+    paddingTop: spacing.sm,
+    gap: spacing.xs,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#E7E9E1',
+    borderTopColor: colors.borderLight,
   },
   bottomScrollFade: {
     position: 'absolute',
-    top: -48,
+    top: -spacing.xxxl,
     left: 0,
     right: 0,
-    height: 48,
+    height: spacing.xxxl,
     zIndex: 10,
   },
   profileFormScroll: { flex: 1, minHeight: 0 },
-  profileError: { color: '#B3261E', fontSize: 12, lineHeight: 17, fontFamily: 'PlusJakartaSans_500Medium' },
-  profileContinue: { height: 56, borderRadius: 18, backgroundColor: '#DCE3D9', alignItems: 'center', justifyContent: 'center' },
-  profileContinueEnabled: { backgroundColor: '#0B3D2B' },
-  profileContinuePressed: { opacity: 0.9 },
-  continueContents: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  profileContinueText: { color: '#8A958B', fontSize: 15, fontWeight: '800', fontFamily: 'PlusJakartaSans_800ExtraBold' },
-  profileContinueTextEnabled: { color: '#F4F3EC' },
-  profileFooterHint: { color: '#87938A', fontSize: 10, lineHeight: 15, textAlign: 'center', fontFamily: 'PlusJakartaSans_500Medium' },
+  profileError: { ...typography.caption, color: colors.expense },
+  profileFooterHint: { ...typography.microTag, color: colors.textTertiary, textAlign: 'center' },
 });
 
 interface ContactFieldProps {
@@ -1206,7 +1166,7 @@ function ContactField({ label, value, isVerified = true }: ContactFieldProps) {
   return (
     <View style={styles.contactField}>
       <View style={styles.contactIcon}>
-        <Ionicons name="lock-closed-outline" size={16} color="#4B5A50" />
+        <Ionicons name="lock-closed-outline" size={16} color={colors.textSecondary} />
       </View>
       <View style={styles.contactCopy}>
         <Text style={styles.contactLabel}>{label}</Text>
@@ -1216,7 +1176,7 @@ function ContactField({ label, value, isVerified = true }: ContactFieldProps) {
       </View>
       {isVerified ? (
         <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark" size={12} color="#1F6B3D" />
+          <Ionicons name="checkmark" size={12} color={colors.accent} />
           <Text style={styles.verifiedText}>Verified</Text>
         </View>
       ) : null}
@@ -1259,7 +1219,7 @@ function ProfileNameField({
         <Ionicons
           name="person-outline"
           size={16}
-          color="#74837A"
+          color={colors.textTertiary}
           pointerEvents="none"
         />
         <TextInput
@@ -1271,7 +1231,7 @@ function ProfileNameField({
             onCommit(nextValue);
           }}
           placeholder={placeholder}
-          placeholderTextColor="#74837A"
+          placeholderTextColor={colors.textTertiary}
           autoCapitalize="words"
           autoCorrect={false}
           spellCheck={false}

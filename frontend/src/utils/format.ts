@@ -60,3 +60,46 @@ export function progressRatio(current: number, total: number): number {
   if (total <= 0) return 0;
   return Math.min(Math.max(current / total, 0), 1);
 }
+
+export function formatDisplayDate(dateInput: Date | string): string {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (Number.isNaN(date.getTime())) return typeof dateInput === 'string' ? dateInput : '';
+  return date.toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+export function formatRelativeUpdatedAt(timestamp: number | null, now = Date.now()): string {
+  if (!timestamp) return '';
+  const diffSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  if (diffSeconds < 45) return 'Updated just now';
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `Updated ${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `Updated ${diffHours} hr ago`;
+  return `Updated ${formatDisplayDate(new Date(timestamp))}`;
+}
+
+export function formatClockTime(timestamp: number | null): string {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+export function formatCompactAge(isoDate?: string | null, now = Date.now()): string {
+  if (!isoDate) return '';
+  const parsed = Date.parse(isoDate);
+  if (Number.isNaN(parsed)) return '';
+  const diffMinutes = Math.max(0, Math.floor((now - parsed) / 60_000));
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+  return formatDisplayDate(new Date(parsed));
+}
+

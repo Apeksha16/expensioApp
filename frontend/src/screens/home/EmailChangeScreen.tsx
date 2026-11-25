@@ -1,26 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { InputField } from '../../components/InputField';
+import { OtpInput } from '../../components/OtpInput';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
+import { OTP_RESEND_SECONDS } from '../../data/config';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import { emailVerificationService } from '../../services/emailChangeService';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, layout, radius, spacing, typography } from '../../theme';
+import { formatCountdown, normalizeAuthError } from '../../utils/errorNormalization';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'EmailChange'>;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RESEND_COOLDOWN_SECONDS = 30;
 
 export function EmailChangeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { profileState, updateProfileEmail, showToast } = useApp();
   const currentEmail = profileState.email;
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [developmentOtp, setDevelopmentOtp] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -40,10 +46,13 @@ export function EmailChangeScreen({ navigation }: Props) {
     return () => clearInterval(timer);
   }, [expiresAt, cooldownUntil]);
 
+  useEffect(() => () => {
+    setOtp('');
+  }, []);
+
   const codeExpired = expiresAt !== null && now >= expiresAt;
   const resendSeconds = cooldownUntil ? Math.max(0, Math.ceil((cooldownUntil - now) / 1000)) : 0;
   const expirySeconds = expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : 0;
-  const codeSent = Boolean(developmentOtp);
 
   const sendCode = async (resend = false) => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -65,14 +74,15 @@ export function EmailChangeScreen({ navigation }: Props) {
     setError('');
     setSuccess('');
     try {
-      const { developmentOtp: code, expiresAt: expiry } = await emailVerificationService.requestCode(normalizedEmail);
-      setDevelopmentOtp(code);
+      const { expiresAt: expiry, resendCooldownSeconds } = await emailVerificationService.requestCode(normalizedEmail);
+      const cooldown = resendCooldownSeconds ?? OTP_RESEND_SECONDS;
+      setCodeSent(true);
       setExpiresAt(expiry);
-      setCooldownUntil(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
+      setCooldownUntil(Date.now() + cooldown * 1000);
       setNow(Date.now());
       setOtp('');
     } catch (requestError) {
-      const notice = requestError instanceof Error ? requestError.message : 'Unable to create a local verification code.';
+      const notice = normalizeAuthError(requestError, 'otp').message;
       setError(notice);
       showToast('error', notice);
     } finally {
@@ -80,7 +90,7 @@ export function EmailChangeScreen({ navigation }: Props) {
     }
   };
 
-  const verifyCode = async () => {
+  const verifyCode = async (code = otp) => {
     if (!codeSent) {
       const notice = 'Request a verification code first.';
       setError(notice);
@@ -93,7 +103,7 @@ export function EmailChangeScreen({ navigation }: Props) {
       showToast('error', notice);
       return;
     }
-    if (!/^\d{6}$/.test(otp)) {
+    if (!/^\d{6}$/.test(code)) {
       const notice = 'Enter the six-digit verification code.';
       setError(notice);
       showToast('error', notice);
@@ -103,25 +113,21 @@ export function EmailChangeScreen({ navigation }: Props) {
     setError('');
     setSuccess('');
     try {
-      await emailVerificationService.verifyCode(email, otp);
+      await emailVerificationService.verifyCode(email, code);
       await updateProfileEmail(email);
       setCompleted(true);
-      const successMessage = 'Email verified and updated on this device. No email was sent.';
+      setOtp('');
+      const successMessage = 'Email verified and updated on your profile.';
       setSuccess(successMessage);
-      showToast('success', 'Email verified and updated.');
-      setDevelopmentOtp('');
+      showToast('success', successMessage);
+      setCodeSent(false);
       setExpiresAt(null);
       setCooldownUntil(null);
-      try {
-        await emailVerificationService.complete();
-      } catch (cleanupError) {
-        setError(cleanupError instanceof Error
-          ? `Email updated, but the temporary verification code could not be cleared: ${cleanupError.message}`
-          : 'Email updated, but the temporary verification code could not be cleared.');
-      }
+      await emailVerificationService.complete().catch(() => {});
     } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : 'Unable to verify this code.');
-      showToast('error', verifyError instanceof Error ? verifyError.message : 'Unable to verify this code.');
+      const msg = normalizeAuthError(verifyError, 'otp').message;
+      setError(msg);
+      showToast('error', msg);
     } finally {
       setVerifying(false);
     }
@@ -129,6 +135,7 @@ export function EmailChangeScreen({ navigation }: Props) {
 
   const cancel = async () => {
     setError('');
+    setOtp('');
     try {
       await emailVerificationService.cancel();
       navigation.navigate('Profile');
@@ -140,28 +147,32 @@ export function EmailChangeScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.xs }]}>
+      <ScreenStatusBar surface="light" focused={isFocused} />
+
+      <View style={styles.headerWrap}>
+        <ScreenHeader
+          tone="light"
+          title={completed ? 'Email updated' : 'Change email'}
+          onBack={() => void cancel()}
+          backAccessibilityLabel="Back to Profile"
+        />
+      </View>
+
       <ScrollView
-        keyboardShouldPersistTaps="always"
-        keyboardDismissMode="none"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, spacing.xl) }]}
         showsVerticalScrollIndicator={false}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back to Profile"
-          onPress={() => void cancel()}
-          style={styles.backButton}
-        >
-          <Ionicons name="chevron-back" size={21} color={colors.textPrimary} />
-          <Text style={styles.backText}>Profile</Text>
-        </Pressable>
-
         <View style={styles.heading}>
-          <View style={styles.headingIcon}><Ionicons name="mail-unread-outline" size={25} color={colors.accent} /></View>
-          <Text style={styles.title}>{completed ? 'Email updated' : 'Change email'}</Text>
+          <View style={styles.headingIcon}>
+            <Ionicons name="mail-unread-outline" size={24} color={colors.accent} />
+          </View>
           <Text style={styles.subtitle}>
-            {completed ? 'Your new address is saved in your local profile.' : 'Verify the new address before replacing the one on your profile.'}
+            {completed
+              ? 'Your new address is saved to your Expensio profile.'
+              : 'Verify the new address before replacing the one on your profile.'}
           </Text>
         </View>
 
@@ -177,12 +188,12 @@ export function EmailChangeScreen({ navigation }: Props) {
               value={email}
               onChangeText={(value) => {
                 if (codeSent) {
-                  setDevelopmentOtp('');
+                  setCodeSent(false);
                   setExpiresAt(null);
                   setCooldownUntil(null);
                   setOtp('');
                 }
-                setEmail(value);
+                setEmail(value.slice(0, 254));
                 setError('');
                 setSuccess('');
               }}
@@ -190,6 +201,9 @@ export function EmailChangeScreen({ navigation }: Props) {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              maxLength={254}
               editable={!sending && !verifying}
               accessibilityLabel="New email address"
             />
@@ -198,37 +212,30 @@ export function EmailChangeScreen({ navigation }: Props) {
               <PrimaryButton title="Send verification code" onPress={() => void sendCode()} loading={sending} />
             ) : (
               <>
-                <View style={styles.devPanel}>
-                  <View style={styles.devPanelHeading}>
-                    <Ionicons name="construct-outline" size={18} color={colors.warning} />
-                    <Text style={styles.devPanelTitle}>Development-only test verification</Text>
-                  </View>
-                  <Text style={styles.devPanelCopy}>
-                    No email is sent in this frontend-only flow. Use this temporary code to test verification:
-                  </Text>
-                  <Text selectable style={styles.testCode}>{developmentOtp}</Text>
-                  <Text style={styles.expiryText}>
-                    {codeExpired ? 'Code expired.' : `Code expires in ${Math.floor(expirySeconds / 60)}:${String(expirySeconds % 60).padStart(2, '0')}.`}
-                  </Text>
-                </View>
                 <View style={styles.otpWrap}>
-                  <Text style={styles.otpLabel}>SIX-DIGIT CODE</Text>
-                  <TextInput
-                    accessibilityLabel="Six-digit email verification code"
+                  <View style={styles.otpHeader}>
+                    <Text style={styles.otpLabel}>SIX-DIGIT CODE</Text>
+                    <Text style={styles.expiryText}>
+                      {codeExpired ? 'Expired' : `Expires in ${formatCountdown(expirySeconds)}`}
+                    </Text>
+                  </View>
+                  <OtpInput
                     value={otp}
-                    onChangeText={(value) => { setOtp(value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
-                    keyboardType="number-pad"
-                    textContentType="oneTimeCode"
-                    maxLength={6}
-                    editable={!verifying && !codeExpired}
-                    placeholder="000000"
-                    placeholderTextColor={colors.textTertiary}
-                    style={styles.otpInput}
+                    hasError={Boolean(error)}
+                    disabled={verifying || codeExpired}
+                    onChange={(value) => {
+                      setOtp(value);
+                      if (error) setError('');
+                    }}
+                    onComplete={(code) => {
+                      if (!verifying && !codeExpired) void verifyCode(code);
+                    }}
                   />
                 </View>
+
                 <View style={styles.resendRow}>
                   {resendSeconds > 0 ? (
-                    <Text style={styles.resendText}>Resend code in {resendSeconds}s</Text>
+                    <Text style={styles.resendText}>Resend in {formatCountdown(resendSeconds)}</Text>
                   ) : (
                     <Pressable accessibilityRole="button" onPress={() => void sendCode(true)} disabled={sending} style={styles.resendButton}>
                       <Text style={styles.resendLink}>Resend code</Text>
@@ -236,7 +243,13 @@ export function EmailChangeScreen({ navigation }: Props) {
                   )}
                   {codeExpired ? <Text style={styles.expiredLabel}>Expired</Text> : null}
                 </View>
-                <PrimaryButton title="Verify and update email" onPress={() => void verifyCode()} loading={verifying} disabled={codeExpired} />
+
+                <PrimaryButton
+                  title="Verify and update email"
+                  onPress={() => void verifyCode()}
+                  loading={verifying}
+                  disabled={codeExpired || otp.length !== 6}
+                />
               </>
             )}
 
@@ -260,34 +273,41 @@ export function EmailChangeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  backButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingRight: spacing.sm },
-  backText: { ...typography.bodyMedium, color: colors.textPrimary },
-  heading: { gap: spacing.xs, marginTop: spacing.sm },
-  headingIcon: { width: 52, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft, marginBottom: spacing.xs },
-  title: { ...typography.h1, color: colors.textPrimary },
-  subtitle: { ...typography.body, color: colors.textSecondary, lineHeight: 23 },
+  headerWrap: { paddingHorizontal: layout.screenMargin },
+  content: { paddingHorizontal: layout.screenMargin, paddingTop: spacing.sm, gap: spacing.md },
+  heading: { gap: spacing.xs },
+  headingIcon: {
+    width: layout.iconTileSize,
+    height: layout.iconTileSize,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+  },
+  subtitle: { ...typography.body, color: colors.textSecondary },
   currentEmailCard: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surfaceMuted },
   currentEmailLabel: { ...typography.micro, color: colors.textTertiary, letterSpacing: 0.7 },
-  currentEmail: { ...typography.bodySemibold, color: colors.textPrimary, marginTop: 4 },
-  formCard: { padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: spacing.md },
+  currentEmail: { ...typography.bodySemibold, color: colors.textPrimary, marginTop: spacing.xxs },
+  formCard: {
+    padding: spacing.md,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
   completedState: { gap: spacing.md },
-  devPanel: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: '#EBD6B2', gap: spacing.xs },
-  devPanelHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  devPanelTitle: { ...typography.captionMedium, color: colors.textPrimary, flex: 1 },
-  devPanelCopy: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
-  testCode: { alignSelf: 'flex-start', paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.md, backgroundColor: colors.surface, color: colors.accentDark, fontSize: 24, fontWeight: '800', letterSpacing: 4 },
-  expiryText: { ...typography.micro, color: colors.textSecondary },
   otpWrap: { gap: spacing.xs },
-  otpLabel: { ...typography.label, color: colors.textSecondary, letterSpacing: 1 },
-  otpInput: { minHeight: 56, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, backgroundColor: colors.background, color: colors.textPrimary, fontSize: 22, fontWeight: '700', letterSpacing: 8 },
-  resendRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  otpHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  otpLabel: { ...typography.eyebrow, color: colors.textSecondary },
+  expiryText: { ...typography.micro, color: colors.textSecondary, fontVariant: ['tabular-nums'] },
+  resendRow: { minHeight: layout.headerButtonSize, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resendText: { ...typography.captionMedium, color: colors.textSecondary },
-  resendButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.xs },
+  resendButton: { minHeight: layout.headerButtonSize, justifyContent: 'center', paddingHorizontal: spacing.xs },
   resendLink: { ...typography.bodySemibold, color: colors.accent, textDecorationLine: 'underline' },
   expiredLabel: { ...typography.captionMedium, color: colors.expense },
   error: { ...typography.caption, color: colors.expense },
-  success: { ...typography.caption, color: colors.income, lineHeight: 19 },
-  cancelButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  success: { ...typography.caption, color: colors.income },
+  cancelButton: { minHeight: layout.headerButtonSize, alignItems: 'center', justifyContent: 'center' },
   cancelText: { ...typography.captionMedium, color: colors.textSecondary },
 });

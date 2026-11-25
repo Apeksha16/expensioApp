@@ -57,6 +57,6 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   successToast: { borderColor: colors.accentMuted },
-  errorToast: { borderColor: '#F1C3C6' },
+  errorToast: { borderColor: colors.dangerBorder },
   message: { flex: 1, ...typography.captionMedium, color: colors.textPrimary },
 });

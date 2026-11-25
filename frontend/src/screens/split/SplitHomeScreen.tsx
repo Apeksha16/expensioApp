@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FriendRow } from '../../components/FriendRow';
 import { InputField } from '../../components/InputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SplitBalanceHeader } from '../../components/SplitBalanceHeader';
 import { SplitListItem } from '../../components/SplitListItem';
@@ -28,7 +30,14 @@ type Props = NativeStackScreenProps<SplitStackParamList, 'SplitHome'>;
 
 export function SplitHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { friends, splitGroups, splits, addSplitGroup, updateSplitGroup, removeSplitGroup } = useApp();
+  const isFocused = useIsFocused();
+  const { friends, friendCounts, splitGroups, splits, prefetchFriends, addSplitGroup, updateSplitGroup, removeSplitGroup } = useApp();
+
+  useFocusEffect(
+    useCallback(() => {
+      prefetchFriends();
+    }, [prefetchFriends]),
+  );
   const [groupEditorOpen, setGroupEditorOpen] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState('');
@@ -83,16 +92,30 @@ export function SplitHomeScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
+      <ScreenStatusBar surface="light" focused={isFocused} />
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Splits</Text>
           <Text style={styles.subtitle}>Track who owes who</Text>
         </View>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            friendCounts.incoming > 0
+              ? `Open Friends, ${friendCounts.incoming} incoming friend request${friendCounts.incoming === 1 ? '' : 's'}`
+              : 'Open Friends'
+          }
           style={styles.iconBtn}
           onPress={() => navigation.navigate('Friends')}
         >
           <Ionicons name="people-outline" size={20} color={colors.accent} />
+          {friendCounts.incoming > 0 ? (
+            <View style={styles.incomingBadge}>
+              <Text style={styles.incomingBadgeText}>
+                {friendCounts.incoming > 9 ? '9+' : friendCounts.incoming}
+              </Text>
+            </View>
+          ) : null}
         </Pressable>
       </View>
 
@@ -272,13 +295,32 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   iconBtn: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: radius.full,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
+    position: 'relative',
+  },
+  incomingBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
+    borderWidth: 1.5,
+    borderColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  incomingBadgeText: {
+    ...typography.microTag,
+    color: colors.textInverse,
   },
   scroll: {
     paddingHorizontal: spacing.lg,

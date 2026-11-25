@@ -53,7 +53,7 @@ export function SplitDetailScreen({ navigation, route }: Props) {
   }
 
   const settled = isSplitSettled(split);
-  const payer = getFriendMeta(split.paidById, friends);
+  const payer = getFriendMeta(split.paidById, friends, split);
   const myShare = split.shares.find((s) => s.friendId === CURRENT_USER_ID);
 
   return (
@@ -102,7 +102,7 @@ export function SplitDetailScreen({ navigation, route }: Props) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <View style={styles.shareCard}>
           {split.shares.map((share, index) => {
-            const meta = getFriendMeta(share.friendId, friends);
+            const meta = getFriendMeta(share.friendId, friends, split);
             return (
               <View
                 key={share.friendId}
@@ -140,7 +140,7 @@ export function SplitDetailScreen({ navigation, route }: Props) {
             {split.shares
               .filter((s) => s.friendId !== CURRENT_USER_ID && !s.settled)
               .map((share) => {
-                const meta = getFriendMeta(share.friendId, friends);
+                const meta = getFriendMeta(share.friendId, friends, split);
                 return (
                   <PrimaryButton
                     key={share.friendId}

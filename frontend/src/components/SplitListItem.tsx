@@ -22,7 +22,7 @@ export function SplitListItem({ split, friends, onPress }: Props) {
   const avatars = split.shares
     .filter((s) => s.friendId !== CURRENT_USER_ID)
     .map((s) => {
-      const meta = getFriendMeta(s.friendId, friends);
+      const meta = getFriendMeta(s.friendId, friends, split);
       return {
         id: s.friendId,
         initials: meta.initials,

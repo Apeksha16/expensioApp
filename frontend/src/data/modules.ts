@@ -2,6 +2,7 @@ export type AppModuleId =
   | 'dashboard'
   | 'expenses'
   | 'splits'
+  | 'friends'
   | 'ledger'
   | 'budgets'
   | 'reports'
@@ -14,6 +15,7 @@ export type AppModuleRoute =
   | 'Home'
   | 'Add'
   | 'Split'
+  | 'Friends'
   | 'Activity'
   | 'Budgets'
   | 'Reports'
@@ -26,6 +28,7 @@ export const APP_MODULE_ROUTES: readonly AppModuleRoute[] = [
   'Home',
   'Add',
   'Split',
+  'Friends',
   'Activity',
   'Budgets',
   'Reports',
@@ -52,13 +55,14 @@ export const appModules: readonly AppModule[] = [
   { id: 'dashboard', name: 'Dashboard', description: 'Your personal money space', icon: 'home-outline', activeIcon: 'home', route: 'Home', navLabel: 'Home', displayOrder: 0, available: true, navigationVisible: true },
   { id: 'expenses', name: 'Expenses', description: 'Record and review expenses', icon: 'receipt-outline', activeIcon: 'receipt', route: 'Add', navLabel: 'Expenses', displayOrder: 1, available: true, navigationVisible: true },
   { id: 'splits', name: 'Splits', description: 'Share expenses with friends', icon: 'people-outline', activeIcon: 'people', route: 'Split', navLabel: 'Splits', displayOrder: 2, available: true, navigationVisible: true },
-  { id: 'ledger', name: 'Ledger', description: 'Your saved transactions', icon: 'time-outline', activeIcon: 'time', route: 'Activity', navLabel: 'Ledger', displayOrder: 3, available: true, navigationVisible: true },
-  { id: 'budgets', name: 'Budgets', description: 'Plan spending categories', icon: 'pie-chart-outline', activeIcon: 'pie-chart', route: 'Budgets', navLabel: 'Budgets', displayOrder: 4, available: true, navigationVisible: true },
-  { id: 'reports', name: 'Reports', description: 'Review your financial reports', icon: 'document-text-outline', activeIcon: 'document-text', route: 'Reports', navLabel: 'Reports', displayOrder: 5, available: true, navigationVisible: true },
-  { id: 'goals', name: 'Goals', description: 'Track goals you set', icon: 'flag-outline', activeIcon: 'flag', route: 'Goals', navLabel: 'Goals', displayOrder: 6, available: true, navigationVisible: true },
-  { id: 'upcoming-payments', name: 'Upcoming Payments', description: 'Keep upcoming payments together', icon: 'calendar-outline', activeIcon: 'calendar', route: 'UpcomingPayments', navLabel: 'Upcoming', displayOrder: 7, available: true, navigationVisible: true },
-  { id: 'analytics', name: 'Analytics', description: 'Explore insights from your data', icon: 'analytics-outline', activeIcon: 'analytics', route: 'Analytics', navLabel: 'Analytics', displayOrder: 8, available: true, navigationVisible: true },
-  { id: 'additional-modules', name: 'Additional Modules', description: 'Browse every available module', icon: 'grid-outline', activeIcon: 'grid', route: 'AdditionalModules', navLabel: 'More', displayOrder: 9, available: true, navigationVisible: true },
+  { id: 'friends', name: 'Friends', description: 'Directory for splits and participants', icon: 'person-add-outline', activeIcon: 'person-add', route: 'Friends', navLabel: 'Friends', displayOrder: 3, available: true, navigationVisible: true },
+  { id: 'ledger', name: 'Ledger', description: 'Your saved transactions', icon: 'time-outline', activeIcon: 'time', route: 'Activity', navLabel: 'Ledger', displayOrder: 4, available: true, navigationVisible: true },
+  { id: 'budgets', name: 'Budgets', description: 'Plan spending categories', icon: 'pie-chart-outline', activeIcon: 'pie-chart', route: 'Budgets', navLabel: 'Budgets', displayOrder: 5, available: true, navigationVisible: true },
+  { id: 'reports', name: 'Reports', description: 'Review your financial reports', icon: 'document-text-outline', activeIcon: 'document-text', route: 'Reports', navLabel: 'Reports', displayOrder: 6, available: true, navigationVisible: true },
+  { id: 'goals', name: 'Goals', description: 'Track goals you set', icon: 'flag-outline', activeIcon: 'flag', route: 'Goals', navLabel: 'Goals', displayOrder: 7, available: true, navigationVisible: true },
+  { id: 'upcoming-payments', name: 'Upcoming Payments', description: 'Keep upcoming payments together', icon: 'calendar-outline', activeIcon: 'calendar', route: 'UpcomingPayments', navLabel: 'Upcoming', displayOrder: 8, available: true, navigationVisible: true },
+  { id: 'analytics', name: 'Analytics', description: 'Explore insights from your data', icon: 'analytics-outline', activeIcon: 'analytics', route: 'Analytics', navLabel: 'Analytics', displayOrder: 9, available: true, navigationVisible: true },
+  { id: 'additional-modules', name: 'Additional Modules', description: 'Browse every available module', icon: 'grid-outline', activeIcon: 'grid', route: 'AdditionalModules', navLabel: 'More', displayOrder: 10, available: true, navigationVisible: true },
 ];
 
 export const DEFAULT_PREFERRED_MODULE_IDS: readonly AppModuleId[] = [

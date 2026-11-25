@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { colors, radius, spacing, typography } from '../theme';
 import { formatINRInput, parseINRInput } from '../utils/format';
 import { InputField } from './InputField';
 
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   },
   card: {
     minHeight: 66,
-    borderRadius: 18,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -172,13 +172,12 @@ const styles = StyleSheet.create({
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: spacing.xxs,
   },
   cardCurrency: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...typography.h2,
     color: colors.accent,
-    marginRight: 6,
+    marginRight: spacing.xs,
   },
   inputDisplayContainer: {
     flexDirection: 'row',
@@ -188,8 +187,7 @@ const styles = StyleSheet.create({
     height: 28,
   },
   cardInputText: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...typography.h2,
     paddingVertical: 0,
   },
   cardInputValue: {
@@ -202,8 +200,8 @@ const styles = StyleSheet.create({
     width: 2,
     height: 20,
     backgroundColor: colors.accent,
-    marginLeft: 2,
-    borderRadius: 1,
+    marginLeft: spacing.xxs,
+    borderRadius: radius.xxs,
   },
   transparentInput: {
     position: 'absolute',
@@ -211,10 +209,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    color: 'transparent',
-    backgroundColor: 'transparent',
-    fontSize: 20,
-    fontWeight: '800',
+    color: colors.transparent,
+    backgroundColor: colors.transparent,
+    ...typography.h2,
     paddingVertical: 0,
   },
 });

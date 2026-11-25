@@ -13,7 +13,7 @@ interface Props {
 export function BalanceCard({ balance }: Props) {
   return (
     <LinearGradient
-      colors={[colors.balanceStart, '#12533F', colors.balanceEnd]}
+      colors={[colors.balanceStart, colors.heroSurface, colors.balanceEnd]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.card}
@@ -27,13 +27,13 @@ export function BalanceCard({ balance }: Props) {
 
       <View style={styles.subRow}>
         <View style={styles.subItem}>
-          <Ionicons name="wallet-outline" size={13} color="rgba(255,255,255,0.6)" />
+          <Ionicons name="wallet-outline" size={13} color={colors.heroTextMuted} />
           <Text style={styles.subLabel}>Cash</Text>
           <Text style={styles.subValue}>{formatINR(balance.cash)}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.subItem}>
-          <Ionicons name="save-outline" size={13} color="rgba(255,255,255,0.6)" />
+          <Ionicons name="save-outline" size={13} color={colors.heroTextMuted} />
           <Text style={styles.subLabel}>Savings</Text>
           <Text style={styles.subValue}>{formatINR(balance.savings)}</Text>
         </View>
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: colors.heroGlassBorder,
     ...shadows.card,
   },
   glow: {
@@ -58,8 +58,8 @@ const styles = StyleSheet.create({
     right: -70,
     width: 180,
     height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: radius.full,
+    backgroundColor: colors.heroGlassSubtle,
   },
   topRow: {
     flexDirection: 'row',
@@ -69,20 +69,18 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.captionMedium,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.heroTextMuted,
   },
   total: {
     ...typography.hero,
     color: colors.white,
     marginTop: spacing.xxs,
     marginBottom: spacing.lg,
-    fontSize: 36,
-    letterSpacing: -1,
   },
   subRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: colors.transparent,
     paddingVertical: spacing.xs,
     paddingHorizontal: 0,
   },
@@ -92,7 +90,7 @@ const styles = StyleSheet.create({
   },
   subLabel: {
     ...typography.micro,
-    color: 'rgba(255,255,255,0.6)',
+    color: colors.heroTextMuted,
   },
   subValue: {
     ...typography.bodySemibold,
@@ -101,7 +99,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 32,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: colors.heroTrackIdle,
     marginHorizontal: spacing.md,
   },
 });

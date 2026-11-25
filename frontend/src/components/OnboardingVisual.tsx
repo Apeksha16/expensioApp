@@ -41,16 +41,16 @@ export function OnboardingVisual({ visual }: Props) {
       <View style={styles.referenceStage}>
         <View style={styles.splitCard}>
           <View style={styles.splitHeader}>
-            <View style={styles.splitIcon}><MaterialCommunityIcons name="silverware-fork-knife" size={21} color="#0A2A1E" /></View>
+            <View style={styles.splitIcon}><MaterialCommunityIcons name="silverware-fork-knife" size={21} color={colors.accentDark} /></View>
             <View style={styles.splitCopy}><Text style={styles.cardTitle}>Shared expenses</Text><Text style={styles.cardSub}>Your splits will appear here</Text></View>
           </View>
           <View style={styles.shareRow}>
-            <View style={styles.shareAvatar}><Ionicons name="person-outline" size={17} color="#F3F0E6" /></View>
+            <View style={styles.shareAvatar}><Ionicons name="person-outline" size={17} color={colors.heroText} /></View>
             <View style={styles.sharePlaceholder} />
             <View style={styles.sharePlaceholderShort} />
           </View>
           <View style={styles.shareRow}>
-            <View style={styles.shareAvatar}><Ionicons name="person-outline" size={17} color="#F3F0E6" /></View>
+            <View style={styles.shareAvatar}><Ionicons name="person-outline" size={17} color={colors.heroText} /></View>
             <View style={styles.sharePlaceholder} />
             <View style={styles.sharePlaceholderShort} />
           </View>
@@ -64,14 +64,14 @@ export function OnboardingVisual({ visual }: Props) {
       <View style={styles.referenceStage}>
         <View style={styles.budgetCard}>
           <View style={styles.budgetIcon}>
-            <Ionicons name="pie-chart-outline" size={32} color="#C8F169" />
+            <Ionicons name="pie-chart-outline" size={32} color={colors.surprise} />
           </View>
           <Text style={styles.budgetAmount}>Budgets and goals</Text>
           <Text style={styles.ringLabel}>Set them up when you are ready.</Text>
           <View style={styles.goalBox}>
             <View style={styles.goalRow}>
               <Text style={styles.goalTitle}>Your plans</Text>
-              <Ionicons name="arrow-forward" size={17} color="#C8F169" />
+              <Ionicons name="arrow-forward" size={17} color={colors.surprise} />
             </View>
             <View style={styles.goalTrack} />
           </View>
@@ -93,10 +93,10 @@ export function OnboardingVisual({ visual }: Props) {
         ).map((item) => (
           <View key={item.key} style={[styles.gridItem, item.key === 'expenses' ? styles.gridItemActive : styles.gridItemMuted]}>
             <View style={[styles.gridIcon, item.key === 'expenses' ? styles.gridIconActive : styles.gridIconMuted]}>
-              {item.key === 'expenses' ? <Ionicons name="wallet-outline" size={24} color="#0A2A1E" /> : null}
-              {item.key === 'subscriptions' ? <MaterialCommunityIcons name="refresh" size={24} color="#C8F169" /> : null}
-              {item.key === 'goals' ? <MaterialCommunityIcons name="target" size={24} color="#C8F169" /> : null}
-              {item.key === 'savings' ? <MaterialCommunityIcons name="piggy-bank-outline" size={24} color="#C8F169" /> : null}
+              {item.key === 'expenses' ? <Ionicons name="wallet-outline" size={24} color={colors.accentDark} /> : null}
+              {item.key === 'subscriptions' ? <MaterialCommunityIcons name="refresh" size={24} color={colors.surprise} /> : null}
+              {item.key === 'goals' ? <MaterialCommunityIcons name="target" size={24} color={colors.surprise} /> : null}
+              {item.key === 'savings' ? <MaterialCommunityIcons name="piggy-bank-outline" size={24} color={colors.surprise} /> : null}
             </View>
             <Text style={[styles.gridLabel, item.key === 'expenses' ? styles.gridLabelActive : styles.gridLabelMuted]}>{item.label}</Text>
           </View>
@@ -116,77 +116,73 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 260,
     height: 180,
-    borderRadius: 130,
-    backgroundColor: 'rgba(198, 243, 107, 0.12)',
+    borderRadius: radius.full,
+    backgroundColor: colors.heroRingMiddle,
     transform: [{ rotate: '-12deg' }],
   },
   heroSpark: {
     position: 'absolute',
-    right: 36,
-    top: 18,
-    gap: 5,
+    right: spacing.xl,
+    top: spacing.md,
+    gap: spacing.xxs,
   },
   sparkLong: {
     width: 18,
     height: 3,
-    borderRadius: 2,
-    backgroundColor: '#C8F169',
+    borderRadius: radius.xxs,
+    backgroundColor: colors.surprise,
     transform: [{ rotate: '-28deg' }],
   },
   sparkShort: {
     width: 12,
     height: 3,
-    borderRadius: 2,
+    borderRadius: radius.xxs,
     backgroundColor: colors.surprise,
-    marginLeft: 8,
+    marginLeft: spacing.xs,
     transform: [{ rotate: '-28deg' }],
   },
   balanceCard: {
     width: '100%',
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    padding: 24,
+    borderRadius: radius.xxl,
+    backgroundColor: colors.heroGlassSubtle,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: colors.heroGlassBorder,
     justifyContent: 'flex-start',
   },
   emptyOverview: {
     minHeight: 112,
-    marginTop: 24,
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.heroGlassSubtle,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: colors.heroGlassBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   emptyOverviewIcon: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(200,241,105,0.12)',
+    backgroundColor: colors.heroIconBg,
   },
   emptyOverviewText: {
     ...typography.captionMedium,
     color: colors.white,
   },
   balanceLabel: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: 'rgba(243,240,230,0.75)',
+    ...typography.caption,
+    color: colors.heroTextMuted,
   },
   balanceValue: {
+    ...typography.display,
     color: colors.white,
-    fontSize: 40,
-    lineHeight: 46,
-    fontWeight: '800',
-    letterSpacing: -1.2,
-    marginTop: 4,
-    marginBottom: 6,
+    marginTop: spacing.xxs,
+    marginBottom: spacing.xs,
     includeFontPadding: false,
     flexShrink: 0,
   },
@@ -195,13 +191,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     height: 128,
-    marginTop: 28,
-    gap: 10,
+    marginTop: spacing.lg,
+    gap: spacing.sm,
   },
   bar: {
     flex: 1,
-    borderRadius: 8,
-    backgroundColor: 'rgba(200,241,105,0.35)',
+    borderRadius: radius.sm,
+    backgroundColor: colors.heroIconBg,
   },
   barBright: {
     backgroundColor: colors.surprise,
@@ -209,14 +205,13 @@ const styles = StyleSheet.create({
   trendBadge: {
     alignSelf: 'flex-start',
     marginTop: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radius.md,
     backgroundColor: colors.surprise,
   },
   trendText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.captionMedium,
     color: colors.accentDark,
   },
   lightStage: {
@@ -231,106 +226,99 @@ const styles = StyleSheet.create({
   },
   splitCard: {
     width: '100%',
-    borderRadius: 28,
-    paddingTop: 24,
-    paddingHorizontal: 24,
-    paddingBottom: 12,
+    borderRadius: radius.xxl,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.white,
-    shadowColor: '#0A2A1E',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.12,
-    shadowRadius: 40,
-    elevation: 5,
+    ...shadows.card,
   },
   splitHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   splitIcon: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: radius.md,
     backgroundColor: colors.surprise,
     alignItems: 'center',
     justifyContent: 'center',
   },
   splitCopy: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: spacing.sm,
   },
   splitTotal: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0A2A1E',
+    ...typography.h2,
+    color: colors.accentDark,
     marginLeft: 'auto',
   },
   shareRow: {
     minHeight: 65,
-    paddingVertical: 12,
+    paddingVertical: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#ECE8DA',
-    gap: 12,
+    borderTopColor: colors.borderLight,
+    gap: spacing.sm,
   },
   sharePlaceholder: {
     flex: 1,
     height: 12,
-    borderRadius: 6,
-    backgroundColor: '#E8E9E1',
+    borderRadius: radius.xs,
+    backgroundColor: colors.surfaceMuted,
   },
   sharePlaceholderShort: {
     width: 58,
     height: 22,
-    borderRadius: 11,
-    backgroundColor: '#E8E9E1',
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceMuted,
   },
   shareAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#0A2A1E',
+    borderRadius: radius.full,
+    backgroundColor: colors.accentDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
   shareAmount: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0A2A1E',
+    ...typography.bodySemibold,
+    color: colors.accentDark,
   },
   statusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: '#0A2A1E',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentDark,
   },
   pendingPill: {
-    backgroundColor: '#E4E0D2',
+    backgroundColor: colors.border,
   },
   statusText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#C8F169',
+    ...typography.captionMedium,
+    color: colors.surprise,
   },
   pendingPillText: {
-    color: '#3C4A43',
+    color: colors.textSecondary,
   },
   budgetCard: {
     width: '100%',
-    borderRadius: 28,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
-    backgroundColor: '#0A2A1E',
+    borderRadius: radius.xxl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.accentDark,
     alignItems: 'center',
   },
   budgetIcon: {
     width: 72,
     height: 72,
-    borderRadius: 24,
-    backgroundColor: 'rgba(200,241,105,0.12)',
+    borderRadius: radius.xl,
+    backgroundColor: colors.heroIconBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -345,20 +333,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ringValue: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#F3F0E6',
-    lineHeight: 42,
+    ...typography.display,
+    color: colors.heroText,
   },
   ringLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(243,240,230,0.75)',
+    ...typography.captionMedium,
+    color: colors.heroTextMuted,
   },
   budgetOf: {
-    fontSize: 17,
-    color: 'rgba(243,240,230,0.75)',
-    fontWeight: '400',
+    ...typography.h3,
+    color: colors.heroTextMuted,
   },
   goalRow: {
     width: '100%',
@@ -367,85 +351,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   goalPercent: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#C8F169',
+    ...typography.bodySemibold,
+    color: colors.surprise,
   },
   goalBox: {
     width: '100%',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.heroGlassSubtle,
   },
   goalTrack: {
     width: '100%',
     height: 7,
-    marginTop: 8,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    marginTop: spacing.xs,
+    borderRadius: radius.xs,
+    backgroundColor: colors.heroTrackIdle,
     overflow: 'hidden',
   },
   goalFill: {
     height: '100%',
-    backgroundColor: '#C8F169',
+    backgroundColor: colors.surprise,
   },
   blob: {
     position: 'absolute',
     width: 240,
     height: 170,
-    borderRadius: 120,
-    backgroundColor: '#E5F3DF',
+    borderRadius: radius.full,
+    backgroundColor: colors.accentSoft,
   },
   blobWide: {
     position: 'absolute',
     width: 280,
     height: 180,
-    borderRadius: 140,
-    backgroundColor: '#E7F4E2',
+    borderRadius: radius.full,
+    backgroundColor: colors.accentSoft,
   },
   lightSpark: {
     position: 'absolute',
-    right: 28,
-    top: 28,
-    gap: 5,
+    right: spacing.lg,
+    top: spacing.lg,
+    gap: spacing.xxs,
   },
   gridSpark: {
     position: 'absolute',
-    right: 18,
-    top: 8,
-    gap: 5,
+    right: spacing.md,
+    top: spacing.xs,
+    gap: spacing.xxs,
   },
   stackBack: {
     position: 'absolute',
     width: 250,
     height: 132,
-    borderRadius: 24,
+    borderRadius: radius.xl,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#E6EBE4',
+    borderColor: colors.borderLight,
     transform: [{ translateY: 16 }, { rotate: '-2deg' }],
     opacity: 0.9,
   },
   softCard: {
     width: 268,
     backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 18,
+    borderRadius: radius.xl,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#EEF1EC',
+    borderColor: colors.borderLight,
     ...shadows.card,
   },
   splitTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   forkBadge: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: radius.full,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -456,7 +439,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 30,
     height: 30,
-    borderRadius: 15,
+    borderRadius: radius.full,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -464,53 +447,49 @@ const styles = StyleSheet.create({
     borderColor: colors.white,
   },
   avatarOverlap: {
-    marginLeft: -8,
+    marginLeft: -spacing.xs,
   },
   avatarText: {
-    color: '#F3F0E6',
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodySemibold,
+    color: colors.heroText,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0A2A1E',
+    ...typography.h3,
+    color: colors.accentDark,
   },
   cardSub: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#4A5A52',
-    marginTop: 4,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xxs,
   },
   budgetLabel: {
     ...typography.captionMedium,
     color: colors.textSecondary,
   },
   budgetAmount: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#F3F0E6',
-    marginTop: 16,
-    marginBottom: 20,
+    ...typography.h3,
+    color: colors.heroText,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
   },
   track: {
     flex: 1,
     height: 8,
-    borderRadius: 8,
-    backgroundColor: '#E7EEE6',
+    borderRadius: radius.sm,
+    backgroundColor: colors.accentSoft,
     overflow: 'hidden',
   },
   fill: {
     width: '57%',
     height: '100%',
-    borderRadius: 8,
-    backgroundColor: '#7DDC6A',
+    borderRadius: radius.sm,
+    backgroundColor: colors.income,
   },
   percent: {
     ...typography.captionMedium,
@@ -519,25 +498,24 @@ const styles = StyleSheet.create({
   goalPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.sm,
     borderWidth: 1,
-    borderColor: '#E6EBE4',
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    borderColor: colors.borderLight,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   goalIcon: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radius.full,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   goalTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#F3F0E6',
+    ...typography.bodySemibold,
+    color: colors.heroText,
   },
   goalSub: {
     ...typography.micro,
@@ -548,44 +526,43 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: spacing.sm,
   },
   gridItem: {
     flexBasis: '47%',
     flexGrow: 1,
     flexShrink: 1,
     height: 150,
-    borderRadius: 24,
-    padding: 18,
+    borderRadius: radius.xl,
+    padding: spacing.md,
     justifyContent: 'space-between',
   },
   gridItemActive: {
-    backgroundColor: '#C8F169',
+    backgroundColor: colors.surprise,
   },
   gridItemMuted: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.heroGlassSubtle,
   },
   gridIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   gridIconActive: {
-    backgroundColor: 'rgba(10,42,30,0.12)',
+    backgroundColor: colors.heroRingMiddle,
   },
   gridIconMuted: {
-    backgroundColor: 'rgba(200,241,105,0.16)',
+    backgroundColor: colors.heroIconBg,
   },
   gridLabel: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.h3,
   },
   gridLabelActive: {
-    color: '#0A2A1E',
+    color: colors.accentDark,
   },
   gridLabelMuted: {
-    color: '#F3F0E6',
+    color: colors.heroText,
   },
 });

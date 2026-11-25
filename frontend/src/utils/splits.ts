@@ -88,23 +88,44 @@ export function getFriendName(
   friendId: string,
   friends: Friend[],
   selfName = 'You',
+  split?: SplitExpense,
 ): string {
   if (friendId === CURRENT_USER_ID) return selfName;
-  return friends.find((f) => f.id === friendId)?.name ?? 'Friend';
+  return (
+    friends.find((f) => f.id === friendId)?.name
+    ?? split?.participantSnapshots?.[friendId]?.name
+    ?? 'Former friend'
+  );
 }
 
 export function getFriendMeta(
   friendId: string,
   friends: Friend[],
+  split?: SplitExpense,
 ): Pick<Friend, 'name' | 'initials' | 'color'> {
   if (friendId === CURRENT_USER_ID) {
     return { name: 'You', initials: 'Y', color: '#0F766E' };
   }
   const friend = friends.find((f) => f.id === friendId);
+  if (friend) {
+    return {
+      name: friend.name,
+      initials: friend.initials,
+      color: friend.color,
+    };
+  }
+  const snapshot = split?.participantSnapshots?.[friendId];
+  if (snapshot) {
+    return {
+      name: snapshot.name,
+      initials: snapshot.initials,
+      color: snapshot.color,
+    };
+  }
   return {
-    name: friend?.name ?? 'Friend',
-    initials: friend?.initials ?? '?',
-    color: friend?.color ?? '#6B7280',
+    name: 'Former friend',
+    initials: 'FF',
+    color: '#66706A',
   };
 }
 
@@ -161,14 +182,30 @@ export function computeSplitBalances(
     }
   }
 
-  const pending: PendingBalance[] = friends
-    .map((friend) => {
-      const amount = netWithFriend(splits, friend.id);
+  const participantIds = new Set<string>(friends.map((friend) => friend.id));
+  const snapshotSourceById = new Map<string, SplitExpense>();
+  for (const split of splits) {
+    if (split.paidById !== CURRENT_USER_ID) {
+      participantIds.add(split.paidById);
+      if (!snapshotSourceById.has(split.paidById)) snapshotSourceById.set(split.paidById, split);
+    }
+    for (const share of split.shares) {
+      if (share.friendId !== CURRENT_USER_ID) {
+        participantIds.add(share.friendId);
+        if (!snapshotSourceById.has(share.friendId)) snapshotSourceById.set(share.friendId, split);
+      }
+    }
+  }
+
+  const pending: PendingBalance[] = Array.from(participantIds)
+    .map((friendId) => {
+      const amount = netWithFriend(splits, friendId);
+      const meta = getFriendMeta(friendId, friends, snapshotSourceById.get(friendId));
       return {
-        friendId: friend.id,
-        name: friend.name,
-        initials: friend.initials,
-        color: friend.color,
+        friendId,
+        name: meta.name,
+        initials: meta.initials,
+        color: meta.color,
         amount,
       };
     })

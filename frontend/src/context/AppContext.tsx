@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState as RNAppState } from 'react-native';
 import { AppToast, type ToastMessage } from '../components/AppToast';
+import { FRIENDS_CONFIG } from '../config/friendsConfig';
 import { CURRENT_USER_ID } from '../data/splits';
 import { DEFAULT_PREFERRED_MODULE_IDS, type AppModuleId } from '../data/modules';
 import type {
@@ -25,9 +27,30 @@ import type {
   Transaction,
   UserProfile,
   GoalContribution,
+  CreateGuestInput,
+  FriendsCounts,
+  FriendsSyncMeta,
+  Friendship,
+  PreflightRemovalResult,
+  SearchCandidate,
+  UpdateGuestAvatarInput,
 } from '../types';
+import { apiClient } from '../services/api/apiClient';
+import { friendsApi, readFriendsCache } from '../services/api/friendsApi';
+import { FriendsApiError, isAbortError, normalizeFriendsError } from '../services/api/friendsErrors';
+import { setMockDebtInspector } from '../services/api/friendsMockAdapter';
+import {
+  createParticipantSnapshotMap,
+  createPendingActionTracker,
+  friendshipsToSelectableFriends,
+  isGuestOwnedByUser,
+  partitionFriendships,
+} from '../services/friendsStore';
+import { FriendsSyncController } from '../services/friendsSync';
+import { createDefaultPreferences, clearPersistedUserSession } from '../services/sessionCleanup';
 import { createSplitExpense } from '../utils/splits';
-import { updateLocalAccountEmail, type AuthResponse } from '../services/authApi';
+import { triggerErrorHaptic, triggerSuccessHaptic } from '../utils/haptics';
+import { clearPendingAuthState, type AuthResponse } from '../services/authApi';
 import { userApi } from '../services/api/userApi';
 import { authApi as backendAuthApi } from '../services/api/authApi';
 import { onboardingApi } from '../services/api/onboardingApi';
@@ -52,6 +75,8 @@ interface AppState {
   verificationChannel: 'phone' | 'email';
   verificationTarget: string;
   verificationReturnPhase: 'mobile' | 'email';
+  passwordResetEmail: string;
+  setPasswordResetEmail: (email: string) => void;
   phoneVerified: boolean;
   emailVerified: boolean;
   onboardingStep: number;
@@ -101,6 +126,32 @@ interface AppState {
   removeRecurringPayment: (paymentId: string) => Promise<void>;
   markRecurringPaymentPaid: (paymentId: string) => Promise<void>;
   addFriend: (input: Pick<Friend, 'name' | 'userId'>) => Promise<void>;
+  friendships: Friendship[];
+  acceptedFriendships: Friendship[];
+  incomingFriendships: Friendship[];
+  outgoingFriendships: Friendship[];
+  friendCounts: FriendsCounts;
+  friendsLoading: boolean;
+  friendsRefreshing: boolean;
+  friendsError: string | null;
+  friendsNormalizedError: FriendsApiError | null;
+  friendsSyncMeta: FriendsSyncMeta;
+  pendingFriendActionIds: string[];
+  addFriendTriggerCount: number;
+  triggerGlobalAddFriend: () => void;
+  setFriendsScreenVisible: (visible: boolean) => void;
+  clearNewIncomingAlert: () => void;
+  refreshFriends: () => Promise<void>;
+  prefetchFriends: () => void;
+  searchFriendCandidates: (query: string, signal?: AbortSignal) => Promise<SearchCandidate[]>;
+  sendFriendRequest: (candidate: SearchCandidate) => Promise<void>;
+  acceptFriendRequest: (friendshipId: string) => Promise<void>;
+  declineFriendRequest: (friendshipId: string) => Promise<void>;
+  cancelFriendRequest: (friendshipId: string) => Promise<void>;
+  removeFriend: (friendshipId: string) => Promise<void>;
+  checkFriendRemovalPreflight: (friendshipId: string) => Promise<PreflightRemovalResult>;
+  createGuestFriend: (input: CreateGuestInput) => Promise<void>;
+  updateGuestAvatar: (guestId: string, payload: UpdateGuestAvatarInput | string) => Promise<void>;
   addSplit: (input: CreateSplitInput) => Promise<SplitExpense>;
   settleShare: (splitId: string, friendId: string) => Promise<void>;
   settleMyShare: (splitId: string) => Promise<void>;
@@ -132,7 +183,7 @@ export interface OnboardingDraft {
 
 const colorsForFriend = ['#146B45', '#D97706', '#7C3AED', '#2563EB', '#DB2777'];
 
-const AppContext = createContext<AppState | null>(null);
+export const AppContext = createContext<AppState | null>(null);
 
 function getAccountDataOwner(user: Pick<UserProfile, 'email' | 'phone'> | null | undefined): string | null {
   const identity = user?.phone?.trim() || user?.email?.trim().toLowerCase();
@@ -159,6 +210,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [verificationChannel, setVerificationChannel] = useState<'phone' | 'email'>('phone');
   const [verificationTarget, setVerificationTarget] = useState('');
   const [verificationReturnPhase, setVerificationReturnPhase] = useState<'mobile' | 'email'>('mobile');
+  const [passwordResetEmail, setPasswordResetEmail] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [onboardingStep, setOnboardingStepState] = useState(1);
@@ -200,11 +252,146 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
+  const [friendships, setFriendships] = useState<Friendship[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendsRefreshing, setFriendsRefreshing] = useState(false);
+  const [friendsError, setFriendsError] = useState<string | null>(null);
+  const [friendsNormalizedError, setFriendsNormalizedError] = useState<FriendsApiError | null>(null);
+  const [friendsSyncMeta, setFriendsSyncMeta] = useState<FriendsSyncMeta>({
+    lastUpdatedAt: null,
+    isStaleOffline: false,
+    hasNewIncomingAlert: false,
+  });
+  const [pendingFriendActionIds, setPendingFriendActionIds] = useState<string[]>([]);
+  const [addFriendTriggerCount, setAddFriendTriggerCount] = useState(0);
   const localDataOwnerRef = useRef<string | null>(null);
   const operationLocksRef = useRef(new Set<string>());
+  const pendingActionTrackerRef = useRef(createPendingActionTracker());
+  const friendsFetchAbortRef = useRef<AbortController | null>(null);
+  const friendsSyncRef = useRef<FriendsSyncController | null>(null);
+  const isFriendsVisibleRef = useRef(false);
+  const friendshipsRef = useRef<Friendship[]>(friendships);
+  friendshipsRef.current = friendships;
+  const splitsRef = useRef<SplitExpense[]>(splits);
+  splitsRef.current = splits;
+  const localDataSnapshotRef = useRef({
+    transactions,
+    friends,
+    splits,
+    budgets,
+    goals,
+    recurringPayments,
+  });
+  localDataSnapshotRef.current = {
+    transactions,
+    friends,
+    splits,
+    budgets,
+    goals,
+    recurringPayments,
+  };
+
+  const partitionedFriendships = useMemo(
+    () => partitionFriendships(friendships),
+    [friendships],
+  );
+  const acceptedFriendships = partitionedFriendships.accepted;
+  const incomingFriendships = partitionedFriendships.incoming;
+  const outgoingFriendships = partitionedFriendships.outgoing;
+  const friendCounts = partitionedFriendships.counts;
 
   const persistLocalData = useCallback((data: Parameters<typeof writeLocalData>[0]) =>
     writeLocalData(data, localDataOwnerRef.current), []);
+
+  const syncPendingActionState = useCallback(() => {
+    setPendingFriendActionIds(pendingActionTrackerRef.current.getIds());
+  }, []);
+
+  const refreshFriendsInternal = useCallback(async (
+    mode: 'initial' | 'manual' | 'focus' | 'foreground' | 'poll' | 'realtime' | 'mutation' = 'manual',
+  ) => {
+    const ownerId = localDataOwnerRef.current;
+    friendsFetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    friendsFetchAbortRef.current = controller;
+
+    if (mode === 'initial' && friendshipsRef.current.length === 0) {
+      setFriendsLoading(true);
+    } else if (mode === 'manual') {
+      setFriendsRefreshing(true);
+    }
+    if (mode === 'initial' || mode === 'manual') {
+      setFriendsError(null);
+      setFriendsNormalizedError(null);
+    }
+
+    try {
+      const data = await friendsApi.listFriends({
+        ownerId,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+
+      const all = [...data.accepted, ...data.incoming, ...data.outgoing];
+      const prevIncomingIds = new Set(
+        friendshipsRef.current
+          .filter((item) => item.status === 'PENDING' && item.direction === 'INCOMING')
+          .map((item) => item.friendshipId),
+      );
+      const hasNewIncoming =
+        isFriendsVisibleRef.current
+        && (mode === 'poll' || mode === 'realtime' || mode === 'foreground')
+        && data.incoming.some((item) => !prevIncomingIds.has(item.friendshipId));
+
+      setFriendships(all);
+      const mapped = friendshipsToSelectableFriends(data.accepted);
+      setFriends(mapped);
+      const snap = localDataSnapshotRef.current;
+      void persistLocalData({ ...snap, friends: mapped });
+      setFriendsError(null);
+      setFriendsNormalizedError(null);
+      setFriendsSyncMeta((prev) => ({
+        lastUpdatedAt: Date.now(),
+        isStaleOffline: false,
+        hasNewIncomingAlert: hasNewIncoming ? true : prev.hasNewIncomingAlert,
+      }));
+      friendsSyncRef.current?.recordSuccess();
+    } catch (err) {
+      if (isAbortError(err) || controller.signal.aborted) return;
+      const normalized = normalizeFriendsError(err);
+      setFriendsError(normalized.message);
+      setFriendsNormalizedError(normalized);
+      friendsSyncRef.current?.recordError();
+      if (normalized.kind === 'offline' || normalized.kind === 'timeout') {
+        const cached = await readFriendsCache(ownerId);
+        if (cached) {
+          const allCached = [
+            ...cached.grouped.accepted,
+            ...cached.grouped.incoming,
+            ...cached.grouped.outgoing,
+          ];
+          setFriendships(allCached);
+          setFriends(friendshipsToSelectableFriends(cached.grouped.accepted));
+          setFriendsSyncMeta((prev) => ({
+            ...prev,
+            lastUpdatedAt: cached.cachedAt,
+            isStaleOffline: true,
+          }));
+        }
+      }
+      if (mode === 'manual') throw normalized;
+    } finally {
+      if (friendsFetchAbortRef.current === controller) {
+        friendsFetchAbortRef.current = null;
+      }
+      setFriendsLoading(false);
+      setFriendsRefreshing(false);
+    }
+  }, [persistLocalData]);
+
+  const refreshFriends = useCallback(async () => {
+    await refreshFriendsInternal('manual');
+  }, [refreshFriendsInternal]);
 
   const runWithLocalLock = useCallback(async (key: string, operation: () => Promise<void>) => {
     if (operationLocksRef.current.has(key)) return;
@@ -216,17 +403,119 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearInMemoryUserState = useCallback(() => {
+    friendsFetchAbortRef.current?.abort();
+    friendsFetchAbortRef.current = null;
+    friendsSyncRef.current?.stopAll();
+    apiClient.cancelAllRequests();
+    clearPendingAuthState();
+    pendingActionTrackerRef.current.clear();
+    syncPendingActionState();
+    localDataOwnerRef.current = null;
+    setProfile(null);
+    const defaultPrefs = createDefaultPreferences();
+    setPreferences(defaultPrefs);
+    setProfileState({
+      firstName: '',
+      lastName: '',
+      mobile: '',
+      countryCode: '+91',
+      email: '',
+      avatarId: defaultPrefs.avatarId,
+      preferredModuleIds: defaultPrefs.preferredModuleIds,
+      reportFrequency: defaultPrefs.reportFrequency,
+      reportsEnabled: defaultPrefs.reportsEnabled,
+      reportDayOfWeek: defaultPrefs.reportDayOfWeek,
+      reportDayOfMonth: defaultPrefs.reportDayOfMonth,
+      reportEmail: '',
+    });
+    setFriendships([]);
+    setFriends([]);
+    setSplitGroups([]);
+    setSplits([]);
+    setTransactions([]);
+    setBudgets([]);
+    setGoals([]);
+    setRecurringPayments([]);
+    setFriendsError(null);
+    setFriendsNormalizedError(null);
+    setFriendsLoading(false);
+    setFriendsRefreshing(false);
+    setFriendsSyncMeta({
+      lastUpdatedAt: null,
+      isStaleOffline: false,
+      hasNewIncomingAlert: false,
+    });
+    setPhone('');
+    setCountryCode('+91');
+    setPhoneVerified(false);
+    setEmailVerified(false);
+    setOnboardingStepState(1);
+    setVerificationTarget('');
+    setOnboardingDraft({
+      firstName: '', lastName: '', email: '', phone: '', employmentType: '',
+      incomeRupees: '', cashRupees: '', savingsRupees: '',
+    });
+  }, [syncPendingActionState]);
+
   const restoreAccountData = useCallback(async (ownerId: string | null) => {
-    const [localData, groups] = await Promise.all([readLocalData(ownerId), getSplitGroups(ownerId)]);
+    if (localDataOwnerRef.current !== ownerId) {
+      // Zero-frame isolation when switching accounts
+      setFriendships([]);
+      setFriends([]);
+      setSplitGroups([]);
+      setSplits([]);
+      setTransactions([]);
+      setBudgets([]);
+      setGoals([]);
+      setRecurringPayments([]);
+      setFriendsError(null);
+      setFriendsNormalizedError(null);
+      setFriendsSyncMeta({
+        lastUpdatedAt: null,
+        isStaleOffline: false,
+        hasNewIncomingAlert: false,
+      });
+    }
     localDataOwnerRef.current = ownerId;
+
+    const [localData, groups, cachedFriends] = await Promise.all([
+      readLocalData(ownerId),
+      getSplitGroups(ownerId),
+      readFriendsCache(ownerId),
+    ]);
+    if (localDataOwnerRef.current !== ownerId) return;
+
     setTransactions(localData.transactions);
-    setFriends(localData.friends);
     setSplits(localData.splits);
     setBudgets(localData.budgets);
     setGoals(localData.goals);
     setRecurringPayments(localData.recurringPayments);
     setSplitGroups(groups);
-  }, []);
+
+    if (cachedFriends) {
+      const allCached = [
+        ...cachedFriends.grouped.accepted,
+        ...cachedFriends.grouped.incoming,
+        ...cachedFriends.grouped.outgoing,
+      ];
+      setFriendships(allCached);
+      setFriends(friendshipsToSelectableFriends(cachedFriends.grouped.accepted));
+      setFriendsSyncMeta({
+        lastUpdatedAt: cachedFriends.cachedAt,
+        isStaleOffline: false,
+        hasNewIncomingAlert: false,
+      });
+    } else {
+      setFriendships([]);
+      setFriends([]);
+    }
+
+    // Revalidate in background (cached-first: never block cold-start or login first paint)
+    if (ownerId) {
+      void refreshFriendsInternal('initial');
+    }
+  }, [refreshFriendsInternal]);
 
   const restoreLocalState = useCallback(async () => {
     setAuthPhase('restoring');
@@ -332,6 +621,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toastTimer.current = setTimeout(() => setToast((current) => current?.id === id ? null : current), 3200);
   }, []);
 
+  const computeLocalRemovalPreflight = useCallback((personId: string): PreflightRemovalResult => {
+    const target = friendshipsRef.current.find((f) => f.person.id === personId);
+    const displayName = target?.person.displayName ?? 'this friend';
+    let unsettledAmount = 0;
+    let blockingSplitTitle: string | undefined;
+
+    for (const split of splitsRef.current) {
+      if (split.paidById === CURRENT_USER_ID) {
+        const share = split.shares.find((s) => s.friendId === personId && !s.settled);
+        if (share) {
+          unsettledAmount += share.amount;
+          if (!blockingSplitTitle) blockingSplitTitle = split.title;
+        }
+      } else if (split.paidById === personId) {
+        const myShare = split.shares.find((s) => s.friendId === CURRENT_USER_ID && !s.settled);
+        if (myShare) {
+          unsettledAmount += myShare.amount;
+          if (!blockingSplitTitle) blockingSplitTitle = split.title;
+        }
+      } else {
+        const share = split.shares.find((s) => s.friendId === personId && !s.settled);
+        if (share) {
+          unsettledAmount += share.amount;
+          if (!blockingSplitTitle) blockingSplitTitle = split.title;
+        }
+      }
+    }
+
+    if (unsettledAmount > 0) {
+      return {
+        canRemove: false,
+        blockedByDebt: true,
+        unsettledAmount,
+        splitTitle: blockingSplitTitle,
+        reason: `Active split obligations totaling ${formatINR(unsettledAmount)} exist with ${displayName}${blockingSplitTitle ? ` (e.g. "${blockingSplitTitle}")` : ''}. Settle all shares before removing this relationship.`,
+      };
+    }
+    return { canRemove: true, blockedByDebt: false, unsettledAmount: 0 };
+  }, []);
+
+  useEffect(() => {
+    if (FRIENDS_CONFIG.USE_FRIENDS_MOCK) {
+      setMockDebtInspector((personId) => computeLocalRemovalPreflight(personId));
+      return () => setMockDebtInspector(null);
+    }
+  }, [computeLocalRemovalPreflight]);
+
+  useEffect(() => {
+    const controller = new FriendsSyncController({
+      onSync: async (reason) => {
+        if (authPhase !== 'main') return;
+        await refreshFriendsInternal(reason);
+      },
+    });
+    friendsSyncRef.current = controller;
+
+    const appStateSub = RNAppState.addEventListener('change', (nextState) => {
+      controller.setAppActive(nextState === 'active');
+    });
+
+    return () => {
+      appStateSub.remove();
+      controller.dispose();
+      if (friendsSyncRef.current === controller) {
+        friendsSyncRef.current = null;
+      }
+    };
+  }, [authPhase, refreshFriendsInternal]);
+
+  useEffect(() => {
+    const unsubscribe = apiClient.onUnauthorized(() => {
+      const prevOwner = localDataOwnerRef.current;
+      const prevEmail = profile?.email;
+      const prevPhone = profile?.phone;
+      clearInMemoryUserState();
+      void clearPersistedUserSession({
+        ownerId: prevOwner,
+        email: prevEmail,
+        phone: prevPhone,
+      });
+      setAuthPhase('login');
+      showToast('error', 'Your session expired. Please sign in again.');
+    });
+    return unsubscribe;
+  }, [clearInMemoryUserState, profile?.email, profile?.phone, showToast]);
+
   const notifyBudgetThresholds = useCallback((nextTransactions: Transaction[]) => {
     const now = new Date();
     for (const budget of budgets) {
@@ -363,6 +738,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       verificationChannel,
       verificationTarget,
       verificationReturnPhase,
+      passwordResetEmail,
+      setPasswordResetEmail,
       phoneVerified,
       emailVerified,
       onboardingStep,
@@ -478,8 +855,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         let profileUpdated = false;
         let updatedPreferences: ValidatedLocalPreferences | null = null;
         try {
-          await updateLocalAccountEmail(currentEmail, nextEmail, accountUser);
-          accountUpdated = true;
           await profileService.saveProfile({ ...previousStoredProfile, email: nextEmail }, ownerId);
           profileUpdated = true;
           updatedPreferences = await updateLocalPreferences({ reportEmail: nextEmail }, ownerId);
@@ -499,10 +874,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (profileUpdated) {
             try { await profileService.saveProfile(previousStoredProfile, ownerId); }
             catch (rollbackError) { rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : 'Unable to restore saved profile.'); }
-          }
-          if (accountUpdated && currentEmail) {
-            try { await updateLocalAccountEmail(nextEmail, currentEmail, accountUser); }
-            catch (rollbackError) { rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : 'Unable to restore local account email.'); }
           }
           if (rollbackErrors.length) {
             throw new Error(`Email change failed. ${rollbackErrors.join(' ')}`);
@@ -537,41 +908,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthPhase('main');
       },
       logout: async () => {
+        const previousOwnerId = localDataOwnerRef.current;
+        const previousEmail = profile?.email;
+        const previousPhone = profile?.phone;
         const session = await readSession();
-        // Await server session revocation. Only if backend successfully revokes the session do we clean up locally.
-        await backendAuthApi.logout({ refreshToken: session?.refreshToken });
-        onboardingApi.clearCache();
-        await clearSession();
-        await onboardingDraftService.clearDraft(localDataOwnerRef.current);
-
-        setProfile(null);
-        localDataOwnerRef.current = null;
-        setTransactions([]);
-        setFriends([]);
-        setSplitGroups([]);
-        setSplits([]);
-        setBudgets([]);
-        setGoals([]);
-        setRecurringPayments([]);
-        setProfileState((current) => ({
-          ...current,
-          firstName: '',
-          lastName: '',
-          mobile: '',
-          countryCode: '+91',
-          email: '',
-        }));
-        setPhone('');
-        setCountryCode('+91');
-        setPhoneVerified(false);
-        setEmailVerified(false);
-        setOnboardingStepState(1);
-        setVerificationTarget('');
-        setOnboardingDraft({
-          firstName: '', lastName: '', email: '', phone: '', employmentType: '',
-          incomeRupees: '', cashRupees: '', savingsRupees: '',
-        });
-        setAuthPhase('onboarding');
+        // Capture refresh token before wiping local state; revoke on backend best-effort,
+        // and ALWAYS wipe local tokens, caches, timers, and memory state even if offline.
+        try {
+          if (session?.refreshToken) {
+            await backendAuthApi.logout({ refreshToken: session.refreshToken });
+          }
+        } catch {
+          // Best-effort server revocation; local cleanup must never be blocked.
+        } finally {
+          clearInMemoryUserState();
+          await clearPersistedUserSession({
+            ownerId: previousOwnerId,
+            email: previousEmail,
+            phone: previousPhone,
+          });
+          setAuthPhase('login');
+        }
       },
       friends,
       splitGroups,
@@ -843,24 +1200,210 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       addFriend: async (input) => {
         const name = input.name.trim();
-        const userId = input.userId.trim().replace(/^@+/, '');
-        if (!name || !userId) throw new Error('Enter a name and User ID for this friend.');
-        if (friends.some((friend) => friend.userId.replace(/^@+/, '').toLowerCase() === userId.toLowerCase())) {
-          throw new Error('A friend with this User ID already exists.');
+        const username = input.userId.trim().replace(/^@+/, '');
+        if (!name || !username) throw new Error('Enter a name and User ID for this friend.');
+        await friendsApi.createGuest({ name, username }, localDataOwnerRef.current);
+        await refreshFriendsInternal('mutation');
+      },
+      friendships,
+      acceptedFriendships,
+      incomingFriendships,
+      outgoingFriendships,
+      friendCounts,
+      friendsLoading,
+      friendsRefreshing,
+      friendsError,
+      friendsNormalizedError,
+      friendsSyncMeta,
+      pendingFriendActionIds,
+      addFriendTriggerCount,
+      triggerGlobalAddFriend: () => setAddFriendTriggerCount((c) => c + 1),
+      setFriendsScreenVisible: (visible: boolean) => {
+        isFriendsVisibleRef.current = visible;
+        friendsSyncRef.current?.setVisible(visible);
+      },
+      clearNewIncomingAlert: () => {
+        setFriendsSyncMeta((prev) => (prev.hasNewIncomingAlert ? { ...prev, hasNewIncomingAlert: false } : prev));
+      },
+      refreshFriends,
+      prefetchFriends: () => {
+        if (authPhase !== 'main') return;
+        if (!friendsFetchAbortRef.current && !friendsLoading && !friendsRefreshing) {
+          void refreshFriendsInternal('focus');
         }
-        const friend: Friend = {
-          id: `friend-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          name,
-          userId: `@${userId}`,
-          initials: name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase(),
-          color: colorsForFriend[friends.length % colorsForFriend.length],
-        };
-        const nextFriends = [...friends, friend];
-        await persistLocalData({ transactions, friends: nextFriends, splits, budgets, goals, recurringPayments });
-        setFriends(nextFriends);
+      },
+      searchFriendCandidates: async (query: string, signal?: AbortSignal) => {
+        return friendsApi.searchCandidates(query, {
+          currentUserId: profile?.userId || 'me',
+          ownerId: localDataOwnerRef.current,
+          signal,
+        });
+      },
+      sendFriendRequest: async (candidate: SearchCandidate) => {
+        if (!pendingActionTrackerRef.current.tryAcquire(candidate.id)) return;
+        syncPendingActionState();
+        try {
+          await friendsApi.sendRequest(candidate, localDataOwnerRef.current);
+          triggerSuccessHaptic();
+          showToast('success', `Friend request sent to @${candidate.username.replace(/^@+/, '')}`);
+          await refreshFriendsInternal('mutation');
+        } catch (err) {
+          const normalized = normalizeFriendsError(err);
+          triggerErrorHaptic();
+          showToast('error', normalized.message);
+          throw normalized;
+        } finally {
+          pendingActionTrackerRef.current.release(candidate.id);
+          syncPendingActionState();
+        }
+      },
+      acceptFriendRequest: async (friendshipId: string) => {
+        if (!pendingActionTrackerRef.current.tryAcquire(friendshipId)) return;
+        syncPendingActionState();
+        try {
+          await friendsApi.acceptRequest(friendshipId, localDataOwnerRef.current);
+          triggerSuccessHaptic();
+          showToast('success', 'Friend request accepted.');
+          await refreshFriendsInternal('mutation');
+        } catch (err) {
+          const normalized = normalizeFriendsError(err);
+          triggerErrorHaptic();
+          showToast('error', normalized.message);
+          if (normalized.kind === '404' || normalized.kind === '409') {
+            void refreshFriendsInternal('mutation');
+          }
+          throw normalized;
+        } finally {
+          pendingActionTrackerRef.current.release(friendshipId);
+          syncPendingActionState();
+        }
+      },
+      declineFriendRequest: async (friendshipId: string) => {
+        if (!pendingActionTrackerRef.current.tryAcquire(friendshipId)) return;
+        syncPendingActionState();
+        try {
+          await friendsApi.deleteRelationship(friendshipId, localDataOwnerRef.current);
+          triggerSuccessHaptic();
+          showToast('success', 'Friend request declined.');
+          await refreshFriendsInternal('mutation');
+        } catch (err) {
+          const normalized = normalizeFriendsError(err);
+          triggerErrorHaptic();
+          showToast('error', normalized.message);
+          if (normalized.kind === '404' || normalized.kind === '409') {
+            void refreshFriendsInternal('mutation');
+          }
+          throw normalized;
+        } finally {
+          pendingActionTrackerRef.current.release(friendshipId);
+          syncPendingActionState();
+        }
+      },
+      cancelFriendRequest: async (friendshipId: string) => {
+        if (!pendingActionTrackerRef.current.tryAcquire(friendshipId)) return;
+        syncPendingActionState();
+        try {
+          await friendsApi.deleteRelationship(friendshipId, localDataOwnerRef.current);
+          triggerSuccessHaptic();
+          showToast('success', 'Friend request cancelled.');
+          await refreshFriendsInternal('mutation');
+        } catch (err) {
+          const normalized = normalizeFriendsError(err);
+          triggerErrorHaptic();
+          showToast('error', normalized.message);
+          if (normalized.kind === '404' || normalized.kind === '409') {
+            void refreshFriendsInternal('mutation');
+          }
+          throw normalized;
+        } finally {
+          pendingActionTrackerRef.current.release(friendshipId);
+          syncPendingActionState();
+        }
+      },
+      checkFriendRemovalPreflight: async (friendshipId: string): Promise<PreflightRemovalResult> => {
+        const serverPreflight = await friendsApi.getRemovalPreflight(friendshipId, localDataOwnerRef.current);
+        if (serverPreflight) return serverPreflight;
+        return { canRemove: true, blockedByDebt: false, unsettledAmount: 0 };
+      },
+      removeFriend: async (friendshipId: string) => {
+        if (!pendingActionTrackerRef.current.tryAcquire(friendshipId)) return;
+        syncPendingActionState();
+        try {
+          await friendsApi.deleteRelationship(friendshipId, localDataOwnerRef.current);
+          triggerSuccessHaptic();
+          showToast('success', 'Friend removed from your directory.');
+          await refreshFriendsInternal('mutation');
+        } catch (err) {
+          const normalized = normalizeFriendsError(err);
+          triggerErrorHaptic();
+          showToast('error', normalized.message);
+          if (normalized.kind === '404') {
+            void refreshFriendsInternal('mutation');
+          }
+          throw normalized;
+        } finally {
+          pendingActionTrackerRef.current.release(friendshipId);
+          syncPendingActionState();
+        }
+      },
+      createGuestFriend: async (input: CreateGuestInput) => {
+        const lockKey = `create-guest:${input.username.trim().toLowerCase()}`;
+        if (!pendingActionTrackerRef.current.tryAcquire(lockKey)) return;
+        syncPendingActionState();
+        try {
+          await friendsApi.createGuest(input, localDataOwnerRef.current);
+          triggerSuccessHaptic();
+          showToast('success', `Guest participant "${input.name.trim()}" added.`);
+          await refreshFriendsInternal('mutation');
+        } catch (err) {
+          const normalized = normalizeFriendsError(err);
+          triggerErrorHaptic();
+          showToast('error', normalized.message);
+          throw normalized;
+        } finally {
+          pendingActionTrackerRef.current.release(lockKey);
+          syncPendingActionState();
+        }
+      },
+      updateGuestAvatar: async (guestId: string, payload: UpdateGuestAvatarInput | string) => {
+        const target = friendshipsRef.current.find((f) => f.person.id === guestId);
+        if (target && !isGuestOwnedByUser(target, localDataOwnerRef.current)) {
+          const forbidden = new FriendsApiError({
+            kind: '403',
+            status: 403,
+            code: 'GUEST_NOT_OWNED',
+            action: 'none',
+            message: 'Only the guest owner can edit this avatar.',
+          });
+          triggerErrorHaptic();
+          showToast('error', forbidden.message);
+          throw forbidden;
+        }
+        if (!pendingActionTrackerRef.current.tryAcquire(guestId)) return;
+        syncPendingActionState();
+        const normalizedPayload: UpdateGuestAvatarInput =
+          typeof payload === 'string' ? { avatarId: payload } : payload;
+        try {
+          await friendsApi.updateGuestAvatar(guestId, normalizedPayload, localDataOwnerRef.current);
+          triggerSuccessHaptic();
+          showToast('success', 'Guest avatar updated.');
+          await refreshFriendsInternal('mutation');
+        } catch (err) {
+          const normalized = normalizeFriendsError(err);
+          triggerErrorHaptic();
+          showToast('error', normalized.message);
+          throw normalized;
+        } finally {
+          pendingActionTrackerRef.current.release(guestId);
+          syncPendingActionState();
+        }
       },
       addSplit: async (input) => {
-        let next = createSplitExpense(input);
+        const participantSnapshots = createParticipantSnapshotMap(input.participantIds, friends);
+        let next = {
+          ...createSplitExpense(input),
+          participantSnapshots,
+        };
         const nextTransactions = input.paidById === CURRENT_USER_ID
           ? [{
             id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -1050,18 +1593,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthPhase(isFullyComplete ? 'main' : 'setup');
       },
       beginVerification: async (response, channel, target) => {
-        if (!response.token || !response.user) {
+        if (!response.user && !target) {
           throw new Error('Authentication response was incomplete.');
         }
+        const resolvedUser = response.user ?? { email: channel === 'email' ? target : undefined, phone: channel === 'phone' ? target : undefined };
         const nextProfile: UserProfile = {
-          name: response.user.name || '',
-          userId: response.user.username || '',
-          monthlyIncome: Number(response.user.incomeAmountMinor?.slice(0, -2) || response.user.salary || 0),
+          name: resolvedUser.name || '',
+          userId: resolvedUser.username || '',
+          monthlyIncome: Number(resolvedUser.incomeAmountMinor?.slice(0, -2) || resolvedUser.salary || 0),
           cashInHand: 0,
           savings: 0,
-          phone: response.user.phone || phone,
+          phone: resolvedUser.phone || phone,
           countryCode,
-          email: response.user.email || '',
+          email: resolvedUser.email || (channel === 'email' ? target : ''),
         };
         const [firstName = '', ...lastNameParts] = nextProfile.name.trim().split(/\s+/);
         const ownerId = getAccountDataOwner(nextProfile);
@@ -1075,26 +1619,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const nextPreferences = nextProfile.email
           ? await updateLocalPreferences({ reportEmail: nextProfile.email.toLowerCase() }, ownerId)
           : preferences;
-        await writeSession({
-          accessToken: response.token,
-          refreshToken: response.refreshToken,
-          user: nextProfile as unknown as Record<string, unknown>,
-          isProfileComplete: false,
-          phoneVerified,
-          emailVerified,
-          onboardingStep,
-          dataOwnerId: getAccountDataOwner(nextProfile) ?? undefined,
-        });
-        await restoreAccountData(getAccountDataOwner(nextProfile));
+        // Only write a session if real backend tokens exist (signup OTP waits for verification before issuing JWTs)
+        if (response.token) {
+          await writeSession({
+            accessToken: response.token,
+            refreshToken: response.refreshToken,
+            user: nextProfile as unknown as Record<string, unknown>,
+            isProfileComplete: false,
+            phoneVerified,
+            emailVerified,
+            onboardingStep,
+            dataOwnerId: ownerId ?? undefined,
+          });
+        }
+        await restoreAccountData(ownerId);
         setPreferences(nextPreferences);
         setProfile(nextProfile);
         setProfileState((current) => ({ ...current, ...savedProfile, ...nextPreferences }));
         setOnboardingDraft((current) => ({
           ...current,
-          firstName: response.user?.name?.split(/\s+/)[0] || current.firstName,
-          lastName: response.user?.name?.split(/\s+/).slice(1).join(' ') || current.lastName,
-          email: response.user?.email || current.email,
-          phone: response.user?.phone || current.phone,
+          firstName: resolvedUser.name?.split(/\s+/)[0] || current.firstName,
+          lastName: resolvedUser.name?.split(/\s+/).slice(1).join(' ') || current.lastName,
+          email: resolvedUser.email || (channel === 'email' ? target : current.email),
+          phone: resolvedUser.phone || current.phone,
         }));
         setVerificationChannel(channel);
         setVerificationTarget(target);
@@ -1102,7 +1649,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthPhase('otp');
       },
     }),
-    [authPhase, restoreError, restoreLocalState, restoreAccountData, persistLocalData, runWithLocalLock, notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences, friends, splitGroups, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, phoneVerified, emailVerified, onboardingDraft, onboardingStep],
+    [authPhase, restoreError, restoreLocalState, restoreAccountData, clearInMemoryUserState, persistLocalData, runWithLocalLock, notifyBudgetThresholds, showToast, phone, countryCode, profile, profileState, preferences, friends, splitGroups, splits, transactions, budgets, goals, recurringPayments, verificationChannel, verificationTarget, verificationReturnPhase, passwordResetEmail, phoneVerified, emailVerified, onboardingDraft, onboardingStep, friendships, acceptedFriendships, incomingFriendships, outgoingFriendships, friendCounts, friendsLoading, friendsRefreshing, friendsError, friendsNormalizedError, friendsSyncMeta, pendingFriendActionIds, addFriendTriggerCount, refreshFriends, refreshFriendsInternal, syncPendingActionState],
   );
 
   return (

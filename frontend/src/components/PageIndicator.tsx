@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { colors } from '../theme';
+import { colors, radius, spacing } from '../theme';
 
 interface Props {
   count: number;
@@ -9,8 +9,8 @@ interface Props {
 }
 
 export function PageIndicator({ count, activeIndex, tone = 'forest' }: Props) {
-  const active = tone === 'lime' ? colors.surprise : '#0A2A1E';
-  const idle = tone === 'lime' ? 'rgba(255,255,255,0.22)' : 'rgba(10,42,30,0.18)';
+  const active = tone === 'lime' ? colors.surprise : colors.accentDark;
+  const idle = tone === 'lime' ? colors.heroTrackIdle : colors.border;
 
   return (
     <View style={styles.row}>
@@ -36,22 +36,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    gap: 6,
+    gap: spacing.xs,
   },
   dot: {
     width: 7,
     height: 7,
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
   dotActive: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
   heroBar: {
     flex: 1,
     height: 4,
-    borderRadius: 2,
+    borderRadius: radius.xxs,
   },
   heroBarActive: {
     height: 4,

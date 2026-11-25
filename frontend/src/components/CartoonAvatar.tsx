@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Circle, Path, Rect, G, Defs, ClipPath } from 'react-native-svg';
+import Svg, { Circle, Path, Rect, G } from 'react-native-svg';
 
 export interface CartoonAvatarMeta {
   id: string;
@@ -86,34 +86,40 @@ export function getCartoonAvatarMeta(id: string | null | undefined): CartoonAvat
 
 interface CartoonAvatarProps {
   id?: string | null;
+  avatarId?: string | null;
   size?: number;
   style?: StyleProp<ViewStyle>;
 }
 
-export function CartoonAvatar({ id, size = 64, style }: CartoonAvatarProps) {
-  const meta = getCartoonAvatarMeta(id);
-  const clipId = `avatar-clip-${meta.id}-${size}`;
+export const CartoonAvatar = React.memo(function CartoonAvatar({
+  id,
+  avatarId,
+  size = 64,
+  style,
+}: CartoonAvatarProps) {
+  const meta = getCartoonAvatarMeta(id ?? avatarId);
 
   return (
-    <View style={[{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }, style]}>
+    <View
+      shouldRasterizeIOS
+      renderToHardwareTextureAndroid
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          overflow: 'hidden',
+          backgroundColor: meta.backgroundColor,
+        },
+        style,
+      ]}
+    >
       <Svg width={size} height={size} viewBox="0 0 100 100">
-        <Defs>
-          <ClipPath id={clipId}>
-            <Circle cx="50" cy="50" r="50" />
-          </ClipPath>
-        </Defs>
-
-        <G clipPath={`url(#${clipId})`}>
-          {/* Background circle */}
-          <Rect x="0" y="0" width="100" height="100" fill={meta.backgroundColor} />
-
-          {/* Render individual cartoon character */}
-          {renderCharacter(meta.id)}
-        </G>
+        {renderCharacter(meta.id)}
       </Svg>
     </View>
   );
-}
+});
 
 function renderCharacter(id: string) {
   switch (id) {

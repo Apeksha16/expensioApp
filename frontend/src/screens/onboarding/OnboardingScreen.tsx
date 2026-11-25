@@ -14,24 +14,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OnboardingVisual } from '../../components/OnboardingVisual';
 import { PageIndicator } from '../../components/PageIndicator';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
 import { onboardingSlides } from '../../data/mock';
-import { colors, spacing } from '../../theme';
+import { colors, layout, radius, spacing, typography } from '../../theme';
 import type { OnboardingSlide } from '../../types';
 
 export function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  const pageWidth = Math.min(windowWidth, 480);
-  const contentWidth = pageWidth - spacing.lg * 2;
+  const pageWidth = Math.min(windowWidth, layout.maxContentWidth);
+  const contentWidth = pageWidth - layout.screenMargin * 2;
   const { setAuthPhase } = useApp();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<OnboardingSlide>>(null);
   const isLast = index === onboardingSlides.length - 1;
   const isBudget = index === 2;
   const isDark = index === 0 || index === 3;
-  const pageBackground = isBudget ? '#C8F169' : isDark ? '#0A2A1E' : '#F3F0E6';
-  const foreground = isDark ? colors.white : '#0A2A1E';
+  const pageBackground = isBudget ? colors.surprise : isDark ? colors.heroBg : colors.heroCardBg;
+  const foreground = isDark ? colors.heroText : colors.accentDark;
 
   const goNext = () => {
     if (isLast) {
@@ -53,22 +54,29 @@ export function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: pageBackground }]}>
+      <ScreenStatusBar surface={isDark ? 'dark' : isBudget ? 'lime' : 'light'} />
 
       <View
         style={[
           styles.frame,
           {
             width: pageWidth,
-            paddingHorizontal: spacing.lg,
-            paddingTop: insets.top + 8,
-            paddingBottom: insets.bottom + 16,
+            paddingHorizontal: layout.screenMargin,
+            paddingTop: insets.top + spacing.xs,
+            paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.xs,
           },
         ]}
       >
         <PageIndicator count={onboardingSlides.length} activeIndex={index} tone={isDark ? 'lime' : 'forest'} />
         <View style={styles.topBar}>
           {isLast ? (
-            <Pressable onPress={goBack} hitSlop={10} style={styles.iconBtn}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Previous slide"
+              onPress={goBack}
+              hitSlop={10}
+              style={styles.iconBtn}
+            >
               <Ionicons name="chevron-back" size={22} color={foreground} />
             </Pressable>
           ) : (
@@ -81,7 +89,12 @@ export function OnboardingScreen() {
           )}
 
           {!isLast ? (
-            <Pressable onPress={() => setAuthPhase('login')} style={styles.skipButton}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Skip onboarding"
+              onPress={() => setAuthPhase('login')}
+              style={styles.skipButton}
+            >
               <Text style={[styles.skip, isDark && styles.skipLight, isBudget && styles.skipBudget]}>Skip</Text>
             </Pressable>
           ) : <View style={styles.skipButton} />}
@@ -113,8 +126,12 @@ export function OnboardingScreen() {
                   <OnboardingVisual visual={item.visual} />
                 </View>
                 <View style={styles.copy}>
-                  <Text style={[styles.title, itemDark && styles.titleLight, itemBudget && styles.budgetTitle]}>{item.title}</Text>
-                  <Text style={[styles.subtitle, itemDark && styles.subtitleLight, itemBudget && styles.budgetSubtitle]}>{item.subtitle}</Text>
+                  <Text style={[styles.title, itemDark && styles.titleLight, itemBudget && styles.budgetTitle]}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.subtitle, itemDark && styles.subtitleLight, itemBudget && styles.budgetSubtitle]}>
+                    {item.subtitle}
+                  </Text>
                 </View>
               </View>
             );
@@ -122,14 +139,13 @@ export function OnboardingScreen() {
         />
 
         <PrimaryButton
-            title={isLast ? 'Get Started' : 'Next  →'}
-            onPress={goNext}
-            labelColor={isDark ? colors.accentDark : '#C8F169'}
-            style={{
-              ...styles.cta,
-              backgroundColor: isDark ? colors.surprise : '#0A2A1E',
-            }}
-          />
+          title={isLast ? 'Get Started' : 'Next  →'}
+          onPress={goNext}
+          variant={isDark ? 'lime' : 'primary'}
+          surface={isDark ? 'dark' : 'light'}
+          labelColor={isDark ? colors.accentDark : colors.surprise}
+          style={!isDark ? styles.ctaLight : styles.ctaDark}
+        />
       </View>
     </View>
   );
@@ -142,11 +158,11 @@ const styles = StyleSheet.create({
   },
   frame: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.transparent,
   },
   topBar: {
-    height: 44,
-    marginTop: 8,
+    height: layout.headerButtonSize,
+    marginTop: spacing.xs,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -154,24 +170,24 @@ const styles = StyleSheet.create({
   brandLockup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   brandMark: {
     width: 28,
     height: 28,
-    borderRadius: 9,
+    borderRadius: radius.sm,
     backgroundColor: colors.surprise,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandMarkText: {
+    ...typography.h3,
     color: colors.accentDark,
-    fontSize: 18,
     fontWeight: '800',
   },
   brandLight: {
+    ...typography.h3,
     color: colors.white,
-    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.8,
   },
@@ -179,27 +195,27 @@ const styles = StyleSheet.create({
     color: colors.accentDark,
   },
   iconBtn: {
-    width: 44,
-    height: 44,
+    width: layout.headerButtonSize,
+    height: layout.headerButtonSize,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
   skipButton: {
-    width: 44,
-    height: 44,
+    minWidth: layout.headerButtonSize,
+    height: layout.headerButtonSize,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   skip: {
-    fontSize: 15,
+    ...typography.bodyMedium,
+    color: colors.textSecondary,
     fontWeight: '600',
-    color: '#4A5A52',
   },
   skipLight: {
-    color: 'rgba(255,255,255,0.88)',
+    color: colors.heroTextMuted,
   },
   skipBudget: {
-    color: '#27463A',
+    color: colors.accentDark,
   },
   slide: {
     flex: 1,
@@ -215,45 +231,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   copy: {
-    marginBottom: 32,
+    marginBottom: spacing.xl,
+    gap: spacing.xs,
   },
   title: {
-    fontSize: 38,
-    lineHeight: 40,
-    fontWeight: '800',
-    letterSpacing: -0.76,
-    color: '#0A2A1E',
+    ...typography.display,
+    color: colors.accentDark,
   },
   titleLight: {
-    color: '#F3F0E6',
-    marginTop: 0,
-    fontSize: 38,
-    lineHeight: 40,
-    letterSpacing: -0.76,
+    color: colors.heroText,
   },
   subtitle: {
-    marginTop: 0,
-    fontSize: 17,
-    lineHeight: 25,
-    color: '#4A5A52',
+    ...typography.body,
+    color: colors.textSecondary,
     maxWidth: 300,
   },
   subtitleLight: {
-    color: 'rgba(226, 240, 230, 0.82)',
-    fontSize: 17,
-    lineHeight: 25,
-    maxWidth: 300,
+    color: colors.heroTextMuted,
   },
   budgetTitle: {
     color: colors.accentDark,
   },
   budgetSubtitle: {
-    color: '#27463A',
+    color: colors.accentDark,
   },
-  cta: {
+  ctaDark: {
     width: '100%',
-    height: 60,
-    borderRadius: 30,
+    minHeight: layout.authButtonHeight,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  ctaLight: {
+    width: '100%',
+    minHeight: layout.authButtonHeight,
+    backgroundColor: colors.accentDark,
     shadowOpacity: 0,
     elevation: 0,
   },

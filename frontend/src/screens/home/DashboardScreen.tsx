@@ -1,21 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { TransactionItem } from '../../components/TransactionItem';
 import type { AppModule } from '../../data/modules';
 import { useApp } from '../../context/AppContext';
 import { getProfileAvatar } from '../../data/avatars';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import { moduleRegistryService } from '../../services/moduleRegistryService';
-import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
 import { formatINR, getGreeting } from '../../utils/format';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
 
 export function DashboardScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { profileState, profile, transactions } = useApp();
   const displayName = [profileState.firstName, profileState.lastName].filter(Boolean).join(' ').trim();
   const firstName = profileState.firstName.trim() || displayName.split(/\s+/)[0] || 'there';
@@ -29,7 +32,7 @@ export function DashboardScreen({ navigation }: Props) {
       navigation.navigate('Add', { type: 'expense' });
       return;
     }
-    navigation.navigate(module.route);
+    navigation.navigate(module.route as never);
   };
 
   const todayLabel = new Date().toLocaleDateString(undefined, {
@@ -62,6 +65,7 @@ export function DashboardScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
+      <ScreenStatusBar surface="light" focused={isFocused} />
       <ScrollView
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="none"
@@ -109,7 +113,7 @@ export function DashboardScreen({ navigation }: Props) {
             <View style={styles.balanceStatDivider} />
             <View style={styles.balanceStat}>
               <View style={styles.statHeading}>
-                <Ionicons name="arrow-up" size={14} color="#FFB8AF" />
+                <Ionicons name="arrow-up" size={14} color={colors.heroErrorAccent} />
                 <Text style={styles.balanceStatLabel}>Expenses</Text>
               </View>
               <Text style={styles.balanceStatValue}>{formatINR(monthExpenses)}</Text>
@@ -182,7 +186,7 @@ export function DashboardScreen({ navigation }: Props) {
                 <Ionicons
                   name="chevron-forward"
                   size={15}
-                  color={index === 0 ? 'rgba(255,255,255,0.68)' : colors.textTertiary}
+                  color={index === 0 ? colors.heroTextMuted : colors.textTertiary}
                   style={styles.moduleArrow}
                 />
               </Pressable>
@@ -265,33 +269,33 @@ const styles = StyleSheet.create({
   greetingCopy: { flex: 1, minWidth: 0, gap: 1 },
   greeting: { ...typography.captionMedium, color: colors.textSecondary },
   name: { ...typography.h2, color: colors.textPrimary },
-  wave: { fontSize: 17 },
+  wave: { fontSize: typography.h3.fontSize },
   avatarButton: { width: 48, height: 48, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise, borderWidth: 2, borderColor: colors.white },
-  avatar: { fontSize: 25 },
+  avatar: { fontSize: typography.h2.fontSize },
   avatarDot: { position: 'absolute', right: 0, bottom: 1, width: 11, height: 11, borderRadius: radius.full, backgroundColor: colors.income, borderWidth: 2, borderColor: colors.background },
   heroCard: { minHeight: 256, overflow: 'hidden', justifyContent: 'space-between', padding: spacing.lg, borderRadius: radius.xxl, backgroundColor: colors.accentDark, ...shadows.card },
   heroTopline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, zIndex: 1 },
   heroMark: { width: 26, height: 26, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surprise },
-  heroEyebrow: { ...typography.micro, color: 'rgba(255,255,255,0.72)', fontWeight: '700', letterSpacing: 0.8, flex: 1 },
-  todayPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.xs, paddingVertical: 6, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.12)' },
+  heroEyebrow: { ...typography.micro, color: colors.heroTextMuted, fontWeight: '700', letterSpacing: 0.8, flex: 1 },
+  todayPill: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: radius.full, backgroundColor: colors.heroGlass },
   todayDot: { width: 6, height: 6, borderRadius: radius.full, backgroundColor: colors.surprise },
   todayText: { ...typography.micro, color: colors.white },
-  balanceLabel: { ...typography.micro, color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: 0.9, marginTop: spacing.lg, zIndex: 1 },
-  balanceValue: { ...typography.hero, color: colors.white, fontSize: 30, lineHeight: 38, marginTop: 2, zIndex: 1 },
-  balanceDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.16)', marginVertical: spacing.sm, zIndex: 1 },
+  balanceLabel: { ...typography.micro, color: colors.heroTextMuted, fontWeight: '700', letterSpacing: 0.9, marginTop: spacing.lg, zIndex: 1 },
+  balanceValue: { ...typography.h1, color: colors.white, marginTop: 2, zIndex: 1 },
+  balanceDivider: { height: 1, backgroundColor: colors.heroGlassBorder, marginVertical: spacing.sm, zIndex: 1 },
   balanceStats: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, zIndex: 1 },
   balanceStat: { flex: 1, gap: spacing.xxs },
-  statHeading: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  balanceStatLabel: { ...typography.micro, color: 'rgba(255,255,255,0.68)' },
+  statHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
+  balanceStatLabel: { ...typography.micro, color: colors.heroTextMuted },
   balanceStatValue: { ...typography.bodySemibold, color: colors.white },
-  balanceStatDivider: { width: 1, height: 38, backgroundColor: 'rgba(255,255,255,0.2)' },
+  balanceStatDivider: { width: 1, height: 38, backgroundColor: colors.heroGlassBorder },
   heroActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.md, zIndex: 1 },
-  primaryAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.surprise },
+  primaryAction: { minHeight: layout.headerButtonSize, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.surprise },
   primaryActionText: { ...typography.captionMedium, color: colors.accentDark },
-  secondaryAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.13)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  secondaryAction: { width: layout.headerButtonSize, height: layout.headerButtonSize, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.heroGlass, borderWidth: 1, borderColor: colors.heroGlassBorder },
   heroDecoration: { position: 'absolute', right: -25, bottom: -40, width: 185, height: 185 },
-  heroOrbLarge: { position: 'absolute', right: 0, bottom: 0, width: 170, height: 170, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.045)' },
-  heroOrbSmall: { position: 'absolute', right: 28, bottom: 28, width: 110, height: 110, borderRadius: 60, borderWidth: 1, borderColor: 'rgba(198,243,107,0.18)' },
+  heroOrbLarge: { position: 'absolute', right: 0, bottom: 0, width: 170, height: 170, borderRadius: radius.full, backgroundColor: colors.heroGlassSubtle },
+  heroOrbSmall: { position: 'absolute', right: 28, bottom: 28, width: 110, height: 110, borderRadius: radius.full, borderWidth: 1, borderColor: colors.heroRingOuter },
   section: { gap: spacing.md },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },

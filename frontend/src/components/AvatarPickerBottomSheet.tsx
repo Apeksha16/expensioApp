@@ -1,20 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  BackHandler,
   Dimensions,
   Easing,
+  FlatList,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, layout, radius, shadows, spacing, typography } from '../theme';
 import {
   CARTOON_AVATARS,
   CartoonAvatar,
@@ -42,12 +45,16 @@ interface AvatarPickerBottomSheetProps {
   selectedAvatarId?: string | null;
   onSelect: (avatarId: string) => void;
   onClose: () => void;
+  title?: string;
+  confirmLabel?: string;
+  showNames?: boolean;
 }
 
 interface CarouselItemProps {
   item: typeof INFINITE_AVATARS[0];
   index: number;
   scrollX: Animated.Value;
+  showName: boolean;
   onPress: () => void;
 }
 
@@ -55,6 +62,7 @@ const AvatarCarouselItem = React.memo(function AvatarCarouselItem({
   item,
   index,
   scrollX,
+  showName,
   onPress,
 }: CarouselItemProps) {
   const itemCenter = index * SNAP_INTERVAL;
@@ -78,9 +86,10 @@ const AvatarCarouselItem = React.memo(function AvatarCarouselItem({
     extrapolate: 'clamp',
   });
 
-  const nameColor = ringOpacity.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#7A877E', '#0B2B1F'],
+  const textOpacity = scrollX.interpolate({
+    inputRange: [itemCenter - SNAP_INTERVAL * 0.65, itemCenter, itemCenter + SNAP_INTERVAL * 0.65],
+    outputRange: [0.55, 1, 0.55],
+    extrapolate: 'clamp',
   });
 
   return (
@@ -99,8 +108,12 @@ const AvatarCarouselItem = React.memo(function AvatarCarouselItem({
           },
         ]}
       >
-        {/* Pure circular avatar container (no square card) */}
-        <View style={styles.circleContainer}>
+        {/* Pure circular avatar container rasterized as GPU texture for smooth 60fps scroll */}
+        <View
+          shouldRasterizeIOS
+          renderToHardwareTextureAndroid
+          style={styles.circleContainer}
+        >
           <CartoonAvatar id={item.id} size={78} />
         </View>
 
@@ -115,45 +128,211 @@ const AvatarCarouselItem = React.memo(function AvatarCarouselItem({
           pointerEvents="none"
           style={[styles.checkBadge, { opacity: ringOpacity }]}
         >
-          <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+          <Ionicons name="checkmark" size={13} color={colors.white} />
         </Animated.View>
       </Animated.View>
 
-      {/* Name below avatar */}
-      <Animated.Text
-        style={[
-          styles.avatarNameText,
-          { color: nameColor },
-        ]}
-        numberOfLines={1}
-      >
-        {item.name}
-      </Animated.Text>
+      {/* Name below avatar (pure native-driver opacity) */}
+      {showName ? (
+        <Animated.Text
+          style={[
+            styles.avatarNameText,
+            { opacity: textOpacity },
+          ]}
+          numberOfLines={1}
+        >
+          {item.name}
+        </Animated.Text>
+      ) : null}
     </Pressable>
   );
 });
+
+export interface AvatarCarouselProps {
+  selectedAvatarId?: string | null;
+  onChange?: (avatarId: string) => void;
+  showNames?: boolean;
+  containerStyle?: ViewStyle;
+}
+
+export function AvatarCarousel({
+  selectedAvatarId,
+  onChange,
+  showNames = true,
+  containerStyle,
+}: AvatarCarouselProps) {
+  const [containerWidth, setContainerWidth] = useState(() => Dimensions.get('window').width);
+  const sidePadding = Math.max(0, (containerWidth - ITEM_WIDTH) / 2);
+
+  const initialLoopedIndex = useMemo(() => {
+    const baseIndex = Math.max(
+      0,
+      CARTOON_AVATARS.findIndex((a) => a.id === selectedAvatarId),
+    );
+    return MIDDLE_SET * CARTOON_AVATARS.length + (baseIndex >= 0 ? baseIndex : 0);
+  }, []);
+
+  const activeIndexRef = useRef(initialLoopedIndex);
+  const listRef = useRef<FlatList<(typeof INFINITE_AVATARS)[number]>>(null);
+  const scrollX = useRef(new Animated.Value(initialLoopedIndex * SNAP_INTERVAL)).current;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    const targetBase = Math.max(
+      0,
+      CARTOON_AVATARS.findIndex((a) => a.id === selectedAvatarId),
+    );
+    const currentAvatar = CARTOON_AVATARS[activeIndexRef.current % CARTOON_AVATARS.length];
+    if (currentAvatar?.id === selectedAvatarId) return;
+    const targetIndex = MIDDLE_SET * CARTOON_AVATARS.length + (targetBase >= 0 ? targetBase : 0);
+    activeIndexRef.current = targetIndex;
+    scrollX.setValue(targetIndex * SNAP_INTERVAL);
+    listRef.current?.scrollToOffset({
+      offset: targetIndex * SNAP_INTERVAL,
+      animated: false,
+    });
+  }, [scrollX, selectedAvatarId]);
+
+  const commitSettledIndex = useCallback(
+    (offsetX: number, allowLoopReset: boolean) => {
+      const rawIndex = Math.round(offsetX / SNAP_INTERVAL);
+      const bounded = Math.max(0, Math.min(INFINITE_AVATARS.length - 1, rawIndex));
+      let nextIndex = bounded;
+
+      if (allowLoopReset && (bounded < CARTOON_AVATARS.length || bounded >= CARTOON_AVATARS.length * 4)) {
+        nextIndex = MIDDLE_SET * CARTOON_AVATARS.length + (bounded % CARTOON_AVATARS.length);
+        const normalizedOffset = nextIndex * SNAP_INTERVAL;
+        listRef.current?.scrollToOffset({ offset: normalizedOffset, animated: false });
+        scrollX.setValue(normalizedOffset);
+      }
+
+      if (nextIndex !== activeIndexRef.current) {
+        activeIndexRef.current = nextIndex;
+        const selected = CARTOON_AVATARS[nextIndex % CARTOON_AVATARS.length];
+        if (selected) onChangeRef.current?.(selected.id);
+      }
+    },
+    [scrollX],
+  );
+
+  const handleScrollEndDrag = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const velocityX = Math.abs(event.nativeEvent.velocity?.x ?? 0);
+      if (velocityX < 0.05) {
+        commitSettledIndex(event.nativeEvent.contentOffset.x, true);
+      }
+    },
+    [commitSettledIndex],
+  );
+
+  const handleMomentumScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      commitSettledIndex(event.nativeEvent.contentOffset.x, true);
+    },
+    [commitSettledIndex],
+  );
+
+  const scrollToItem = useCallback((index: number) => {
+    activeIndexRef.current = index;
+    const selected = CARTOON_AVATARS[index % CARTOON_AVATARS.length];
+    if (selected) onChangeRef.current?.(selected.id);
+    listRef.current?.scrollToOffset({
+      offset: index * SNAP_INTERVAL,
+      animated: true,
+    });
+  }, []);
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<(typeof INFINITE_AVATARS)[number]> | null | undefined, index: number) => ({
+      length: SNAP_INTERVAL,
+      offset: SNAP_INTERVAL * index,
+      index,
+    }),
+    [],
+  );
+
+  const renderCarouselItem = useCallback(
+    ({ item, index }: { item: (typeof INFINITE_AVATARS)[number]; index: number }) => (
+      <AvatarCarouselItem
+        item={item}
+        index={index}
+        scrollX={scrollX}
+        showName={showNames}
+        onPress={() => scrollToItem(index)}
+      />
+    ),
+    [scrollToItem, scrollX, showNames],
+  );
+
+  const scrollEvent = useMemo(
+    () =>
+      Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+        useNativeDriver: true,
+      }),
+    [scrollX],
+  );
+
+  return (
+    <View
+      style={[
+        styles.carouselContainer,
+        !showNames && styles.carouselContainerCompact,
+        containerStyle,
+      ]}
+      onLayout={(e) => {
+        const width = e.nativeEvent.layout.width;
+        if (width > 0 && Math.abs(width - containerWidth) > 1) {
+          setContainerWidth(width);
+          requestAnimationFrame(() => {
+            listRef.current?.scrollToOffset({
+              offset: activeIndexRef.current * SNAP_INTERVAL,
+              animated: false,
+            });
+          });
+        }
+      }}
+    >
+      <Animated.FlatList
+        ref={listRef as any}
+        horizontal
+        data={INFINITE_AVATARS}
+        keyExtractor={(item) => item.key}
+        renderItem={renderCarouselItem}
+        getItemLayout={getItemLayout}
+        initialScrollIndex={initialLoopedIndex}
+        initialNumToRender={5}
+        maxToRenderPerBatch={3}
+        windowSize={3}
+        removeClippedSubviews={Platform.OS !== 'web'}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: sidePadding }}
+        snapToInterval={SNAP_INTERVAL}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        onScroll={scrollEvent}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        keyboardShouldPersistTaps="always"
+      />
+    </View>
+  );
+}
 
 export function AvatarPickerBottomSheet({
   visible,
   selectedAvatarId,
   onSelect,
   onClose,
+  title = 'Choose your avatar',
+  confirmLabel = 'Set as profile avatar',
+  showNames = true,
 }: AvatarPickerBottomSheetProps) {
   const insets = useSafeAreaInsets();
-  const [containerWidth, setContainerWidth] = useState(() => Dimensions.get('window').width);
-
-  // Exact padding to place active item at dead center
-  const sidePadding = Math.max(0, (containerWidth - ITEM_WIDTH) / 2);
-
-  const baseIndex = Math.max(
-    0,
-    CARTOON_AVATARS.findIndex((a) => a.id === selectedAvatarId)
+  const [draftAvatarId, setDraftAvatarId] = useState<string>(
+    selectedAvatarId ?? CARTOON_AVATARS[0].id,
   );
-  const initialLoopedIndex = MIDDLE_SET * CARTOON_AVATARS.length + (baseIndex >= 0 ? baseIndex : 0);
-
-  const [activeIndex, setActiveIndex] = useState(initialLoopedIndex);
-  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
-  const scrollX = useRef(new Animated.Value(initialLoopedIndex * SNAP_INTERVAL)).current;
 
   // Modal entrance / exit animation
   const sheetAnim = useRef(new Animated.Value(0)).current;
@@ -162,13 +341,7 @@ export function AvatarPickerBottomSheet({
   useEffect(() => {
     if (visible) {
       setIsRendered(true);
-      const targetBase = Math.max(
-        0,
-        CARTOON_AVATARS.findIndex((a) => a.id === selectedAvatarId)
-      );
-      const targetIndex = MIDDLE_SET * CARTOON_AVATARS.length + (targetBase >= 0 ? targetBase : 0);
-      setActiveIndex(targetIndex);
-      scrollX.setValue(targetIndex * SNAP_INTERVAL);
+      setDraftAvatarId(selectedAvatarId ?? CARTOON_AVATARS[0].id);
 
       Animated.timing(sheetAnim, {
         toValue: 1,
@@ -177,10 +350,11 @@ export function AvatarPickerBottomSheet({
         useNativeDriver: true,
       }).start();
 
-      scrollRef.current?.scrollTo({
-        x: targetIndex * SNAP_INTERVAL,
-        animated: false,
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        handleClose();
+        return true;
       });
+      return () => backHandler.remove();
     } else if (isRendered) {
       Animated.timing(sheetAnim, {
         toValue: 0,
@@ -191,7 +365,7 @@ export function AvatarPickerBottomSheet({
         setIsRendered(false);
       });
     }
-  }, [visible, selectedAvatarId, sheetAnim, scrollX]);
+  }, [visible, selectedAvatarId, sheetAnim]);
 
   const handleClose = () => {
     Animated.timing(sheetAnim, {
@@ -206,43 +380,13 @@ export function AvatarPickerBottomSheet({
   };
 
   const handleConfirm = () => {
-    const selected = CARTOON_AVATARS[activeIndex % CARTOON_AVATARS.length] ?? CARTOON_AVATARS[0];
-    onSelect(selected.id);
+    onSelect(draftAvatarId);
     handleClose();
-  };
-
-  const handleScrollUpdate = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const computedIndex = Math.round(offsetX / SNAP_INTERVAL);
-    if (computedIndex >= 0 && computedIndex < INFINITE_AVATARS.length && computedIndex !== activeIndex) {
-      setActiveIndex(computedIndex);
-    }
-  };
-
-  const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(offsetX / SNAP_INTERVAL);
-    // Silent loop reset if user scrolled towards edges of repeated sets
-    if (currentIndex < 8 || currentIndex >= 8 * 4) {
-      const normalizedIndex = MIDDLE_SET * 8 + (currentIndex % 8);
-      const normalizedOffset = normalizedIndex * SNAP_INTERVAL;
-      scrollRef.current?.scrollTo({ x: normalizedOffset, animated: false });
-      scrollX.setValue(normalizedOffset);
-      setActiveIndex(normalizedIndex);
-    }
-  };
-
-  const scrollToItem = (index: number) => {
-    setActiveIndex(index);
-    scrollRef.current?.scrollTo({
-      x: index * SNAP_INTERVAL,
-      animated: true,
-    });
   };
 
   if (!isRendered) return null;
 
-  const activeAvatar = CARTOON_AVATARS[activeIndex % CARTOON_AVATARS.length] ?? CARTOON_AVATARS[0];
+  const activeAvatar = CARTOON_AVATARS.find((a) => a.id === draftAvatarId) ?? CARTOON_AVATARS[0];
 
   const backdropOpacity = sheetAnim.interpolate({
     inputRange: [0, 1],
@@ -285,7 +429,7 @@ export function AvatarPickerBottomSheet({
 
           {/* Header without subheading */}
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Choose your avatar</Text>
+            <Text style={styles.sheetTitle}>{title}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close avatar picker"
@@ -293,53 +437,21 @@ export function AvatarPickerBottomSheet({
               onPress={handleClose}
               style={styles.closeButton}
             >
-              <Ionicons name="close" size={20} color="#0B2B1F" />
+              <Ionicons name="close" size={20} color={colors.accentDark} />
             </Pressable>
           </View>
 
           {/* Smooth Infinite Horizontal Carousel */}
-          <View
-            style={styles.carouselContainer}
-            onLayout={(e) => {
-              const width = e.nativeEvent.layout.width;
-              if (width > 0 && Math.abs(width - containerWidth) > 1) {
-                setContainerWidth(width);
-              }
-            }}
-          >
-            <Animated.ScrollView
-              ref={scrollRef as any}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentOffset={{ x: initialLoopedIndex * SNAP_INTERVAL, y: 0 }}
-              contentContainerStyle={{ paddingHorizontal: sidePadding }}
-              snapToInterval={SNAP_INTERVAL}
-              snapToAlignment="start"
-              decelerationRate="fast"
-              scrollEventThrottle={16}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                { useNativeDriver: true, listener: handleScrollUpdate }
-              )}
-              onMomentumScrollEnd={handleMomentumScrollEnd}
-              keyboardShouldPersistTaps="always"
-            >
-              {INFINITE_AVATARS.map((item, index) => (
-                <AvatarCarouselItem
-                  key={item.key}
-                  item={item}
-                  index={index}
-                  scrollX={scrollX}
-                  onPress={() => scrollToItem(index)}
-                />
-              ))}
-            </Animated.ScrollView>
-          </View>
+          <AvatarCarousel
+            selectedAvatarId={draftAvatarId}
+            onChange={setDraftAvatarId}
+            showNames={showNames}
+          />
 
           {/* Confirm Button */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Set ${activeAvatar.name} as profile avatar`}
+            accessibilityLabel={`Select ${activeAvatar.name} avatar`}
             onPress={handleConfirm}
             style={({ pressed }) => [
               styles.selectButton,
@@ -347,7 +459,7 @@ export function AvatarPickerBottomSheet({
             ]}
           >
             <Text style={styles.selectButtonText}>
-              Set as profile avatar
+              {confirmLabel}
             </Text>
           </Pressable>
         </Animated.View>
@@ -363,73 +475,63 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(11, 43, 31, 0.48)',
+    backgroundColor: colors.overlay,
   },
   sheetContainer: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: layout.maxContentWidth,
     alignSelf: 'center',
-    backgroundColor: '#F4F3EC',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    gap: 18,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#0B2B1F',
-        shadowOffset: { width: 0, height: -8 },
-        shadowOpacity: 0.16,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 16,
-      },
-    }),
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    paddingTop: spacing.sm,
+    paddingHorizontal: layout.screenMargin,
+    gap: spacing.md,
+    ...shadows.card,
   },
   sheetHandleWrap: {
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: spacing.xxs,
   },
   sheetHandle: {
     width: 40,
-    height: 4.5,
-    borderRadius: 3,
-    backgroundColor: '#D2D9CE',
+    height: 4,
+    borderRadius: radius.xxs,
+    backgroundColor: colors.border,
   },
   sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 4,
+    paddingTop: spacing.xxs,
   },
   sheetTitle: {
-    color: '#0B2B1F',
-    fontSize: 20,
-    lineHeight: 25,
-    fontWeight: '800',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    ...typography.h2,
+    color: colors.accentDark,
   },
   closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    width: layout.headerButtonSize,
+    height: layout.headerButtonSize,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E4E8DE',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   carouselContainer: {
     height: 156,
     justifyContent: 'center',
-    marginHorizontal: -20, // Bleed full-width across the sheet for edge-to-edge carousel
+    marginHorizontal: -layout.screenMargin,
+  },
+  carouselContainerCompact: {
+    height: 112,
   },
   itemColumn: {
     width: ITEM_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   itemAnimatedWrap: {
     width: 96,
@@ -441,68 +543,56 @@ const styles = StyleSheet.create({
   circleContainer: {
     width: 82,
     height: 82,
-    borderRadius: 41,
+    borderRadius: radius.full,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#0B2B1F',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    ...shadows.soft,
   },
   activeRing: {
     position: 'absolute',
-    top: 4,
-    left: 4,
-    right: 4,
-    bottom: 4,
-    borderRadius: 44,
+    top: spacing.xxs,
+    left: spacing.xxs,
+    right: spacing.xxs,
+    bottom: spacing.xxs,
+    borderRadius: radius.full,
     borderWidth: 3,
-    borderColor: '#0B2B1F',
+    borderColor: colors.accentDark,
   },
   checkBadge: {
     position: 'absolute',
-    right: 4,
-    bottom: 4,
+    right: spacing.xxs,
+    bottom: spacing.xxs,
     width: 22,
     height: 22,
-    borderRadius: 11,
-    backgroundColor: '#0B2B1F',
+    borderRadius: radius.full,
+    backgroundColor: colors.accentDark,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarNameText: {
-    fontSize: 13,
+    ...typography.captionMedium,
+    color: colors.accentDark,
     fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
     textAlign: 'center',
   },
   selectButton: {
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#0B3D2B',
+    height: layout.buttonHeight,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   selectButtonPressed: {
     opacity: 0.9,
   },
   selectButtonText: {
-    color: '#F4F3EC',
-    fontSize: 14,
-    fontWeight: '800',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    ...typography.bodySemibold,
+    color: colors.textInverse,
   },
 });

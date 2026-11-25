@@ -1,64 +1,64 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import { useApp } from '../../context/AppContext';
-import { radius } from '../../theme';
+import { colors, layout, radius, shadows, spacing, typography } from '../../theme';
 
 export function AuthEntryScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { setAuthPhase } = useApp();
+  const cardWidth = Math.min(width, layout.maxContentWidth);
 
   return (
     <View style={styles.screen}>
+      <ScreenStatusBar surface="dark" />
       <ScrollView
         bounces={false}
-        keyboardShouldPersistTaps="always"
-        keyboardDismissMode="none"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         contentContainerStyle={[
           styles.container,
           {
-            paddingTop: insets.top + 8,
-            paddingBottom: insets.bottom + 16,
-            minHeight: 844,
+            paddingTop: insets.top + spacing.xs,
+            paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.xs,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Pressable onPress={() => setAuthPhase('onboarding')} hitSlop={10} style={styles.tapTarget}>
-            <Ionicons name="chevron-back" size={24} color="#F3F0E6" />
-          </Pressable>
-          <View style={styles.brand}>
-            <View style={styles.brandMark}><Text style={styles.brandMarkText}>e</Text></View>
-            <Text style={styles.brandText}>expensio</Text>
-          </View>
-          <View style={styles.tapTarget} />
-        </View>
+        <ScreenHeader
+          tone="dark"
+          onBack={() => setAuthPhase('onboarding')}
+          backAccessibilityLabel="Back to onboarding"
+          showBrand
+        />
 
-        <View style={[styles.cardStack, { width, marginLeft: -24 }]}>
-          <View style={[styles.stackCard, styles.backCard, { left: 58, right: 58 }]}>
+        <View style={[styles.cardStack, { width: cardWidth, marginLeft: -layout.screenMargin }]}>
+          <View style={[styles.stackCard, styles.backCard]}>
             <View style={styles.cardHeader}>
               <View style={styles.smallIconTile}>
-                <MaterialCommunityIcons name="silverware-fork-knife" size={15} color="#0A2A1E" />
+                <MaterialCommunityIcons name="silverware-fork-knife" size={15} color={colors.accentDark} />
               </View>
               <Text style={styles.backCardTitle}>Shared expenses</Text>
               <View style={styles.placeholderValue} />
             </View>
           </View>
 
-          <View style={[styles.stackCard, styles.middleCard, { left: 32, right: 32 }]}>
+          <View style={[styles.stackCard, styles.middleCard]}>
             <View style={styles.cardHeader}>
               <View style={styles.smallIconTileMuted}>
-                <Ionicons name="flag-outline" size={15} color="#C8F169" />
+                <Ionicons name="flag-outline" size={15} color={colors.surprise} />
               </View>
-              <Text style={styles.middleCardTitle}>Goals & plans</Text>
+              <Text style={styles.middleCardTitle}>Goals &amp; plans</Text>
             </View>
             <View style={styles.middleTrack} />
           </View>
 
-          <View style={[styles.stackCard, styles.frontCard, { left: 12, right: 12 }]}>
+          <View style={[styles.stackCard, styles.frontCard]}>
             <View style={styles.frontCopy}>
               <Text style={styles.balanceLabel}>YOUR OVERVIEW</Text>
               <View>
@@ -78,16 +78,31 @@ export function AuthEntryScreen() {
 
         <View style={styles.copy}>
           <Text style={styles.eyebrow}>WELCOME TO EXPENSIO</Text>
-          <Text style={styles.title}>Your money,{"\n"}your way.</Text>
-          <Text style={styles.subtitle}>Sign in or create an account to keep your finances in one calm place.</Text>
+          <Text style={styles.title}>
+            Your money,{'\n'}
+            <Text style={styles.titleAccent}>your way</Text>
+          </Text>
+          <Text style={styles.subtitle}>
+            Sign in or create an account to keep your finances in one calm place.
+          </Text>
         </View>
 
-        <Pressable onPress={() => setAuthPhase('mobile')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-          <Text style={styles.primaryLabel}>Continue with Mobile Number</Text>
-        </Pressable>
-        <Pressable onPress={() => setAuthPhase('email')} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-          <Text style={styles.secondaryLabel}>Continue with Email</Text>
-        </Pressable>
+        <View style={styles.actions}>
+          <PrimaryButton
+            title="Continue with Mobile Number"
+            variant="lime"
+            surface="dark"
+            onPress={() => setAuthPhase('mobile')}
+            style={styles.ctaButton}
+          />
+          <PrimaryButton
+            title="Continue with Email"
+            variant="secondary"
+            surface="dark"
+            onPress={() => setAuthPhase('email')}
+            style={styles.ctaButton}
+          />
+        </View>
 
         <Text style={styles.terms}>
           By continuing, you agree to our{' '}
@@ -103,51 +118,18 @@ export function AuthEntryScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0A2A1E',
+    backgroundColor: colors.heroBg,
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-  },
-  header: {
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  tapTarget: {
-    width: 44,
-    height: 44,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandMark: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    backgroundColor: '#C8F169',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandMarkText: {
-    color: '#0A2A1E',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  brandText: {
-    color: '#F3F0E6',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    paddingHorizontal: layout.screenMargin,
+    width: '100%',
+    maxWidth: layout.maxContentWidth,
+    alignSelf: 'center',
   },
   cardStack: {
-    height: 250,
-    marginTop: 20,
+    height: 248,
+    marginTop: spacing.md,
     position: 'relative',
   },
   stackCard: {
@@ -155,220 +137,160 @@ const styles = StyleSheet.create({
   },
   backCard: {
     top: 0,
+    left: 58,
+    right: 58,
     height: 120,
-    borderRadius: 24,
-    backgroundColor: '#F3F0E6',
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    borderRadius: radius.xxl,
+    backgroundColor: colors.heroCardBg,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
     zIndex: 1,
   },
   middleCard: {
     top: 46,
+    left: 32,
+    right: 32,
     height: 130,
-    borderRadius: 26,
-    backgroundColor: '#1D4636',
+    borderRadius: radius.xxl,
+    backgroundColor: colors.heroSurface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 4,
+    borderColor: colors.heroGlassBorder,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    ...shadows.card,
     zIndex: 2,
   },
   frontCard: {
     top: 96,
+    left: spacing.sm,
+    right: spacing.sm,
     height: 150,
-    borderRadius: 30,
-    backgroundColor: '#C8F169',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    borderRadius: radius.xxl,
+    backgroundColor: colors.surprise,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: layout.screenMargin,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 6,
+    ...shadows.card,
     zIndex: 3,
   },
   cardHeader: {
     height: 24,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   smallIconTile: {
     width: 24,
     height: 24,
-    borderRadius: 8,
-    backgroundColor: '#C8F169',
+    borderRadius: radius.sm,
+    backgroundColor: colors.surprise,
     alignItems: 'center',
     justifyContent: 'center',
   },
   smallIconTileMuted: {
     width: 24,
     height: 24,
-    borderRadius: 8,
-    backgroundColor: 'rgba(200,241,105,0.18)',
+    borderRadius: radius.sm,
+    backgroundColor: colors.heroIconBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backCardTitle: {
     flex: 1,
-    color: '#0A2A1E',
-    fontSize: 14,
+    ...typography.captionMedium,
+    color: colors.accentDark,
     fontWeight: '600',
   },
   placeholderValue: {
     width: 42,
     height: 12,
-    borderRadius: 6,
-    backgroundColor: '#D6D9CF',
-  },
-  backCardValue: {
-    color: '#0A2A1E',
-    fontSize: 14,
-    fontWeight: '800',
+    borderRadius: radius.xs,
+    backgroundColor: colors.border,
   },
   middleCardTitle: {
     flex: 1,
-    color: '#F3F0E6',
-    fontSize: 14,
+    ...typography.captionMedium,
+    color: colors.heroText,
     fontWeight: '600',
-  },
-  middleCardValue: {
-    color: '#C8F169',
-    fontSize: 14,
-    fontWeight: '800',
   },
   middleTrack: {
     height: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    marginTop: 7,
+    borderRadius: radius.xs,
+    backgroundColor: colors.heroTrackIdle,
+    marginTop: spacing.xs,
     overflow: 'hidden',
-  },
-  middleFill: {
-    width: '38%',
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#C8F169',
   },
   frontCopy: {
     flex: 1,
     justifyContent: 'space-between',
   },
   balanceLabel: {
-    color: '#1F3B2D',
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.label,
+    color: colors.accentDark,
   },
   balanceValue: {
-    color: '#0A2A1E',
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: '800',
-    letterSpacing: -0.68,
-  },
-  trendChip: {
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    backgroundColor: '#0A2A1E',
+    ...typography.h1,
+    color: colors.accentDark,
   },
   trendText: {
-    color: '#1F3B2D',
-    fontSize: 12,
+    ...typography.micro,
+    color: colors.accentDark,
     fontWeight: '600',
   },
   chart: {
     height: 78,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 6,
+    gap: spacing.xxs,
     alignSelf: 'flex-end',
   },
   chartBar: {
     width: 14,
     height: 28,
-    borderRadius: 5,
-    backgroundColor: 'rgba(10,42,30,0.12)',
+    borderRadius: radius.xs,
+    backgroundColor: colors.overlay,
+    opacity: 0.25,
   },
   spacer: {
     flex: 1,
-    minHeight: 0,
+    minHeight: spacing.sm,
   },
   copy: {
-    marginBottom: 32,
+    marginBottom: spacing.lg,
   },
   eyebrow: {
-    color: '#C8F169',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 1.82,
-    marginBottom: 12,
+    ...typography.eyebrow,
+    color: colors.surprise,
+    marginBottom: spacing.sm,
   },
   title: {
-    color: '#F3F0E6',
-    fontSize: 44,
-    lineHeight: 45,
-    fontWeight: '800',
-    letterSpacing: -0.88,
-    marginBottom: 12,
+    ...typography.display,
+    color: colors.heroText,
+    marginBottom: spacing.sm,
+  },
+  titleAccent: {
+    color: colors.surprise,
   },
   subtitle: {
-    color: 'rgba(243,240,230,0.78)',
-    fontSize: 17,
-    lineHeight: 25,
+    ...typography.body,
+    color: colors.heroTextMuted,
     maxWidth: 320,
   },
-  primaryButton: {
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#C8F169',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+  actions: {
+    gap: spacing.sm,
   },
-  secondaryButton: {
-    height: 60,
-    marginTop: 12,
-    borderRadius: 30,
-    borderWidth: 1.5,
-    borderColor: 'rgba(243,240,230,0.35)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  primaryLabel: {
-    color: '#0A2A1E',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  secondaryLabel: {
-    color: '#F3F0E6',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.9,
+  ctaButton: {
+    minHeight: layout.authButtonHeight,
   },
   terms: {
-    color: 'rgba(243,240,230,0.72)',
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.caption,
+    color: colors.heroTextSubtle,
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: spacing.md,
   },
   termLink: {
-    color: '#F3F0E6',
+    color: colors.heroText,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },

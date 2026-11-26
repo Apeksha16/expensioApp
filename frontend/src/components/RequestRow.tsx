@@ -140,7 +140,7 @@ export const RequestRow = React.memo(function RequestRow({
             {safeName}
           </Text>
           {subline ? (
-            <Text style={styles.subline} numberOfLines={1} ellipsizeMode="tail">
+            <Text style={styles.subline} numberOfLines={2} ellipsizeMode="tail">
               {subline}
             </Text>
           ) : null}

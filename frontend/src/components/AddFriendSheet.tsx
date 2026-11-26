@@ -495,7 +495,7 @@ export function AddFriendSheet({
                 ]}
               >
                 <View style={styles.avatarRingWrap}>
-                  <CartoonAvatar id={selectedAvatarId} size={52} />
+                  <CartoonAvatar id={selectedAvatarId} size={42} />
                 </View>
                 <View style={styles.avatarCardCopy}>
                   <Text style={styles.avatarCardTitle}>Guest avatar</Text>
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   guestScrollContent: {
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingBottom: spacing.lg,
   },
   searchField: {
@@ -673,16 +673,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.accentMuted,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: layout.cardPadding,
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.xxs,
     ...shadows.soft,
   },
   findHeroBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
     backgroundColor: colors.accentDark,
     alignItems: 'center',
     justifyContent: 'center',
@@ -809,8 +809,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   avatarRingWrap: {
-    width: 58,
-    height: 58,
+    width: 48,
+    height: 48,
     borderRadius: radius.full,
     borderWidth: 1.5,
     borderStyle: 'dashed',

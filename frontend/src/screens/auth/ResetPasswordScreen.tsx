@@ -197,7 +197,7 @@ export function ResetPasswordScreen() {
           label="Reset token"
           value={resetToken}
           onChangeText={(value) => { setResetToken(value.slice(0, 128)); setError(''); }}
-          placeholder="Paste the token from your reset email"
+          placeholder="Paste reset token"
           autoCapitalize="none"
           autoCorrect={false}
           maxLength={128}

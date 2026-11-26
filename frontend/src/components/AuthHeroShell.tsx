@@ -72,7 +72,7 @@ export function AuthHeroShell({
             styles.content,
             {
               paddingTop: insets.top + spacing.xs,
-              paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.md,
+              paddingBottom: Math.max(insets.bottom, spacing.lg) + spacing.md,
             },
           ]}
         >
@@ -199,13 +199,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     paddingHorizontal: layout.screenMargin,
-    paddingTop: layout.screenMargin,
-    paddingBottom: spacing.lg,
-    gap: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
     ...shadows.card,
   },
   footer: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
 });

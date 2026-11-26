@@ -160,7 +160,7 @@ export function AuthEntryScreen() {
             <View style={styles.frontCopy}>
               <Text style={styles.balanceLabel}>YOUR OVERVIEW</Text>
               <View>
-                <Text style={styles.balanceValue}>Your overview</Text>
+                <Text style={[styles.balanceValue, isCompactHeight && styles.balanceValueCompact]}>Your overview</Text>
                 <Text style={styles.trendText}>Your activity appears here as you add it.</Text>
               </View>
             </View>
@@ -301,8 +301,8 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   frontCardCompact: {
-    top: 66,
-    height: 128,
+    top: 64,
+    height: 132,
     paddingVertical: spacing.sm,
   },
   cardHeader: {
@@ -364,6 +364,10 @@ const styles = StyleSheet.create({
   balanceValue: {
     ...typography.h1,
     color: colors.accentDark,
+  },
+  balanceValueCompact: {
+    fontSize: 25,
+    lineHeight: 29,
   },
   trendText: {
     ...typography.micro,

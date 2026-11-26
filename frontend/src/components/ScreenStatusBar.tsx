@@ -39,21 +39,13 @@ export function ScreenStatusBar({ surface, focused = true }: ScreenStatusBarProp
     const applyStyle = () => {
       RNStatusBar.setBarStyle(rnBarStyle, Platform.OS !== 'android');
     };
-    applyStyle();
-    const rafId =
-      Platform.OS === 'android' && typeof requestAnimationFrame === 'function'
-        ? requestAnimationFrame(applyStyle)
-        : null;
-    const timeoutId = Platform.OS === 'android' ? setTimeout(applyStyle, 80) : null;
+    const timeoutId = Platform.OS === 'android' ? setTimeout(applyStyle, 150) : null;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
         applyStyle();
       }
     });
     return () => {
-      if (rafId !== null && typeof cancelAnimationFrame === 'function') {
-        cancelAnimationFrame(rafId);
-      }
       if (timeoutId !== null) {
         clearTimeout(timeoutId);
       }
@@ -63,5 +55,5 @@ export function ScreenStatusBar({ surface, focused = true }: ScreenStatusBarProp
 
   if (!focused) return null;
 
-  return <ExpoStatusBar style={barStyle} animated={false} />;
+  return <ExpoStatusBar key={barStyle} style={barStyle} animated={false} />;
 }

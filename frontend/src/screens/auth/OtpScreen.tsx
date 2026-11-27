@@ -19,14 +19,7 @@ import { fontFamilies, colors, layout, radius, spacing, typography } from '../..
 import { formatCountdown, normalizeAuthError } from '../../utils/errorNormalization';
 import { maskEmail, maskPhone } from '../../utils/format';
 
-interface OtpAuditPreview {
-  otp?: string;
-  error?: string;
-  seconds?: number;
-  codeSent?: boolean;
-}
-
-export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } = {}) {
+export function OtpScreen() {
   const {
     verificationChannel,
     verificationTarget,
@@ -40,13 +33,13 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
 
   const isEmail = verificationChannel === 'email';
   const initialCooldown = otpCooldownSeconds ?? OTP_RESEND_SECONDS;
-  const [otp, setOtp] = useState(auditPreview?.otp ?? '');
-  const [error, setError] = useState(auditPreview?.error ?? '');
+  const [otp, setOtp] = useState('');
+  const [error, setError] = useState('');
   const [lockedOut, setLockedOut] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [seconds, setSeconds] = useState(auditPreview?.seconds ?? initialCooldown);
+  const [seconds, setSeconds] = useState(initialCooldown);
   const [resending, setResending] = useState(false);
-  const [codeSent, setCodeSent] = useState(auditPreview?.codeSent ?? false);
+  const [codeSent, setCodeSent] = useState(false);
 
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const isVerifyingRef = useRef(false);
@@ -56,7 +49,6 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
 
   // Clear sensitive OTP state on target change or unmount (§2, J3)
   useEffect(() => {
-    if (auditPreview) return;
     setOtp('');
     setError('');
     lockedOutRef.current = false;
@@ -73,7 +65,7 @@ export function OtpScreen({ auditPreview }: { auditPreview?: OtpAuditPreview } =
       setOtp('');
       setError('');
     };
-  }, [auditPreview, otpCooldownSeconds, verificationChannel, verificationTarget]);
+  }, [otpCooldownSeconds, verificationChannel, verificationTarget]);
 
   useEffect(() => {
     if (seconds <= 0) return;

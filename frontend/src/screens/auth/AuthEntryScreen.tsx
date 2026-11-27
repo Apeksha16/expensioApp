@@ -14,6 +14,8 @@ import { authenticateGoogle } from '../../services/authApi';
 import { colors, fontFamilies, layout, radius, shadows, spacing, typography } from '../../theme';
 import { normalizeAuthError } from '../../utils/errorNormalization';
 
+const CHART_HEIGHTS = [34, 52, 28, 64, 44, 72];
+
 function GoogleSignInButton({
   onAuthenticated,
   onError,
@@ -110,12 +112,7 @@ export function AuthEntryScreen() {
     <View style={styles.screen}>
       <ScreenStatusBar surface="dark" />
       <View style={[styles.headerWrap, { paddingTop: insets.top + spacing.xs }]}>
-        <ScreenHeader
-          tone="dark"
-          onBack={() => setAuthPhase('onboarding')}
-          backAccessibilityLabel="Back to onboarding"
-          showBrand
-        />
+        <ScreenHeader tone="dark" showBrand />
       </View>
       <ScrollView
         bounces={false}
@@ -139,10 +136,10 @@ export function AuthEntryScreen() {
           <View style={[styles.stackCard, styles.backCard, isCompactHeight && styles.backCardCompact]}>
             <View style={styles.cardHeader}>
               <View style={styles.smallIconTile}>
-                <Ionicons name="restaurant-outline" size={15} color={colors.accentDark} />
+                <Ionicons name="people-outline" size={15} color={colors.accentDark} />
               </View>
-              <Text style={styles.backCardTitle}>Shared expenses</Text>
-              <View style={styles.placeholderValue} />
+              <Text style={styles.backCardTitle}>Split with friends</Text>
+              <Text style={styles.backCardMeta}>3</Text>
             </View>
           </View>
 
@@ -151,22 +148,33 @@ export function AuthEntryScreen() {
               <View style={styles.smallIconTileMuted}>
                 <Ionicons name="flag-outline" size={15} color={colors.surprise} />
               </View>
-              <Text style={styles.middleCardTitle}>Goals &amp; plans</Text>
+              <Text style={styles.middleCardTitle}>Trip fund</Text>
+              <Text style={styles.middleCardMeta}>68%</Text>
             </View>
-            <View style={styles.middleTrack} />
+            <View style={styles.middleTrack}>
+              <View style={styles.middleTrackFill} />
+            </View>
           </View>
 
           <View style={[styles.stackCard, styles.frontCard, isCompactHeight && styles.frontCardCompact]}>
             <View style={styles.frontCopy}>
-              <Text style={styles.balanceLabel}>YOUR OVERVIEW</Text>
-              <View>
-                <Text style={[styles.balanceValue, isCompactHeight && styles.balanceValueCompact]}>Your overview</Text>
-                <Text style={styles.trendText}>Your activity appears here as you add it.</Text>
+              <Text style={styles.balanceLabel}>THIS MONTH</Text>
+              <Text style={[styles.balanceValue, isCompactHeight && styles.balanceValueCompact]}>₹24,580</Text>
+              <View style={styles.trendRow}>
+                <Ionicons name="trending-up" size={14} color={colors.accentDark} />
+                <Text style={styles.trendText}>+₹1,240 this week</Text>
               </View>
             </View>
             <View style={styles.chart}>
-              {Array.from({ length: 6 }, (_, index) => (
-                <View key={index} style={styles.chartBar} />
+              {CHART_HEIGHTS.map((barHeight, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.chartBar,
+                    { height: isCompactHeight ? Math.round(barHeight * 0.78) : barHeight },
+                    index === CHART_HEIGHTS.length - 1 && styles.chartBarActive,
+                  ]}
+                />
               ))}
             </View>
           </View>
@@ -175,14 +183,11 @@ export function AuthEntryScreen() {
         <View style={styles.spacer} />
 
         <View style={[styles.copy, isCompactHeight && styles.copyCompact]}>
-          <Text style={styles.eyebrow}>WELCOME TO EXPENSIO</Text>
           <Text style={[styles.title, isCompactHeight && styles.titleCompact]}>
             Your money,{'\n'}
             <Text style={styles.titleAccent}>your way</Text>
           </Text>
-          <Text style={styles.subtitle}>
-            Sign in or create an account to keep your finances in one calm place.
-          </Text>
+          <Text style={styles.subtitle}>Track, split, and plan — all in one place.</Text>
         </View>
 
         <View style={[styles.actions, isCompactHeight && styles.actionsCompact]}>
@@ -333,11 +338,10 @@ const styles = StyleSheet.create({
     color: colors.accentDark,
     fontFamily: fontFamilies.semibold,
   },
-  placeholderValue: {
-    width: 42,
-    height: 12,
-    borderRadius: radius.xs,
-    backgroundColor: colors.border,
+  backCardMeta: {
+    ...typography.captionMedium,
+    color: colors.accentDark,
+    fontFamily: fontFamilies.bold,
   },
   middleCardTitle: {
     flex: 1,
@@ -345,12 +349,23 @@ const styles = StyleSheet.create({
     color: colors.heroText,
     fontFamily: fontFamilies.semibold,
   },
+  middleCardMeta: {
+    ...typography.captionMedium,
+    color: colors.surprise,
+    fontFamily: fontFamilies.bold,
+  },
   middleTrack: {
     height: 5,
     borderRadius: radius.xs,
     backgroundColor: colors.heroTrackIdle,
     marginTop: spacing.xs,
     overflow: 'hidden',
+  },
+  middleTrackFill: {
+    width: '68%',
+    height: '100%',
+    borderRadius: radius.xs,
+    backgroundColor: colors.surprise,
   },
   frontCopy: {
     flex: 1,
@@ -366,8 +381,13 @@ const styles = StyleSheet.create({
     color: colors.accentDark,
   },
   balanceValueCompact: {
-    fontSize: 25,
-    lineHeight: 29,
+    fontSize: typography.otpDigit.fontSize,
+    lineHeight: typography.otpDigit.lineHeight,
+  },
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
   },
   trendText: {
     ...typography.micro,
@@ -383,10 +403,13 @@ const styles = StyleSheet.create({
   },
   chartBar: {
     width: 14,
-    height: 28,
     borderRadius: radius.xs,
     backgroundColor: colors.overlay,
-    opacity: 0.25,
+    opacity: 0.22,
+  },
+  chartBarActive: {
+    opacity: 0.45,
+    backgroundColor: colors.accentDark,
   },
   spacer: {
     flex: 1,
@@ -398,20 +421,14 @@ const styles = StyleSheet.create({
   copyCompact: {
     marginBottom: spacing.md,
   },
-  eyebrow: {
-    ...typography.eyebrow,
-    color: colors.surprise,
-    marginBottom: spacing.sm,
-  },
   title: {
     ...typography.display,
     color: colors.heroText,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   titleCompact: {
-    fontSize: 34,
-    lineHeight: 38,
-    marginBottom: spacing.xs,
+    ...typography.hero,
+    marginBottom: spacing.xxs,
   },
   titleAccent: {
     color: colors.surprise,
@@ -419,7 +436,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: colors.heroTextMuted,
-    maxWidth: 320,
+    maxWidth: 280,
   },
   actions: {
     gap: spacing.sm,

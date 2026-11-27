@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useRef, useState } from 'react';
 import {
+  Animated,
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -28,6 +29,7 @@ export function OnboardingScreen() {
   const { setAuthPhase } = useApp();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<OnboardingSlide>>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
   const isLast = index === onboardingSlides.length - 1;
   const isBudget = index === 2;
   const isDark = index === 0 || index === 3;
@@ -39,18 +41,24 @@ export function OnboardingScreen() {
       setAuthPhase('login');
       return;
     }
-    listRef.current?.scrollToIndex({ index: index + 1, animated: true });
+    const next = index + 1;
+    setIndex(next);
+    listRef.current?.scrollToIndex({ index: next, animated: true });
   };
 
   const goBack = () => {
     if (index === 0) return;
-    listRef.current?.scrollToIndex({ index: index - 1, animated: true });
+    const prev = index - 1;
+    setIndex(prev);
+    listRef.current?.scrollToIndex({ index: prev, animated: true });
   };
 
   const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(e.nativeEvent.contentOffset.x / contentWidth);
+    const next = Math.round(e.nativeEvent.contentOffset.x / Math.max(contentWidth, 1));
     setIndex(Math.min(Math.max(next, 0), onboardingSlides.length - 1));
   };
+
+  const pageProgress = Animated.divide(scrollX, Math.max(contentWidth, 1));
 
   return (
     <View style={[styles.container, { backgroundColor: pageBackground }]}>
@@ -67,7 +75,12 @@ export function OnboardingScreen() {
           },
         ]}
       >
-        <PageIndicator count={onboardingSlides.length} activeIndex={index} tone={isDark ? 'lime' : 'forest'} />
+        <PageIndicator
+          count={onboardingSlides.length}
+          activeIndex={index}
+          progress={pageProgress}
+          tone={isDark ? 'lime' : 'forest'}
+        />
         <View style={styles.topBar}>
           {isLast ? (
             <Pressable
@@ -100,7 +113,7 @@ export function OnboardingScreen() {
           ) : <View style={styles.skipButton} />}
         </View>
 
-        <FlatList
+        <Animated.FlatList
           key={pageWidth}
           ref={listRef}
           data={onboardingSlides}
@@ -110,8 +123,12 @@ export function OnboardingScreen() {
           style={styles.carousel}
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
-          onScroll={onScrollEnd}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: true },
+          )}
           onMomentumScrollEnd={onScrollEnd}
+          onScrollEndDrag={onScrollEnd}
           getItemLayout={(_, itemIndex) => ({
             length: contentWidth,
             offset: contentWidth * itemIndex,

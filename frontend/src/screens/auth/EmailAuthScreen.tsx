@@ -11,28 +11,19 @@ import { fontFamilies, colors, layout, radius, spacing, typography } from '../..
 import { normalizeAuthError } from '../../utils/errorNormalization';
 import { getPasswordRequirementChecks, validatePasswordPolicy } from '../../utils/validation';
 
-interface EmailAuthAuditPreview {
-  mode?: 'login' | 'register';
-  name?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-  error?: string;
-}
-
-export function EmailAuthScreen({ auditPreview }: { auditPreview?: EmailAuthAuditPreview } = {}) {
+export function EmailAuthScreen() {
   const {
     setAuthPhase,
     applyAuthSession,
     beginVerification,
     setPasswordResetEmail,
   } = useApp();
-  const [mode, setMode] = useState<'login' | 'register'>(auditPreview?.mode ?? 'login');
-  const [name, setName] = useState(auditPreview?.name ?? '');
-  const [email, setEmail] = useState(auditPreview?.email ?? '');
-  const [password, setPassword] = useState(auditPreview?.password ?? '');
-  const [confirmPassword, setConfirmPassword] = useState(auditPreview?.confirmPassword ?? '');
-  const [error, setError] = useState(auditPreview?.error ?? '');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const isSubmittingRef = useRef(false);
 

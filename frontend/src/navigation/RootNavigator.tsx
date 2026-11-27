@@ -5,16 +5,9 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenStatusBar } from '../components/ScreenStatusBar';
 import { FRIENDS_CONFIG } from '../config/friendsConfig';
 import { useApp } from '../context/AppContext';
-import { AuthEntryScreen } from '../screens/auth/AuthEntryScreen';
-import { EmailAuthScreen } from '../screens/auth/EmailAuthScreen';
-import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
-import { MobileLoginScreen } from '../screens/auth/MobileLoginScreen';
-import { OtpScreen } from '../screens/auth/OtpScreen';
-import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
-import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
-import { ProfileSetupScreen } from '../screens/setup/ProfileSetupScreen';
 import { colors, spacing, typography } from '../theme';
 import { parseSafeDeepLink, resolveDeepLinkNavigation, type ParsedDeepLink } from '../utils/deepLink';
+import { AuthStack, isAuthStackPhase } from './AuthStack';
 import { MainTabs } from './MainTabs';
 
 const styles = StyleSheet.create({
@@ -146,49 +139,37 @@ export function RootNavigator() {
     );
   }
 
-  switch (authPhase) {
-    case 'login':
-      return <AuthEntryScreen />;
-    case 'mobile':
-      return <MobileLoginScreen />;
-    case 'email':
-      return <EmailAuthScreen />;
-    case 'forgot_password':
-      return <ForgotPasswordScreen />;
-    case 'reset_password':
-      return <ResetPasswordScreen />;
-    case 'otp':
-      return <OtpScreen />;
-    case 'setup':
-      return <ProfileSetupScreen />;
-    case 'main':
-      return (
-        <NavigationContainer
-          ref={navigationRef}
-          onReady={() => {
-            if (pendingDeepLinkRef.current) {
-              const queued = pendingDeepLinkRef.current;
-              pendingDeepLinkRef.current = null;
-              dispatchResolvedLink(queued);
-            }
-          }}
-          theme={{
-            ...DarkTheme,
-            colors: {
-              ...DarkTheme.colors,
-              background: colors.background,
-              card: colors.surface,
-              text: colors.textPrimary,
-              border: colors.border,
-              primary: colors.accent,
-            },
-          }}
-        >
-          <MainTabs />
-        </NavigationContainer>
-      );
-    case 'onboarding':
-    default:
-      return <OnboardingScreen />;
+  if (authPhase === 'main') {
+    return (
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={() => {
+          if (pendingDeepLinkRef.current) {
+            const queued = pendingDeepLinkRef.current;
+            pendingDeepLinkRef.current = null;
+            dispatchResolvedLink(queued);
+          }
+        }}
+        theme={{
+          ...DarkTheme,
+          colors: {
+            ...DarkTheme.colors,
+            background: colors.background,
+            card: colors.surface,
+            text: colors.textPrimary,
+            border: colors.border,
+            primary: colors.accent,
+          },
+        }}
+      >
+        <MainTabs />
+      </NavigationContainer>
+    );
   }
+
+  if (isAuthStackPhase(authPhase)) {
+    return <AuthStack phase={authPhase} />;
+  }
+
+  return <AuthStack phase="onboarding" />;
 }

@@ -92,13 +92,7 @@ function cardPositionForIndex(index: number, total: number): GroupedCardPosition
   return 'middle';
 }
 
-interface FriendsAuditPreview {
-  segment?: SegmentTab;
-  searchOpen?: boolean;
-  filterQuery?: string;
-}
-
-export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPreview } = {}) {
+export function FriendsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
@@ -134,13 +128,11 @@ export function FriendsScreen({ auditPreview }: { auditPreview?: FriendsAuditPre
   } = useApp();
 
   const [segment, setSegment] = useState<SegmentTab>(() =>
-    auditPreview?.segment ?? (incomingFriendships.length > 0 ? 'requests' : 'friends'),
+    incomingFriendships.length > 0 ? 'requests' : 'friends',
   );
-  const hasAutoSelectedSegmentRef = useRef(
-    Boolean(auditPreview?.segment) || incomingFriendships.length > 0,
-  );
-  const [searchOpen, setSearchOpen] = useState(auditPreview?.searchOpen ?? false);
-  const [filterQuery, setFilterQuery] = useState(auditPreview?.filterQuery ?? '');
+  const hasAutoSelectedSegmentRef = useRef(incomingFriendships.length > 0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
   const [addSheetState, setAddSheetState] = useState<{
     visible: boolean;
     initialTab: 'find' | 'guest';

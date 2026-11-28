@@ -1,0 +1,404 @@
+{
+  "info": {
+    "name": "Expensio - Friends Module API",
+    "description": "Complete Postman collection for testing all Friends Module REST endpoints (Phases 0-7) with auto-captured variables and assertions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5001" },
+    { "key": "tokenUserA", "value": "" },
+    { "key": "tokenUserB", "value": "" },
+    { "key": "userBId", "value": "" },
+    { "key": "friendshipId", "value": "" },
+    { "key": "guestId", "value": "" },
+    { "key": "deviceToken", "value": "postman-fcm-token-001" }
+  ],
+  "item": [
+    {
+      "name": "0. Setup & Auth",
+      "item": [
+        {
+          "name": "0.1 Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/health"
+          }
+        },
+        {
+          "name": "0.2 Login User A (saves tokenUserA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('tokenUserA', json.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usera@expensio.app\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/auth/email/login"
+          }
+        },
+        {
+          "name": "0.3 Login User B (saves tokenUserB & userBId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('tokenUserB', json.accessToken);",
+                  "  if (json.user && json.user.id) {",
+                  "    pm.collectionVariables.set('userBId', json.user.id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"userb@expensio.app\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/auth/email/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Read APIs (Phase 1)",
+      "item": [
+        {
+          "name": "1.1 List Friends, Guests & Counts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenUserA}}" },
+              { "key": "X-Correlation-Id", "value": "pm-friends-list-1" }
+            ],
+            "url": "{{baseUrl}}/api/v1/friends?limit=50"
+          }
+        },
+        {
+          "name": "1.2 Search Users (q=al)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserA}}" }],
+            "url": "{{baseUrl}}/api/v1/friends/search?q=al&limit=20"
+          }
+        },
+        {
+          "name": "1.3 Search Users Literal Wildcard (q=50%)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserA}}" }],
+            "url": "{{baseUrl}}/api/v1/friends/search?q=50%25"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Friend Request Lifecycle (Phase 2)",
+      "item": [
+        {
+          "name": "2.1 Send Friend Request (A -> B, saves friendshipId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.friendshipId) {",
+                  "  pm.collectionVariables.set('friendshipId', json.friendshipId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenUserA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addresseeId\": \"{{userBId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/friends/requests"
+          }
+        },
+        {
+          "name": "2.2 Accept Friend Request (as User B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Accepted 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserB}}" }],
+            "url": "{{baseUrl}}/api/v1/friends/{{friendshipId}}/accept"
+          }
+        },
+        {
+          "name": "2.3 Remove / Cancel / Decline Friendship",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('No Content 204', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserA}}" }],
+            "url": "{{baseUrl}}/api/v1/friends/{{friendshipId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Guest Lifecycle (Phase 3)",
+      "item": [
+        {
+          "name": "3.1 List Guests",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserA}}" }],
+            "url": "{{baseUrl}}/api/v1/friends/guests"
+          }
+        },
+        {
+          "name": "3.2 Create Guest (saves guestId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.guest && json.guest.id) {",
+                  "  pm.collectionVariables.set('guestId', json.guest.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenUserA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trip Guest\",\n  \"username\": \"trip_guest_1\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/friends/guests"
+          }
+        },
+        {
+          "name": "3.3 Rename Guest",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenUserA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trip Guest Renamed\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/friends/guests/{{guestId}}"
+          }
+        },
+        {
+          "name": "3.4 Update Guest Avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenUserA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avatarId\": \"avatar_3\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/friends/guests/{{guestId}}/avatar"
+          }
+        },
+        {
+          "name": "3.5 Retire Guest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('No Content 204', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserA}}" }],
+            "url": "{{baseUrl}}/api/v1/friends/guests/{{guestId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Push Device Tokens (Phase 6)",
+      "item": [
+        {
+          "name": "4.1 Register Device Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('No Content 204', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenUserA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{deviceToken}}\",\n  \"platform\": \"ANDROID\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/devices"
+          }
+        },
+        {
+          "name": "4.2 Remove Device Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('No Content 204', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserA}}" }],
+            "url": "{{baseUrl}}/api/v1/devices/{{deviceToken}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Error & Security Contract Checks",
+      "item": [
+        {
+          "name": "5.1 Unauthenticated -> 401 UNAUTHORIZED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Standard error code', () => pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Correlation-Id", "value": "pm-unauth-check" }],
+            "url": "{{baseUrl}}/api/v1/friends"
+          }
+        },
+        {
+          "name": "5.2 Invalid Search Query (q=a) -> 400 VALIDATION_ERROR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUserA}}" }],
+            "url": "{{baseUrl}}/api/v1/friends/search?q=a"
+          }
+        },
+        {
+          "name": "5.3 Invalid Avatar -> 422 INVALID_AVATAR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('INVALID_AVATAR', () => pm.expect(pm.response.json().code).to.eql('INVALID_AVATAR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenUserA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avatarId\": \"invalid_avatar_id\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/friends/guests/{{guestId}}/avatar"
+          }
+        }
+      ]
+    }
+  ]
+}

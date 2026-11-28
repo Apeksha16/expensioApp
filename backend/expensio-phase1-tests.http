@@ -1,0 +1,91 @@
+### Expensio Backend - Phase 1 Manual Testing Suite (.http / REST Client)
+@baseUrl = http://localhost:5001
+
+### 1. Health Check
+GET {{baseUrl}}/api/v1/health
+
+### 2. Email Sign Up
+# @name signup
+POST {{baseUrl}}/v1/auth/email/signup
+Content-Type: application/json
+
+{
+  "email": "alan.doe@example.com",
+  "password": "Password@123",
+  "firstName": "Alan",
+  "lastName": "Doe"
+}
+
+### 3. Verify Email OTP (Copy the challengeId and OTP from the terminal output)
+# Note: In the terminal running the backend, find:
+# "[DEV SIMULATION] Email to alan.doe@example.com: Your Expensio verification code is: XXXXXX"
+POST {{baseUrl}}/v1/verification/email/verify
+Content-Type: application/json
+
+{
+  "challengeId": "{{signup.response.body.data.challengeId}}",
+  "otp": "123456"
+}
+
+### 4. Mobile OTP Start (Sends SMS via Twilio / Dev Simulation)
+# @name mobileStart
+POST {{baseUrl}}/v1/auth/mobile/otp/start
+Content-Type: application/json
+
+{
+  "phone": "+919876543210"
+}
+
+### 5. Verify Mobile OTP
+# Find the OTP in the terminal output:
+# "[DEV SIMULATION] SMS to +919876543210: Your Expensio verification code is: XXXXXX"
+POST {{baseUrl}}/v1/verification/mobile/verify
+Content-Type: application/json
+
+{
+  "challengeId": "{{mobileStart.response.body.data.challengeId}}",
+  "otp": "123456"
+}
+
+### 6. Email Login
+# @name login
+POST {{baseUrl}}/v1/auth/email/login
+Content-Type: application/json
+
+{
+  "email": "alan.doe@example.com",
+  "password": "Password@123"
+}
+
+### 7. Google OAuth Login (Dev Mock)
+POST {{baseUrl}}/v1/auth/google
+Content-Type: application/json
+
+{
+  "idToken": "mock_google_dev_test"
+}
+
+### 8. Refresh Token Rotation
+POST {{baseUrl}}/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.data.refreshToken}}"
+}
+
+### 9. Forgot Password Request
+POST {{baseUrl}}/v1/auth/password/forgot
+Content-Type: application/json
+
+{
+  "email": "alan.doe@example.com"
+}
+
+### 10. Logout
+POST {{baseUrl}}/v1/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.data.refreshToken}}"
+}
+

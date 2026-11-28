@@ -1,0 +1,58 @@
+import {
+  CorruptStoredDataError,
+  readSecureJson,
+  removeSecureValue,
+  STORAGE_KEYS,
+  writeSecureJson,
+} from './localPersistence';
+
+export interface StoredSession {
+  accessToken: string;
+  refreshToken?: string;
+  user?: Record<string, unknown>;
+  isProfileComplete: boolean;
+  onboardingDraft?: Record<string, unknown>;
+  phoneVerified?: boolean;
+  emailVerified?: boolean;
+  onboardingStep?: number;
+  dataOwnerId?: string;
+}
+
+export async function readSession(): Promise<StoredSession | null> {
+  let parsed: unknown;
+  try {
+    parsed = await readSecureJson<unknown>(STORAGE_KEYS.session);
+  } catch (error) {
+    if (!(error instanceof CorruptStoredDataError)) throw error;
+    await clearSession();
+    return null;
+  }
+  if (parsed === null) return null;
+  if (
+    typeof parsed === 'object'
+    && parsed !== null
+    && 'accessToken' in parsed
+    && typeof parsed.accessToken === 'string'
+    && parsed.accessToken
+  ) return parsed as StoredSession;
+  else {
+    await clearSession();
+    return null;
+  }
+}
+
+export function writeSession(session: StoredSession): Promise<void> {
+  return writeSecureJson(STORAGE_KEYS.session, session);
+}
+
+export async function updateSession(updater: (session: StoredSession) => StoredSession): Promise<StoredSession | null> {
+  const current = await readSession();
+  if (!current) return null;
+  const next = updater(current);
+  await writeSession(next);
+  return next;
+}
+
+export function clearSession(): Promise<void> {
+  return removeSecureValue(STORAGE_KEYS.session);
+}

@@ -1,41 +1,71 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# Expensio Frontend Architecture & Guidelines
 
-## Expo has changed — do not trust your training data
+This is an Expo/React Native mobile application built with **Expo SDK 58**, **React Native 0.88.1**, and **React 19.3.0**.
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+---
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+## Architecture Overview
 
-## Commands
-
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
-
-```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+```text
+frontend/
+├── index.ts                      # App registration entry point
+├── App.tsx                       # Root component (AppContext, fonts, ThemeProvider)
+├── app.json                      # Expo application manifest
+├── package.json                  # Dependencies (React Navigation 7, Expo 58)
+└── src/
+    ├── components/               # Reusable UI components (buttons, inputs, cards, toasts)
+    ├── context/                  # Central application state (AppContext.tsx)
+    ├── core/storage/             # Local persistence, secure sessions, preferences
+    ├── data/                     # Seed datasets, avatar catalogs, module metadata
+    ├── navigation/               # React Navigation navigators
+    │   ├── RootNavigator.tsx     # Auth flow gating and main tab presentation
+    │   ├── MainTabs.tsx          # Bottom tab navigator (Home, Activity, Add, Split, Profile)
+    │   └── SplitStack.tsx        # Splits stack navigator (CreateSplit, Detail, Friends)
+    ├── screens/                  # Feature screen implementations
+    │   ├── auth/                 # AuthEntry, MobileLogin, EmailAuth, OtpScreen
+    │   ├── home/                 # DashboardScreen, ActivityScreen, AddTransaction, Profile
+    │   ├── onboarding/           # OnboardingScreen carousel
+    │   ├── setup/                # ProfileSetupScreen (employment, financial inputs)
+    │   └── split/                # SplitHomeScreen, CreateSplitScreen, FriendsScreen
+    ├── services/                 # Domain services (authApi, moneyService, profileService)
+    ├── theme/                    # Colors, typography, spacing, radius, shadows
+    ├── types/                    # TypeScript interfaces and contracts
+    └── utils/                    # Formatters, split calculations, validation
 ```
 
-Run lint and typecheck before declaring any task done.
+---
 
 ## Navigation & Routing
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+The application uses **React Navigation 7** (NOT Expo Router):
+- Container: `NavigationContainer` configured in `src/navigation/RootNavigator.tsx`.
+- Gated Flow: Authenticated vs unauthenticated state managed dynamically via `useApp().authPhase`.
+  - Phases: `entry` → `mobile` / `email` → `otp` → `onboarding` → `profile_setup` → `authenticated`.
+- Tab Navigation: `createBottomTabNavigator` in `src/navigation/MainTabs.tsx` paired with the custom `BottomNavigation` component.
+- Nested Stacks: Stack navigators like `SplitStack` handle multi-screen deep workflows.
 
-## Building with EAS
+---
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+## State Management & Storage
 
-## Rules
+- **Application Context:** `src/context/AppContext.tsx` provides centralized reactive state for transactions, user profile, budget allocations, split expenses, and active modules.
+- **Local Persistence:** `src/core/storage/localPersistence.ts` handles offline-first local storage (`AsyncStorage` on native, `localStorage` on web preview).
+- **Session Security:** `src/core/storage/session.ts` and `expo-secure-store` manage authenticated token storage and session restoration.
+- **Domain Services:** All business logic lives in `src/services/` (e.g. `authApi.ts`, `moneyService.ts`, `balanceConfirmationService.ts`).
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+---
+
+## Development Commands
+
+```bash
+# Start Expo development server
+npm start
+
+# Run on target platforms
+npm run android
+npm run ios
+npm run web
+
+# TypeScript type checking
+npx tsc --noEmit
+```

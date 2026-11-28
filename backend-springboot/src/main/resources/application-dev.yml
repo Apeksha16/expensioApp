@@ -17,8 +17,8 @@ spring:
     enabled: true
     baseline-on-migrate: true
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
+    host: smtp.gmail.com
+    port: 587
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     properties:
@@ -48,3 +48,5 @@ app:
   mail:
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
+  friends:
+    split-obligation-stub-decision: CLEAR

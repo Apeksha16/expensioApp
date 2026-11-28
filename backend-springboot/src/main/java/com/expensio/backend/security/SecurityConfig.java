@@ -47,10 +47,13 @@ public class SecurityConfig {
                                 "/v1/auth/**",
                                 "/v1/verification/**",
                                 "/v1/onboarding/config",
-                                "/h2-console/**"
+                                "/h2-console/**",
+                                "/ws/**"
                         ).permitAll()
                         .requestMatchers("/v1/onboarding/**").hasAnyRole("ONBOARDING", "APPLICATION")
                         .requestMatchers("/v1/users/**").hasRole("APPLICATION")
+                        .requestMatchers("/api/v1/friends/**").hasRole("APPLICATION")
+                        .requestMatchers("/api/v1/devices/**").hasRole("APPLICATION")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

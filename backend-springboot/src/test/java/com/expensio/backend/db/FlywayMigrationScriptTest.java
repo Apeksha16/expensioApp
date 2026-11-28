@@ -49,4 +49,27 @@ class FlywayMigrationScriptTest {
         assertThat(sql).doesNotContain("plaintext");
         assertThat(sql).doesNotContain("raw_secret");
     }
+
+    @Test
+    void v5FriendsMigrationScript_ExistsAndValidatesSchemaConstraints() throws Exception {
+        ClassPathResource resource = new ClassPathResource("db/migration/V5__create_friends_schema.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql;
+        try (InputStream is = resource.getInputStream()) {
+            sql = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        assertThat(sql).contains("CREATE TABLE participants");
+        assertThat(sql).contains("CREATE TABLE guest_profiles");
+        assertThat(sql).contains("CREATE TABLE friendships");
+        assertThat(sql).contains("CREATE TABLE friend_audit_log");
+        assertThat(sql).contains("CREATE TABLE IF NOT EXISTS outbox_events");
+        assertThat(sql).contains("CHECK (requester_id <> addressee_id)");
+        assertThat(sql).contains("CHECK (status IN ('PENDING', 'ACCEPTED'))");
+        assertThat(sql).contains("GENERATED ALWAYS AS (LEAST(requester_id, addressee_id)) STORED");
+        assertThat(sql).contains("GENERATED ALWAYS AS (GREATEST(requester_id, addressee_id)) STORED");
+        assertThat(sql).contains("uq_friendships_pair");
+        assertThat(sql).contains("uq_guest_profiles_owner_username");
+    }
 }

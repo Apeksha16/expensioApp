@@ -80,3 +80,26 @@ app:
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}
     phone-number: ${TWILIO_PHONE_NUMBER:}
+  friends:
+    friend-cap: ${FRIENDS_CAP:10}
+    guest-cap: ${FRIENDS_GUEST_CAP:5}
+    guests-count-toward-friend-cap: ${FRIENDS_GUESTS_COUNT_TOWARD_CAP:true}
+    split-obligation-stub-decision: ${FRIENDS_SPLIT_OBLIGATION_STUB_DECISION:UNKNOWN}
+    search:
+      min-query-length: 2
+      max-query-length: 50
+      default-limit: 50
+      max-limit: 100
+    avatar-allowlist:
+      - avatar_1
+      - avatar_2
+      - avatar_3
+      - avatar_4
+      - avatar_5
+      - avatar_6
+      - avatar_7
+      - avatar_8
+      - avatar_9
+      - avatar_10
+      - avatar_11
+      - avatar_12

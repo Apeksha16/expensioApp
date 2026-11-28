@@ -41,12 +41,15 @@ public class RequestIdFilter extends OncePerRequestFilter {
         }
 
         MDC.put(MDC_KEY, requestId);
+        MDC.put("correlationId", requestId);
         response.setHeader(REQUEST_ID_HEADER, requestId);
+        response.setHeader(CORRELATION_ID_HEADER, requestId);
 
         try {
             filterChain.doFilter(request, response);
         } finally {
             MDC.remove(MDC_KEY);
+            MDC.remove("correlationId");
         }
     }
 }

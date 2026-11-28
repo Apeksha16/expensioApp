@@ -434,10 +434,19 @@ public class AuthService {
         );
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.expensio.backend.friends.realtime.WebSocketSessionRegistry webSocketSessionRegistry;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.expensio.backend.friends.push.DeviceTokenService deviceTokenService;
+
     @Transactional
     public void logout(String rawRefreshToken, UUID userId, String ipAddress) {
         refreshTokenService.revokeToken(rawRefreshToken);
         if (userId != null) {
+            if (webSocketSessionRegistry != null) {
+                webSocketSessionRegistry.closeSessionsForUser(userId);
+            }
             logAudit(userId, "LOGOUT", "refresh_tokens", null, ipAddress, "Current session logged out");
         }
     }
@@ -446,6 +455,12 @@ public class AuthService {
     public void logoutAll(UUID userId, String ipAddress) {
         if (userId != null) {
             refreshTokenService.revokeAllUserSessions(userId);
+            if (webSocketSessionRegistry != null) {
+                webSocketSessionRegistry.closeSessionsForUser(userId);
+            }
+            if (deviceTokenService != null) {
+                deviceTokenService.removeAllForUser(userId);
+            }
             logAudit(userId, "LOGOUT_ALL", "refresh_tokens", null, ipAddress, "All active sessions logged out");
         }
     }

@@ -36,6 +36,9 @@ public class OutboxEvent {
     @Column(name = "processed_at")
     private Instant processedAt;
 
+    @Column(name = "next_attempt_at")
+    private Instant nextAttemptAt;
+
     public OutboxEvent() {
     }
 
@@ -102,6 +105,14 @@ public class OutboxEvent {
 
     public void setProcessedAt(Instant processedAt) {
         this.processedAt = processedAt;
+    }
+
+    public Instant getNextAttemptAt() {
+        return nextAttemptAt;
+    }
+
+    public void setNextAttemptAt(Instant nextAttemptAt) {
+        this.nextAttemptAt = nextAttemptAt;
     }
 }
 

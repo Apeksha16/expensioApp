@@ -35,6 +35,9 @@ public class OutboxRelayScheduler {
         log.debug("Processing {} pending outbox event(s)...", pendingEvents.size());
 
         for (OutboxEvent event : pendingEvents) {
+            if ("FRIENDSHIP".equals(event.getAggregateType()) || "GUEST".equals(event.getAggregateType())) {
+                continue;
+            }
             try {
                 // Dispatch event via Spring ApplicationEventPublisher for internal decoupled consumers
                 eventPublisher.publishEvent(event);

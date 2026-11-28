@@ -231,3 +231,29 @@ mockMvc.perform(get("/api/v1/protected")
 - **Refresh Token Lifecycle:** Database-backed refresh token rotation and revocation (`refresh_tokens` table) will be integrated with the auth controllers.
 - **Database Identity Check:** Per requirements, requests authenticate directly via verified token subject without a database roundtrip on every call. Database-backed account status enforcement (`ACTIVE`, `SUSPENDED`) will be added alongside user profile endpoints.
 
+---
+
+## 🤝 Friends Module
+
+### Configuration Properties (`app.friends.*`)
+| Property | Default | Description |
+| :--- | :--- | :--- |
+| `app.friends.friend-cap` | `10` | Maximum total relationships (`PENDING` + `ACCEPTED`) per user |
+| `app.friends.guest-cap` | `5` | Maximum active (non-retired) guests per owner |
+| `app.friends.guests-count-toward-friend-cap` | `true` | Whether active guests count toward the owner's friend cap |
+| `app.friends.split-obligation-stub-decision` | `UNKNOWN` | Stub decision (`UNKNOWN` fail-closed in prod; `CLEAR` in `dev`) |
+| `app.friends.avatar-allowlist` | `avatar_1`..`avatar_12` | Allowed guest avatar IDs |
+| `app.friends.search.*` | `min=2`, `max=50`, `defaultLimit=50`, `maxLimit=100` | Search query length and pagination bounds |
+| `app.friends.rate-limit.*` | `search=30`, `friendRequests=20`, `guestCreate=10`, `guestAvatar=20`, `deviceRegister=10`, `wsConnect=20` | Per-user per-minute rate limits |
+
+### Wiring the Real `SplitObligationPolicy`
+`DefaultSplitObligationPolicy` is registered with `@ConditionalOnMissingBean(SplitObligationPolicy.class)` and returns `UNKNOWN` by default so friendship removals and guest retirements fail closed. To wire the Splits module:
+1. Implement `com.expensio.backend.friends.policy.SplitObligationPolicy` as a Spring `@Component` / `@Service` inside the Splits module.
+2. Execute `checkPair(userA, userB)` and `checkGuest(guestId)` inside the caller's transaction across all months and direct/group contexts, returning `CLEAR`, `OUTSTANDING`, or `UNKNOWN`.
+3. Use `com.expensio.backend.friends.api.FriendsParticipantApi` for participant resolution, friendship checks, guest ownership checks (`isGuestOwnedBy`), and historical snapshots.
+
+### Adding a Broker Relay & Push Provider
+- **Multi-instance WebSocket/STOMP:** `StompNotificationGateway` is registered with `@ConditionalOnMissingBean(NotificationGateway.class)`. To scale across multiple instances, either configure a STOMP broker relay (e.g., RabbitMQ/ActiveMQ) in `WebSocketConfig` or provide a `@Primary` / custom `NotificationGateway` bean backed by Redis Pub/Sub.
+- **Push Notifications (FCM/APNs):** `NoOpPushGateway` is registered with `@ConditionalOnMissingBean(PushGateway.class)`. Provide a Spring bean implementing `com.expensio.backend.friends.push.PushGateway` returning `SENT`, `INVALID_TOKEN` (auto-pruned), or `RETRYABLE_ERROR`.
+
+

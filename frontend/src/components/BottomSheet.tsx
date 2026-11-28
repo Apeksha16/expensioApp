@@ -1,147 +1,282 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
+  AccessibilityInfo,
   Animated,
-  KeyboardAvoidingView,
+  BackHandler,
+  Easing,
+  findNodeHandle,
+  Keyboard,
+  Modal,
+  PanResponder,
   Platform,
-  TouchableWithoutFeedback,
-  ScrollView,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, spacing } from '../theme';
-import { haptics } from '../services/haptics';
+import { colors, radius, shadows, spacing } from '../theme';
 
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  maxHeight?: number | string;
+  maxHeightRatio?: number;
+  fixedHeightRatio?: number;
+  accessibilityLabel?: string;
+  returnFocusRef?: React.RefObject<any>;
+  contentStyle?: ViewStyle;
 }
+
+const DISMISS_THRESHOLD = 90;
 
 export function BottomSheet({
   visible,
   onClose,
   children,
+  maxHeightRatio = 0.9,
+  fixedHeightRatio,
+  accessibilityLabel = 'Dialog',
+  returnFocusRef,
+  contentStyle,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
-  const slideAnim = useRef(new Animated.Value(600)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { height: windowHeight } = useWindowDimensions();
+  const [rendered, setRendered] = useState(visible);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const translateY = useRef(new Animated.Value(windowHeight)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const sheetRef = useRef<React.ComponentRef<typeof View>>(null);
+  const dismissingRef = useRef(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (mounted) setReduceMotion(Boolean(enabled));
+      })
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', (enabled) => {
+      if (mounted) setReduceMotion(Boolean(enabled));
+    });
+    return () => {
+      mounted = false;
+      sub?.remove?.();
+    };
+  }, []);
+
+  const restoreFocus = useCallback(() => {
+    if (returnFocusRef?.current) {
+      const node = findNodeHandle(returnFocusRef.current);
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    }
+  }, [returnFocusRef]);
+
+  const animateClose = useCallback(
+    (notifyClose: boolean) => {
+      if (dismissingRef.current) return;
+      dismissingRef.current = true;
+      const duration = reduceMotion ? 0 : 210;
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: windowHeight,
+          duration,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        dismissingRef.current = false;
+        setRendered(false);
+        restoreFocus();
+        if (notifyClose) onClose();
+      });
+    },
+    [onClose, overlayOpacity, reduceMotion, restoreFocus, translateY, windowHeight],
+  );
 
   useEffect(() => {
     if (visible) {
-      haptics.medium();
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          damping: 24,
-          stiffness: 240,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 600,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible]);
+      dismissingRef.current = false;
+      setRendered(true);
+      translateY.setValue(reduceMotion ? 0 : windowHeight);
+      overlayOpacity.setValue(reduceMotion ? 1 : 0);
 
-  if (!visible) return null;
+      if (!reduceMotion) {
+        Animated.parallel([
+          Animated.timing(overlayOpacity, {
+            toValue: 1,
+            duration: 220,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 260,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+
+      const focusTimer = setTimeout(() => {
+        const node = findNodeHandle(sheetRef.current);
+        if (node) AccessibilityInfo.setAccessibilityFocus(node);
+      }, 150);
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        animateClose(true);
+        return true;
+      });
+
+      return () => {
+        clearTimeout(focusTimer);
+        backHandler.remove();
+      };
+    } else if (rendered) {
+      animateClose(false);
+    }
+  }, [visible, reduceMotion, windowHeight]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dy > 0) {
+            translateY.setValue(gestureState.dy);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy > DISMISS_THRESHOLD || gestureState.vy > 0.9) {
+            animateClose(true);
+          } else {
+            Animated.spring(translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+              bounciness: 4,
+            }).start();
+          }
+        },
+      }),
+    [animateClose, translateY],
+  );
+
+  if (!rendered) return null;
+
+  const availableHeight = Math.max(260, windowHeight - insets.top - spacing.sm - keyboardHeight);
+  const resolvedFixedHeight = fixedHeightRatio
+    ? Math.min(windowHeight * fixedHeightRatio, 640, availableHeight)
+    : undefined;
+  const resolvedMaxHeight = Math.min(windowHeight * maxHeightRatio, availableHeight);
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.overlay}
+    <Modal
+      transparent
+      visible={rendered}
+      animationType="none"
+      onRequestClose={() => animateClose(true)}
+      statusBarTranslucent
+    >
+      <View
+        style={[
+          styles.keyboardWrap,
+          {
+            paddingTop: insets.top + spacing.sm,
+            paddingBottom: keyboardHeight,
+          },
+        ]}
       >
-        <TouchableWithoutFeedback onPress={onClose}>
-          <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
-        </TouchableWithoutFeedback>
+        <Animated.View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.backdrop, { opacity: overlayOpacity }]}
+        >
+          <Pressable
+            accessible={false}
+            importantForAccessibility="no"
+            style={StyleSheet.absoluteFill}
+            onPress={() => animateClose(true)}
+          />
+        </Animated.View>
 
         <Animated.View
+          ref={sheetRef}
+          accessibilityViewIsModal
+          accessibilityLabel={accessibilityLabel}
           style={[
-            styles.sheetContainer,
+            styles.sheet,
             {
-              transform: [{ translateY: slideAnim }],
-              paddingBottom: Math.max(insets.bottom, spacing.xl),
+              maxHeight: resolvedMaxHeight,
+              ...(resolvedFixedHeight ? { height: resolvedFixedHeight } : {}),
+              paddingBottom: keyboardHeight > 0 ? spacing.md : Math.max(insets.bottom, spacing.md),
+              transform: [{ translateY }],
             },
+            contentStyle,
           ]}
         >
-          {/* Top Grab Handle */}
-          <View style={styles.handleContainer}>
-            <View style={styles.handleBar} />
+          <View {...panResponder.panHandlers} style={styles.handleZone}>
+            <View style={styles.handle} />
           </View>
-
-          <ScrollView
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.content}
-          >
-            {children}
-          </ScrollView>
+          {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  keyboardWrap: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: colors.overlay,
   },
-  sheetContainer: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: colors.border,
-    maxHeight: '88%',
+  sheet: {
     width: '100%',
-    ...Platform.select({
-      web: { boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.6)' },
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-      },
-      android: { elevation: 16 },
-    }),
+    maxWidth: 560,
+    alignSelf: 'center',
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    ...shadows.card,
   },
-  handleContainer: {
-    paddingVertical: spacing.md,
+  handleZone: {
     alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
-  handleBar: {
-    width: 36,
+  handle: {
+    width: 40,
     height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  content: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
+    borderRadius: radius.full,
+    backgroundColor: colors.border,
   },
 });

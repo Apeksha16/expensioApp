@@ -1,0 +1,17 @@
+target/
+.git/
+.gitignore
+*.md
+*.http
+*.json
+*.ps1
+*.sh
+.mvn/
+mvnw*
+.idea/
+.vscode/
+application-*-local.yml
+*.local.yml
+.env*
+!.env.example
+

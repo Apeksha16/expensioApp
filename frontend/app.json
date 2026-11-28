@@ -2,32 +2,46 @@
   "expo": {
     "name": "Expensio",
     "slug": "expensio",
+    "scheme": "com.aptech.expensio.app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B1220"
+      "backgroundColor": "#F3F4F6"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.expensio.app"
+      "bundleIdentifier": "com.aptech.expensio.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B1220"
+        "backgroundColor": "#0F766E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.expensio.app",
-      "predictiveBackGestureEnabled": true
+      "package": "com.aptech.expensio.app",
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-web-browser"
+      "expo-secure-store",
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "buildReactNativeFromSource": true,
+            "usePrecompiledModules": false
+          }
+        }
+      ]
     ]
   }
 }

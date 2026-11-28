@@ -1,0 +1,174 @@
+### Expensio Enterprise API Testing Suite (.http / REST Client)
+@baseUrl = http://localhost:5001
+
+### =========================================================================
+### 1. HEALTH & METRICS
+### =========================================================================
+
+### 1.1 Health Check
+GET {{baseUrl}}/api/v1/health
+
+
+### =========================================================================
+### 2. PHASE 1: AUTHENTICATION
+### =========================================================================
+
+### 2.1 Email Signup
+# @name signup
+POST {{baseUrl}}/v1/auth/email/signup
+Content-Type: application/json
+
+{
+  "email": "ishita.developer@expensio.app",
+  "password": "Password@123",
+  "name": "Ishita Katiyar"
+}
+
+### 2.2 Verify Email OTP
+POST {{baseUrl}}/v1/verification/email/verify
+Content-Type: application/json
+
+{
+  "challengeId": "{{signup.response.body.data.challengeId}}",
+  "otp": "123456"
+}
+
+### 2.3 Mobile OTP Start (Dispatches SMS via Twilio / Dev Simulation)
+# @name mobileStart
+POST {{baseUrl}}/v1/auth/mobile/otp/start
+Content-Type: application/json
+
+{
+  "phone": "+919876543210"
+}
+
+### 2.4 Verify Mobile OTP & Login
+# @name mobileLogin
+POST {{baseUrl}}/v1/auth/mobile/login/verify
+Content-Type: application/json
+
+{
+  "phone": "+919876543210",
+  "challengeId": "{{mobileStart.response.body.data.challengeId}}",
+  "otp": "123456"
+}
+
+### 2.5 Email Login
+# @name login
+POST {{baseUrl}}/v1/auth/email/login
+Content-Type: application/json
+
+{
+  "email": "ishita.developer@expensio.app",
+  "password": "Password@123"
+}
+
+### 2.6 Google OAuth Login (Dev Mock / Live Token)
+# @name googleLogin
+POST {{baseUrl}}/v1/auth/google
+Content-Type: application/json
+
+{
+  "idToken": "mock_google_ishita_dev"
+}
+
+### 2.7 Refresh Token Rotation
+POST {{baseUrl}}/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.data.refreshToken}}"
+}
+
+
+### =========================================================================
+### 3. PHASE 2: USER ONBOARDING SYSTEM
+### =========================================================================
+
+### 3.1 Get Onboarding Configuration (Publicly accessible)
+GET {{baseUrl}}/v1/onboarding/config
+
+### 3.2 Get Onboarding Progress & Status (Requires Onboarding or App Token)
+GET {{baseUrl}}/v1/onboarding/status
+Authorization: Bearer {{login.response.body.data.accessToken}}
+
+### 3.3 Update Profile (Name & Verified Contacts)
+PUT {{baseUrl}}/v1/onboarding/profile
+Authorization: Bearer {{login.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Demo",
+  "lastName": "User",
+  "email": "demo.developer@expensio.app",
+  "phone": "+919876543210"
+}
+
+### 3.4 Update Employment Details (Supported: SALARIED, BUSINESS, STUDENT, RETIRED, HOMEMAKER)
+PUT {{baseUrl}}/v1/onboarding/employment
+Authorization: Bearer {{login.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "employmentType": "SALARIED",
+  "monthlyIncomeMinor": 8500000,
+  "currency": "INR"
+}
+
+### 3.5 Update Initial Financial Profile (Non-negative balances in minor units)
+PUT {{baseUrl}}/v1/onboarding/financial-profile
+Authorization: Bearer {{login.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "cashBalanceMinor": 2500000,
+  "savingsBalanceMinor": 10000000,
+  "currency": "INR"
+}
+
+### 3.6 Complete Onboarding (Generates unique username, activates account, issues full session)
+# @name completeOnboarding
+POST {{baseUrl}}/v1/onboarding/complete
+Authorization: Bearer {{login.response.body.data.accessToken}}
+
+
+### =========================================================================
+### 4. PHASE 4: USER & SESSION MANAGEMENT (Full APPLICATION token required)
+### =========================================================================
+
+### 4.1 Get Authenticated User Profile & Full Details
+GET {{baseUrl}}/v1/users/me
+Authorization: Bearer {{completeOnboarding.response.body.data.accessToken}}
+
+### 4.2 Update Profile
+PUT {{baseUrl}}/v1/users/me
+Authorization: Bearer {{completeOnboarding.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Ishita",
+  "lastName": "Katiyar"
+}
+
+### 4.3 Update Username (Custom alphanumeric username, checks reserved words & records history)
+PUT {{baseUrl}}/v1/users/me/username
+Authorization: Bearer {{completeOnboarding.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "username": "ishita_pro"
+}
+
+### 4.4 Logout Single Device
+POST {{baseUrl}}/v1/auth/logout
+Authorization: Bearer {{completeOnboarding.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{completeOnboarding.response.body.data.refreshToken}}"
+}
+
+### 4.4 Logout All Devices
+POST {{baseUrl}}/v1/auth/logout-all
+Authorization: Bearer {{completeOnboarding.response.body.data.accessToken}}
+

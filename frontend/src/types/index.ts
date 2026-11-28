@@ -1,77 +1,190 @@
-export type AccountType = 'salary' | 'cash' | 'savings';
+export type AuthPhase = 'restoring' | 'onboarding' | 'login' | 'mobile' | 'email' | 'otp' | 'forgot_password' | 'reset_password' | 'setup' | 'main';
 
-export interface AccountData {
-  title: string;
-  badge: string;
-  badgeColor: string;
-  badgeBg: string;
-  centerLabel: string;
-  amount: string;
-  stat1Label: string;
-  stat1Value: string;
-  stat1IsPositive: boolean;
-  stat2Label: string;
-  stat2Value: string;
-  arcColor: string;
-  dotColor: string;
-  progress: number;
+export interface UserProfile {
+  id?: string;
+  name: string;
+  userId: string;
+  monthlyIncome: number;
+  cashInHand: number;
+  savings: number;
+  phone: string;
+  countryCode: string;
+  email?: string;
 }
 
-export type ExpenseCategory =
-  | 'food'
-  | 'travel'
-  | 'shopping'
-  | 'bills'
-  | 'entertainment'
-  | 'health'
-  | 'general';
-
-export interface ExpenseItem {
+export interface Transaction {
   id: string;
-  title: string;
-  amount: number;
-  category: ExpenseCategory;
-  date: string;
-  method: 'UPI' | 'Card' | 'Cash' | 'NetBanking';
-  account?: AccountType;
-}
-
-export interface SplitItem {
-  id: string;
-  title: string;
+  type: 'expense' | 'income';
+  merchant: string;
+  category: string;
+  icon: string;
+  iconColor: string;
   amount: number;
   date: string;
-  paidBy: 'YOU' | string;
-  status: 'PENDING' | 'SETTLED';
-  youGet?: number;
-  youOwe?: number;
-  group?: string;
-  participants?: string[];
+  time: string;
+  occurredAt?: number;
 }
 
-export interface SplitSummaryData {
-  youllGet: number;
-  youOwe: number;
-  getPeopleCount: number;
-  owePeopleCount: number;
+export interface BudgetSummary {
+  spent: number;
+  limit: number;
 }
+
+export interface MonthlyOverview {
+  income: number;
+  spent: number;
+  remaining: number;
+}
+
+export interface BalanceSummary {
+  total: number;
+  cash: number;
+  savings: number;
+}
+
+export interface SplitSummary {
+  owedAmount: number;
+  friends: { id: string; name: string; initials: string; color: string }[];
+}
+
+export interface SavingsGoal {
+  id: string;
+  title: string;
+  current: number;
+  target: number;
+  targetDate?: string;
+  contributions?: GoalContribution[];
+}
+
+export interface GoalContribution {
+  id: string;
+  amount: number;
+  occurredAt: number;
+}
+
+export interface CategoryBudget {
+  id: string;
+  category: string;
+  limit: number;
+  createdAt: number;
+  alertThreshold?: number;
+}
+
+export type PaymentKind = 'emi' | 'subscription';
+export type PaymentCadence = 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurringPayment {
+  id: string;
+  name: string;
+  amount: number;
+  kind: PaymentKind;
+  cadence: PaymentCadence;
+  nextDueDate: string;
+  category: string;
+  active: boolean;
+  completed?: boolean;
+  outstandingBalance?: number;
+  remainingInstallments?: number;
+}
+
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  icon: string;
+  color: string;
+  nextDate: string;
+}
+
+export interface OnboardingSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  visual: 'overview' | 'split' | 'budget' | 'allinone';
+}
+
+export interface CountryCode {
+  code: string;
+  dial: string;
+  flag: string;
+  name: string;
+}
+
+export interface Friend {
+  id: string;
+  name: string;
+  userId: string;
+  initials: string;
+  color: string;
+  avatarId?: string | null;
+  avatarUri?: string | null;
+  isGuest?: boolean;
+  friendshipId?: string;
+  ownerUserId?: string | null;
+}
+
+export interface ParticipantSnapshot {
+  name: string;
+  initials: string;
+  color: string;
+  isGuest?: boolean;
+}
+
+export * from './friends';
 
 export interface SplitGroup {
   id: string;
   name: string;
-  membersCount: number;
-  youOwe?: number;
-  youllGet?: number;
+  friendIds: string[];
+  createdAt: number;
 }
 
-export interface SubscriptionItem {
-  id: string;
-  name: string;
+export type SplitMethod = 'equal' | 'custom';
+
+export interface SplitShare {
+  friendId: string;
   amount: number;
-  dueDate: string;
-  status: 'UPCOMING' | 'PAID' | 'OVERDUE';
-  daysLeft?: number;
+  settled: boolean;
 }
 
-export type NavTab = 'dashboard' | 'expenses' | 'splits' | 'subscriptions' | 'analytics' | 'ledger';
-export type AuthStep = 'splash' | 'phone' | 'otp' | 'authenticated';
+export interface SplitExpense {
+  id: string;
+  title: string;
+  amount: number;
+  paidById: string;
+  date: string;
+  method: SplitMethod;
+  shares: SplitShare[];
+  participantSnapshots?: Record<string, ParticipantSnapshot>;
+  note?: string;
+  createdAt: number;
+  ledgerTransactionId?: string;
+}
+
+export interface PendingBalance {
+  friendId: string;
+  name: string;
+  initials: string;
+  color: string;
+  /** Positive = they owe you; negative = you owe them */
+  amount: number;
+}
+
+export interface SplitBalances {
+  youOwe: number;
+  youAreOwed: number;
+  settledCount: number;
+  pendingCount: number;
+  pending: PendingBalance[];
+}
+
+export interface CreateSplitInput {
+  title: string;
+  amount: number;
+  paidById: string;
+  date: string;
+  method: SplitMethod;
+  participantIds: string[];
+  customShares?: Record<string, number>;
+  note?: string;
+}
